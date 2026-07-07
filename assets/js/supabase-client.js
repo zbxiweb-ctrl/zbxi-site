@@ -61,6 +61,8 @@
       var self = this;
       return this.getUser().then(function (u) {
         if (!u) { self._approvedCache = false; return false; }
+        // The admin always counts as an approved viewer.
+        if (self.adminEmail && (u.email || '').toLowerCase() === self.adminEmail) { self._approvedCache = true; return true; }
         return self.myProfile(u.id).then(function (p) {
           self._approvedCache = !!(p && p.status === 'verified'); return self._approvedCache;
         });
