@@ -7,5 +7,5 @@
 window.ZBXI_CONFIG = {
   SUPABASE_URL:      '',   // e.g. https://xxxxxxxx.supabase.co
   SUPABASE_ANON_KEY: '',   // the publishable / anon key
-  ADMIN_EMAIL:       ''    // the email that can approve brothers (e.g. president@...)
+  ADMIN_EMAIL:       'zbxi.web@gmail.com'    // the email that can approve brothers
 };

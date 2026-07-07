@@ -51,14 +51,13 @@ create policy brothers_own_update on public.brothers
   for update using (auth.uid() = user_id);
 
 -- ADMIN can read and update ALL rows (approve / reject).
--- >>> Replace admin@example.com with your real admin email in BOTH policies. <<<
 drop policy if exists brothers_admin_read on public.brothers;
 create policy brothers_admin_read on public.brothers
-  for select using (auth.jwt() ->> 'email' = 'admin@example.com');
+  for select using (auth.jwt() ->> 'email' = 'zbxi.web@gmail.com');
 
 drop policy if exists brothers_admin_update on public.brothers;
 create policy brothers_admin_update on public.brothers
-  for update using (auth.jwt() ->> 'email' = 'admin@example.com');
+  for update using (auth.jwt() ->> 'email' = 'zbxi.web@gmail.com');
 
 -- 3) Storage: brother-photos -------------------------------------------------
 -- Create the bucket in the dashboard (Storage → New bucket → name: brother-photos, Public: ON),
