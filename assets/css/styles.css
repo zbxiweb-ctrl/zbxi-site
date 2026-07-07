@@ -95,6 +95,46 @@ p { margin: 0 0 1em; }
 .nav__toggle { display: none; background: none; border: 0; cursor: pointer; padding: 8px; }
 .nav__toggle span { display: block; width: 26px; height: 2px; background: var(--gold-bright); margin: 5px 0; transition: .25s; }
 
+/* Account indicator (top-right) */
+.nav__account { display: flex; align-items: center; position: relative; }
+.nav__chip {
+  display: flex; align-items: center; gap: .55rem; cursor: pointer;
+  background: rgba(200,162,75,.10); border: 1.5px solid rgba(200,162,75,.5);
+  color: var(--cream); border-radius: 999px; padding: .32rem .7rem .32rem .35rem;
+  font-family: var(--sans); font-size: .9rem; transition: background .15s, border-color .15s;
+}
+.nav__chip:hover { background: rgba(200,162,75,.2); border-color: var(--gold); }
+.nav__avatar {
+  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep);
+  display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem;
+}
+.nav__chip-name { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.nav__caret { color: var(--gold-bright); font-size: .7rem; }
+.admin-badge {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep);
+  font-size: .6rem; font-weight: 800; letter-spacing: .1em; padding: .12rem .4rem; border-radius: 5px;
+}
+.nav__menu {
+  position: absolute; top: calc(100% + 10px); right: 0; width: 232px;
+  background: #0c2350; border: 1px solid rgba(200,162,75,.35); border-radius: 12px;
+  padding: .5rem; z-index: 120; box-shadow: 0 18px 44px rgba(0,0,0,.5);
+  display: none;
+}
+.nav__menu.open { display: block; }
+.nav__menu-head { padding: .5rem .6rem .7rem; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: .4rem; }
+.nav__menu-head b { display: block; color: var(--cream); font-family: var(--display); font-size: 1rem; }
+.nav__menu-head span { display: block; color: #b9c4dc; font-size: .74rem; overflow: hidden; text-overflow: ellipsis; }
+.nav__menu-head .admin-badge { display: inline-block; margin-top: .45rem; }
+.nav__menu a, .nav__menu button {
+  display: block; width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  color: #d7deec; font-family: var(--sans); font-size: .9rem; padding: .6rem .6rem; border-radius: 8px; transition: background .12s, color .12s;
+}
+.nav__menu a:hover, .nav__menu button:hover { background: rgba(200,162,75,.12); color: var(--gold-bright); }
+.nav__menu-admin { color: var(--gold-bright) !important; font-weight: 600; }
+.nav__menu-divider { height: 1px; background: rgba(255,255,255,.08); margin: .4rem 0; }
+.nav__menu-signout:hover { background: rgba(180,52,43,.18) !important; color: #ff9c93 !important; }
+
 /* ---------- Hero ---------- */
 .hero {
   position: relative; min-height: 100svh; display: flex; align-items: center;
@@ -249,11 +289,14 @@ p { margin: 0 0 1em; }
   .nav__links a { padding: .9rem 8vw; }
   .nav__links .nav__cta { margin: .6rem 8vw; text-align: center; }
   .nav__toggle { display: block; }
+  .nav__account { margin-left: auto; margin-right: .6rem; }
+  .nav__chip-name { max-width: 92px; }
   .form-row { grid-template-columns: 1fr; }
   .stat-row { gap: 1.6rem; }
 }
 @media (max-width: 460px) {
   .badges, .grid-cards, .gallery { grid-template-columns: 1fr 1fr; }
+  .nav__chip-name { display: none; }
 }
 
 /* ---------- Family tree ---------- */
