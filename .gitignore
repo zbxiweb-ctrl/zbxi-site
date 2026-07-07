@@ -1,0 +1,15 @@
+# Vercel
+.vercel
+
+# Dependencies (none currently — site is dependency-free static)
+node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# Never commit real secrets. config.js ships with PLACEHOLDER values only
+# (the Supabase anon key is safe to publish; never add a service_role key here).
