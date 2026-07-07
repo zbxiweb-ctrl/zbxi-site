@@ -1,0 +1,350 @@
+# ZBXi roster — transcribed from the 10 family-line docs.
+# Format:  Full Name | Pledge Class | Big
+#   - Big empty     => big is the PREVIOUS person in this family (linear chain)
+#   - Big = "-"     => root (founding father, no big)
+#   - Big = a name  => branch: this person's big is that named brother
+# @FAMILY starts a new lineage (resets the chain).
+# Duplicated "two-bigs" sub-trees in the source are collapsed to a single node;
+# see data/README.md for the judgment calls + flags.
+
+@FAMILY Adami
+Jeffrey Adami | Founding Father · Spring 1993 | -
+Kevin Dunham | Delta · Spring '95 |
+Gregory Maine | Epsilon · Fall '95 |
+Steven Smith | Eta · Fall '96 |
+Kristian Nielsen | Iota · Fall '97 |
+Geoffrey Fesko | Lambda · Fall '98 |
+Thomas Palmeri | Nu · Fall '99 |
+Robert Steinwachs | Pi · Spring '01 |
+Kevin Gutman | Psi · Fall '04 |
+Dillon Meier | Beta Gamma · Spring '06 |
+Lucas Machado | Beta Eta · Spring '08 |
+Patrick Barry | Beta Lambda · Spring '10 |
+Michael Roach | Beta Xi · Fall '11 |
+Michael Vecchio | Beta Sigma · Fall '13 |
+Matthew Albanese | Beta Phi · Spring '15 | Michael Vecchio
+Gustavo Rosales | Gamma Beta · Spring '17 |
+Jakob Hellman | Gamma Delta · Spring '18 |
+Anthony Albanese | Gamma Zeta · Spring '19 |
+Timothy Gibbons | Gamma Iota · Spring '21 |
+Neven Tenevski | Gamma Mu · Spring '23 |
+Giacomo Aris | Gamma Delta · Spring '18 | Michael Vecchio
+Anthony Cooney | Gamma Eta · Fall '19 |
+Jacob Pericak | Gamma Lambda · Spring '22 |
+Maxamillian Nilsen | Gamma Lambda · Spring '24 |
+
+@FAMILY Fisher
+Brian Fisher | Founding Father · Spring 1993 | -
+Johnathan Bergman | Gamma · Fall '94 |
+Justin Leavy | Delta · Spring '95 |
+Bryant Tovar | Eta · Fall '96 |
+Jason Pearl | Iota · Fall '97 |
+Matthew Abdoo | Xi · Spring '00 |
+Robert Gordon | Rho · Fall '01 |
+Steven Lane | Upsilon · Spring '03 |
+Basil Sarantis | Beta Beta · Fall '05 |
+Michael Oberst | Beta Epsilon · Spring '07 |
+Matthew Meyers | Beta Theta · Fall '08 |
+Luke Porter | Beta Mu · Fall '10 |
+Benjamin Schwartz | Beta Xi · Fall '11 |
+Zachary Goldberg | Beta Rho · Spring '13 |
+Eric Corwin | Beta Tau · Spring '14 |
+Jake Arbeitman | Gamma Alpha · Fall '16 |
+Cameron Haberberger | Gamma Delta · Spring '18 | Jake Arbeitman
+Nicholas Santora | Gamma Epsilon · Fall '18 | Jake Arbeitman
+Matthew Perez | Gamma Theta · Spring '20 |
+
+@FAMILY Kelly
+Keith Kelly | Founding Father · Spring 1993 | -
+Richard Johnson | Gamma · Fall '94 |
+Sean Diehl | Delta · Spring '95 |
+Glenn Jones | Class unknown · 1st Era | Sean Diehl
+Joshua Zelin | Zeta · Spring '96 | Sean Diehl
+Adam Cohen | Theta · Spring '97 | Joshua Zelin
+Brian LoVecchio | Lambda · Fall '98 |
+Jeremy Daumen | Omicron · Fall '00 |
+Michael Modleski | Sigma · Spring '02 |
+Jacob Button | Chi · Spring '04 |
+Kirk Young | Beta Gamma · Spring '06 |
+David Schreiber | Beta Zeta · Fall '07 |
+Matthew Howie | Beta Mu · Fall '10 |
+Michael Shrago | Beta Pi · Fall '12 |
+Omar Ramzy | Beta Sigma · Fall '13 |
+Noah Burrcklie | Beta Upsilon · Fall '14 | Omar Ramzy
+Dominick Leonardi | Gamma Beta · Spring '17 | Omar Ramzy
+Jack Corigliano | Gamma Delta · Spring '18 |
+Maximillian Haegele | Gamma Theta · Spring '20 |
+Andrew Velasco | Gamma Mu · Spring '23 |
+Joseph Palazzolo | Kappa · Spring '98 | Joshua Zelin
+Yuvraj Kalra | Mu · Spring '99 |
+Robert Bourgeois | Sigma · Spring '02 |
+Gerald Rawcliffe | Beta Beta · Fall '05 |
+Eric Cerretani | Beta Eta · Spring '08 |
+Jack Kinney | Beta Lambda · Spring '10 |
+Andrew Velez | Beta Nu · Spring '11 |
+Ryan Kalish | Beta Xi · Fall '11 |
+Eric Wollberg | Beta Sigma · Fall '13 |
+Sergio Spizzirri | Beta Upsilon · Fall '14 |
+Ahmed Ramzy | Gamma Alpha · Fall '16 |
+Garett Lewis | Gamma Gamma · Fall '17 |
+Julian Ponirakis | Gamma Zeta · Spring '19 |
+Sebastian Romero | Gamma Mu · Spring '23 |
+
+@FAMILY Lohrman
+Shelby Lohrman | Founding Father · Spring 1993 | -
+Vincent Carroll | Gamma · Fall '94 |
+Peter Memoli | Delta · Spring '95 |
+Christopher Covington | Epsilon · Fall '95 |
+Michael Baliber | Zeta · Spring '96 | Christopher Covington
+Joseph Occhino | Theta · Spring '97 |
+Matthew Tursellino | Iota · Fall '97 |
+Matthew Cochran | Lambda · Fall '98 |
+Andrew Pond | Nu · Fall '99 |
+Zahan Mistry | Sigma · Spring '02 |
+Steven Byron | Beta Alpha · Spring '05 |
+Sean Bergman | Beta Gamma · Spring '06 |
+Thomas Wilder | Beta Zeta · Fall '07 |
+Tyler Reason | Beta Iota · Spring '09 |
+Christopher VandeSande | Beta Nu · Spring '11 |
+Luke Quinlan | Beta Xi · Fall '11 |
+Alexander Shaw | Beta Rho · Spring '13 |
+Milton Tran | Beta Upsilon · Fall '14 |
+Marc Bassuk | Beta Psi · Spring '16 |
+Keis Durrani | Gamma Delta · Spring '18 | Marc Bassuk
+Justin Gill | Gamma Zeta · Spring '19 |
+Matthew O'Sullivan | Gamma Iota · Spring '21 |
+Jake Burggraf | Gamma Mu · Spring '23 |
+Nate Barone | Gamma Omicron · Fall '25 |
+Beck Lundeen | Gamma Beta · Spring '17 | Marc Bassuk
+Angel Alejandro | Gamma Delta · Spring '18 |
+Nick Gartner | Gamma Zeta · Spring '19 |
+Max Koen | Gamma Iota · Spring '21 |
+Dylan Avlord | Gamma Nu · Fall '23 |
+Jacob Dicaprio | Gamma Rho · Fall '25 |
+Brandon Beardsley | Kappa · Spring '98 | Christopher Covington
+Edward LaFleur | Mu · Spring '99 |
+Ryan Gorman | Rho · Fall '01 |
+David Parmon | Tau · Fall '02 |
+
+@FAMILY McCarthy
+Patrick McCarthy | Founding Father · Spring 1993 | -
+Iain Walker | Beta · Spring '94 |
+Jacob Rohan | Epsilon · Fall '95 |
+Robert Thielemann | Zeta · Spring '96 |
+David Pace | Eta · Fall '96 |
+Kevin Moeller | Iota · Fall '97 |
+Colin Pierce | Mu · Spring '99 |
+Gary Tiamsic | Pi · Spring '01 |
+Jason Sackett | Sigma · Spring '02 |
+Peter Tichacek | Psi · Fall '04 |
+Lucas Magyarics | Beta Gamma · Spring '06 |
+William Buttaro III | Beta Epsilon · Spring '07 |
+David Wakefield | Beta Eta · Spring '08 |
+Joshua Rank | Beta Iota · Spring '09 |
+Michael Radney | Beta Pi · Fall '12 |
+Anish Ochani | Beta Tau · Spring '14 |
+Corey Antola | Gamma Alpha · Fall '16 |
+Wilson Ng | Gamma Gamma · Fall '17 |
+Ryan Houser | Gamma Epsilon · Fall '18 |
+Colin Casey | Gamma Theta · Spring '20 |
+John Durkee | Gamma Lambda · Spring '22 |
+Aaron Crunick | Gamma Omicron · Fall '24 |
+
+@FAMILY Michalski
+Daniel Michalski | Founding Father · Spring 1993 | -
+Mark Bowersox | Gamma · Fall '94 |
+Daniel Recktenwalt | Delta · Spring '95 |
+Steven Philio | Epsilon · Fall '95 | Daniel Recktenwalt
+Kenneth Widman | Zeta · Spring '96 |
+David Schwerk | Eta · Fall '96 | Kenneth Widman
+Andrew Woeppel | Iota · Fall '97 |
+Andrew Gutman | Mu · Spring '99 |
+Joshua Wagner | Rho · Fall '01 |
+Sujit Kamath | Upsilon · Spring '03 |
+William McCulloch | Kappa · Spring '98 | Kenneth Widman
+Allen Scherer | Mu · Spring '99 |
+Gregory Faulkner | Pi · Spring '01 |
+Jacob Buck-Malarsky | Sigma · Spring '02 |
+Brian Brady | Kappa · Spring '98 | Daniel Recktenwalt
+George Burd | Mu · Spring '99 |
+Scott Alfonso | Pi · Spring '01 |
+Kevin Margiotta | Sigma · Spring '02 |
+Adrian Molina | Chi · Spring '04 |
+Alan John Krokenberger | Beta Gamma · Spring '06 |
+Eric Mazzeo | Beta Zeta · Fall '07 |
+Andrew Priore | Beta Theta · Fall '08 |
+Michalis Demkou | Beta Lambda · Spring '10 |
+Casey Jordan | Beta Xi · Fall '11 |
+William Duncanson V | Beta Pi · Fall '12 |
+Jacob Fleischer | Beta Tau · Spring '14 |
+Peter Malarczyk | Beta Chi · Fall '15 |
+Jeff Calderon | Gamma Alpha · Fall '16 |
+Elijah Hall | Gamma Gamma · Fall '17 | Jeff Calderon
+Declan McLary | Gamma Epsilon · Fall '18 |
+Robert Liddell | Gamma Iota · Spring '21 |
+Evan Brown | Gamma Mu · Spring '23 |
+Diego Sanchez | Gamma Mu · Spring '23 |
+Konstantinos Klentos | Gamma Epsilon · Fall '18 | Jeff Calderon
+Payton Rodger | Gamma Theta · Spring '20 |
+
+@FAMILY Moy
+Christian Moy | Founding Father · Spring 1993 | -
+Bruce Sutphin | Beta · Spring '94 |
+Christian Snyder | Epsilon · Fall '95 |
+Luke Kelly | Iota · Fall '97 |
+Justin Rymanowski | Mu · Spring '99 |
+Jason Tempera | Rho · Fall '01 |
+Donald Koch | Tau · Fall '02 |
+Daniel Snyder | Phi · Fall '03 |
+Thomas Segerson | Beta Delta · Fall '06 |
+Nicholas Nenni | Beta Eta · Spring '08 |
+Brian Funicelli | Beta Iota · Spring '09 |
+Anthony Rodriguez | Beta Nu · Spring '11 |
+Zeeshan Tariq | Beta Xi · Fall '11 |
+Brandon Russotti | Beta Sigma · Fall '13 |
+Luis Picart | Beta Upsilon · Fall '14 |
+Christopher Weber | Beta Psi · Spring '16 |
+Tyler Olix | Gamma Beta · Spring '17 | Christopher Weber
+Ryan Brock | Gamma Epsilon · Fall '18 |
+Jake Faigle | Gamma Eta · Fall '19 |
+Joshua Kuwent | Gamma Iota · Spring '21 |
+Seth Barone | Gamma Mu · Spring '23 |
+Josh Rudbart | Gamma Epsilon · Fall '18 | Christopher Weber
+Jack Kersten | Gamma Theta · Spring '20 |
+Kyle Zaidel | Gamma Mu · Spring '23 |
+
+@FAMILY Pickard
+Steven Pickard | Founding Father · Spring 1993 | -
+Thomas Ryan | Beta · Spring '94 |
+Paul Zawadecki | Gamma · Fall '94 |
+Carmine Pearl | Delta · Spring '95 |
+Seamus Mooney | Epsilon · Fall '95 | Carmine Pearl
+Anooj Thakrar | Zeta · Spring '96 |
+Bryan Lane | Theta · Spring '97 |
+Gabriel Calas | Nu · Fall '99 |
+John DeFranks | Pi · Spring '01 |
+Mark Warren | Tau · Fall '02 |
+Clayton Waterman | Beta Gamma · Spring '06 |
+David Graunke | Beta Zeta · Fall '07 |
+Richard Walter | Beta Iota · Spring '09 |
+Benjamin Bertuch | Beta Nu · Spring '11 |
+Alec Tare | Beta Xi · Fall '11 |
+Jackson Kane | Beta Sigma · Fall '13 |
+Matthew Wishnoff | Beta Upsilon · Fall '14 |
+Adham Abohussein | Beta Psi · Spring '16 |
+Bryan Somar | Gamma Beta · Spring '17 |
+Jordan Gannett | Gamma Delta · Spring '18 |
+Johnathon Conway | Gamma Theta · Spring '20 |
+Zander Purcell | Gamma Mu · Spring '23 |
+Brayan Ortiz | Gamma Pi · Spring '25 |
+Leonard Slack | Kappa · Spring '98 | Carmine Pearl
+Matthew Metz | Xi · Spring '00 |
+Kristopher Badame | Delta · Spring '95 | Steven Pickard
+Brendon O'Meara | Epsilon · Fall '95 |
+Leon Scott | Zeta · Spring '96 |
+Andrew Goetzmann | Eta · Fall '96 |
+Matthew DiPietro | Theta · Spring '97 |
+Patrick York | Iota · Fall '97 |
+Riyadh Sawh | Lambda · Fall '98 |
+Eric Meisner | Pi · Spring '01 |
+John Orth | Sigma · Spring '02 |
+Paul Bolotovsky | Chi · Spring '04 |
+Matthew Agone | Beta Delta · Fall '06 |
+Alexander Yae | Beta Eta · Spring '08 |
+Paul Kaleka | Beta Kappa · Fall '09 |
+Jerry Lee | Beta Nu · Spring '11 |
+Joseph DeJesus | Beta Xi · Fall '11 |
+Matthew Vella | Beta Rho · Spring '13 |
+
+@FAMILY Serrano
+Ramon Serrano | Alpha Class · Fall 1993 | -
+Quinn Covington | Gamma · Fall '94 |
+Michael Breen | Delta · Spring '95 |
+Dennis Lowenfels | Zeta · Spring '96 | Michael Breen
+Nicholas Tolosky | Theta · Spring '97 |
+Matthew Turnquist | Kappa · Spring '98 |
+Eric Kallin | Mu · Spring '99 |
+Vitantonio DiBellis | Pi · Spring '01 |
+Jonathan Kaplan | Tau · Fall '02 |
+Aaron Hagele | Beta Alpha · Spring '05 |
+Christopher Brosius | Beta Gamma · Spring '06 |
+Harry Hadley | Beta Zeta · Fall '07 |
+Eric Dziekonski | Beta Kappa · Fall '09 |
+Tyler Thompson | Beta Nu · Spring '11 |
+Nicholas Weber | Beta Omicron · Spring '12 |
+Nico Banghart | Beta Sigma · Fall '13 |
+Callen Gross | Beta Phi · Spring '15 |
+Jake Forman | Gamma Alpha · Fall '16 |
+John Nelson | Gamma Gamma · Fall '17 |
+Adam Tenney | Gamma Epsilon · Fall '18 |
+Jacob Palacios | Gamma Theta · Spring '20 |
+Myles Schenfield | Gamma Mu · Spring '23 |
+Lorenzo Merced | Gamma Omicron · Fall '24 |
+Dylan Bartlett | Gamma Delta · Spring '18 | Jake Forman
+Alexander Pezzi | Gamma Eta · Fall '19 |
+Thomas Wlodarczyck | Gamma Kappa · Fall '21 |
+Yuriy Shinder | Beta Xi · Fall '11 | Eric Dziekonski
+Nicholas Papasophocles | Beta Rho · Spring '13 |
+Allan Roberts Jr. | Beta Upsilon · Fall '14 |
+Dillon Szmala | Gamma Alpha · Fall '16 |
+Stone Welker | Gamma Gamma · Fall '17 |
+Landon Brice | Gamma Epsilon · Fall '18 |
+Nolan Smith | Gamma Theta · Spring '20 |
+Nick Brunelli | Gamma Mu · Spring '23 |
+Blake Juston | Gamma Xi · Spring '24 |
+Arthur Anderson | Kappa · Spring '98 | Michael Breen
+Michael McDonald | Nu · Fall '99 |
+Andrew Wohlrab | Rho · Fall '01 |
+Kenneth Peltzer | Chi · Spring '04 |
+Jason Henderson | Beta Epsilon · Spring '07 |
+Michael Skovira | Beta Theta · Fall '08 |
+Sudhat Ashok | Beta Lambda · Spring '10 |
+Adbulyekinni Fasinro | Beta Xi · Fall '11 |
+Eraklis Hristodoulou | Beta Sigma · Fall '13 |
+Nick Rosica | Beta Chi · Fall '15 |
+Jack Ladd | Gamma Alpha · Fall '16 |
+Pio Badajos | Gamma Delta · Spring '18 |
+Jonathon VanVleet | Gamma Eta · Fall '19 |
+Jacob Moody | Gamma Kappa · Fall '21 |
+Conor Creary | Gamma Nu · Fall '23 |
+Caden Schiedel | Gamma Rho · Fall '25 |
+
+@FAMILY Yaw
+Christopher Yaw | Founding Father · Spring 1993 | -
+Richard Price | Beta · Spring '94 |
+Richard Alvarado | Gamma · Fall '94 |
+Daniel Simon | Delta · Spring '95 |
+Todd Plymale | Zeta · Spring '96 |
+Kevin McKain | Theta · Spring '97 |
+Jeffrey Holt | Iota · Fall '97 |
+Steven Brown | Mu · Spring '99 |
+Thomas Ross | Sigma · Spring '02 |
+Justin Holgerson | Phi · Fall '03 |
+Gavin Tiamsic | Beta Gamma · Spring '06 |
+Ryan Kanick | Beta Zeta · Fall '07 |
+Michael Ruggiero | Beta Iota · Spring '09 |
+Jay Dlouhy | Beta Nu · Spring '11 | Michael Ruggiero
+Guoqi Hu | Beta Xi · Fall '11 |
+Michael Finn | Beta Rho · Spring '13 |
+Kevin O'Neill | Beta Tau · Spring '14 |
+Bradley Heller | Gamma Alpha · Fall '16 |
+Dillon Reid | Gamma Gamma · Fall '17 |
+Christian Lanzetta | Gamma Delta · Spring '18 |
+Thomas Sheehy | Gamma Theta · Spring '20 |
+Matthew Zanelotti | Gamma Mu · Spring '23 |
+Zachary Westfall | Gamma Omicron · Fall '24 |
+Lucas Johnson | Beta Omicron · Spring '12 | Michael Ruggiero
+Jack Ehret | Beta Tau · Spring '14 |
+Christian D'Angelo | Beta Chi · Fall '15 |
+Tabish Khan | Gamma Beta · Spring '17 |
+Nick Blouin | Gamma Delta · Spring '18 |
+Kaden Averill | Gamma Zeta · Spring '19 |
+John Cassar | Gamma Kappa · Fall '21 |
+Caleb Ward | Gamma Mu · Spring '23 |
+Jason Shertzer | Gamma Rho · Fall '25 |
+Michael Welch | Gamma Delta · Spring '18 | Christian D'Angelo
+Matthew Soraghan | Gamma Eta · Fall '19 |
+Jacob Stein | Gamma Eta · Fall '19 | Michael Welch
+Jack Podanoffsky | Gamma Lambda · Spring '22 |
+Joe Markajani | Gamma Omicron · Fall '24 |
+Noah Terry | Gamma Rho · Fall '25 |
