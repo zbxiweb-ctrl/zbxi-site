@@ -5,7 +5,7 @@
    the Family Tree runs on bundled placeholder data — the public site works fine.
    --------------------------------------------------------------------------- */
 window.ZBXI_CONFIG = {
-  SUPABASE_URL:      '',   // e.g. https://xxxxxxxx.supabase.co
-  SUPABASE_ANON_KEY: '',   // the publishable / anon key
+  SUPABASE_URL:      'https://wqhhomzbeeveuaskirfl.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_BWpWxARZc4e4zATsDfMrMQ_w88RcFbJ',
   ADMIN_EMAIL:       'zbxi.web@gmail.com'    // the email that can approve brothers
 };
