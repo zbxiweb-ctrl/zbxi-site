@@ -270,6 +270,41 @@ p { margin: 0 0 1em; }
 .footer small { display: block; margin-top: 1rem; color: #7c869c; font-size: .8rem; }
 .footer .motto { font-family: var(--serif); font-size: 1.3rem; color: var(--gold-bright); }
 
+/* ---------- Admin: tabs, search, edit modal ---------- */
+.btn--danger { background: #b4342b; color: #fff; }
+.btn--danger:hover { background: #9a2b23; transform: translateY(-2px); }
+
+.admin-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.admin-tabs button {
+  background: var(--white); border: 1.5px solid #d8d3c4; color: var(--muted);
+  border-radius: 999px; padding: .5rem 1.1rem; font-weight: 600; font-size: .9rem; cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+}
+.admin-tabs button.on { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+.tab-count { display: inline-block; min-width: 1.4em; text-align: center; font-size: .75rem; background: rgba(200,162,75,.25); color: inherit; border-radius: 999px; padding: 0 .35em; margin-left: .2em; }
+.admin-tabs button.on .tab-count { background: rgba(255,255,255,.2); }
+.admin-search {
+  width: 100%; padding: .75rem 1rem; border: 1.5px solid #d8d3c4; border-radius: 12px;
+  font-family: var(--sans); font-size: .95rem; background: var(--white); margin-bottom: 1.2rem;
+}
+.admin-search:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,162,75,.22); }
+
+.admin-modal { position: fixed; inset: 0; z-index: 220; background: rgba(7,22,52,.85); display: flex; align-items: flex-start; justify-content: center; padding: 5vh 4vw; overflow-y: auto; }
+.admin-modal.open { display: flex; }
+.admin-modal__card { background: var(--cream); color: var(--ink); border-radius: 16px; width: min(560px, 96vw); padding: 2rem; position: relative; border-top: 6px solid var(--gold); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.admin-modal__card h3 { color: var(--navy); margin-top: 0; }
+.admin-modal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
+.admin-modal__card .field label { color: var(--navy); }
+
+/* ---------- Privacy "locked" states ---------- */
+.flip__locked { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: .5rem; text-align: center; padding: 1rem; color: #cdd6e6; }
+.flip__lock-ic { font-size: 1.6rem; }
+.bm__locked { margin-top: 1rem; padding: 1.1rem; background: rgba(10,31,68,.05); border: 1px dashed rgba(10,31,68,.25); border-radius: 12px; text-align: center; }
+.bm__locked b { display: block; color: var(--navy); font-family: var(--display); font-size: 1.1rem; margin: .2rem 0; }
+.bm__locked span { display: block; color: var(--muted); font-size: .9rem; margin-bottom: .8rem; }
+.bm__locked .btn { padding: .5rem 1.2rem; font-size: .9rem; }
+.bm__loading { color: var(--muted); text-align: center; padding: 1rem; }
+.bm__bio { color: var(--ink); font-size: .95rem; margin-top: 1rem; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
   .split, .rush-grid, .alumni-cta, .contact-grid { grid-template-columns: 1fr; }

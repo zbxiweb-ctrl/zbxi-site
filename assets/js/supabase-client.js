@@ -35,11 +35,36 @@
     onAuth: function (cb) { if (configured) client.auth.onAuthStateChange(cb); },
 
     /* ---- brothers ---- */
-    // Public verified roster / tree data
-    listVerified: function () {
+    // PUBLIC: names + lineage only (via the family_public view — no details).
+    listFamilyPublic: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('family_public').select('*')
+        .then(function (r) { return r.data || []; });
+    },
+    // Full detail of ALL verified brothers — RLS only returns data to an
+    // approved brother / admin. Used to hydrate the roster for signed-in brothers.
+    listVerifiedDetail: function () {
       if (!configured) return Promise.resolve([]);
       return client.from('brothers').select('*').eq('status', 'verified')
         .then(function (r) { return r.data || []; });
+    },
+    // One brother's full detail (RLS-gated: approved brother / admin / owner).
+    brotherDetail: function (id) {
+      if (!configured) return Promise.resolve(null);
+      return client.from('brothers').select('*').eq('id', id).maybeSingle()
+        .then(function (r) { return r.data || null; });
+    },
+    // Is the currently signed-in user an approved (verified) brother? (cached)
+    amApprovedBrother: function () {
+      if (!configured) return Promise.resolve(false);
+      if (this._approvedCache !== undefined) return Promise.resolve(this._approvedCache);
+      var self = this;
+      return this.getUser().then(function (u) {
+        if (!u) { self._approvedCache = false; return false; }
+        return self.myProfile(u.id).then(function (p) {
+          self._approvedCache = !!(p && p.status === 'verified'); return self._approvedCache;
+        });
+      }).catch(function () { return false; });
     },
     // The signed-in user's own row (may be pending)
     myProfile: function (userId) {
@@ -50,13 +75,20 @@
     upsertProfile: function (row) {
       return client.from('brothers').upsert(row, { onConflict: 'user_id' }).select().maybeSingle();
     },
-    // Admin: pending queue + approve/reject
-    listPending: function () {
-      return client.from('brothers').select('*').eq('status', 'pending')
-        .order('created_at', { ascending: true });
+    // Admin: list by status (alphabetical by name)
+    listByStatus: function (status) {
+      return client.from('brothers').select('*').eq('status', status)
+        .order('full_name', { ascending: true });
     },
+    listPending: function () { return this.listByStatus('pending'); },
     setStatus: function (id, status) {
       return client.from('brothers').update({ status: status }).eq('id', id);
+    },
+    updateBrother: function (id, fields) {
+      return client.from('brothers').update(fields).eq('id', id);
+    },
+    deleteBrother: function (id) {
+      return client.from('brothers').delete().eq('id', id);
     },
 
     /* ---- storage: profile photos ---- */

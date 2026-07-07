@@ -151,16 +151,46 @@
     var m = document.getElementById('brotherModal');
     m.querySelector('[data-f=name]').textContent = r.full_name;
     m.querySelector('[data-f=sub]').textContent = [r.pledge_class, r.role].filter(Boolean).join(' · ');
-    m.querySelector('[data-f=body]').innerHTML =
-      row('Major', r.major) + row('Class of', r.grad_year) + row('Hometown', r.hometown) +
-      row('Big', big) + row('Littles', littles) +
-      (r.quote ? '<p class="bm__quote">“' + r.quote + '”</p>' : '');
     var av = m.querySelector('[data-f=avatar]');
-    if (r.photo_url) { av.innerHTML = '<img src="' + r.photo_url + '" alt="">'; }
-    else { av.textContent = r.full_name.replace(/[^A-Za-z ]/g,'').split(' ').filter(Boolean).slice(-2).map(function(s){return s[0];}).join('').toUpperCase(); }
-    m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+    av.innerHTML = ''; av.textContent = r.full_name.replace(/[^A-Za-z ]/g,'').split(' ').filter(Boolean).slice(-2).map(function(s){return s[0];}).join('').toUpperCase();
+    var body = m.querySelector('[data-f=body]');
+
+    // Lineage (name-level) is always public.
+    var lineage = row('Big', big) + row('Littles', littles);
+
+    if (PLACEHOLDER_MODE) {
+      // Demo data: everything is already on the node.
+      body.innerHTML = row('Major', r.major) + row('Class of', r.grad_year) + row('Hometown', r.hometown) +
+        lineage + (r.quote ? '<p class="bm__quote">“' + r.quote + '”</p>' : '');
+      showModal(m); return;
+    }
+
+    // Live data: details are gated. Show name + lineage immediately, then either
+    // fill in details (approved brother) or show a locked notice.
+    body.innerHTML = lineage + '<p class="bm__loading">…</p>';
+    showModal(m);
+    window.ZBXI.amApprovedBrother().then(function (ok) {
+      if (!ok) {
+        body.innerHTML = lineage +
+          '<div class="bm__locked">🔒 <b>Members only</b><span>Sign in as a verified brother to view the full profile.</span>' +
+          '<a class="btn btn--gold" href="#brothers-portal" data-close>Brother sign in</a></div>';
+        return;
+      }
+      window.ZBXI.brotherDetail(r.id).then(function (d) {
+        d = d || {};
+        body.innerHTML =
+          row('Major', d.major) + row('Class of', d.grad_year) + row('Hometown', d.hometown) +
+          lineage +
+          (d.linkedin ? '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(d.linkedin) + '" target="_blank" rel="noopener">profile ↗</a></b></div>' : '') +
+          (d.bio ? '<p class="bm__bio">' + esc(d.bio) + '</p>' : '') +
+          (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
+        if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
+      }).catch(function () { body.innerHTML = lineage + '<p class="bm__loading">Could not load details.</p>'; });
+    });
   }
-  function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + v + '</b></div>' : ''; }
+  function showModal(m) { m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + esc(v) + '</b></div>' : ''; }
 
   var modal = document.getElementById('brotherModal');
   if (modal) {
@@ -175,12 +205,17 @@
   }
 
   /* ---------- data source ---------- */
+  // True when we're showing bundled demo data (details live on the node);
+  // false when showing live DB data (details are gated + fetched on click).
+  var PLACEHOLDER_MODE = true;
   function load() {
     if (window.ZBXI && window.ZBXI.configured) {
-      window.ZBXI.listVerified().then(function (rows) {
-        render(rows && rows.length ? rows : PLACEHOLDER);
-      }).catch(function () { render(PLACEHOLDER); });
+      window.ZBXI.listFamilyPublic().then(function (rows) {
+        if (rows && rows.length) { PLACEHOLDER_MODE = false; render(rows); }
+        else { PLACEHOLDER_MODE = true; render(PLACEHOLDER); }
+      }).catch(function () { PLACEHOLDER_MODE = true; render(PLACEHOLDER); });
     } else {
+      PLACEHOLDER_MODE = true;
       render(PLACEHOLDER);
     }
   }
