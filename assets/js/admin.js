@@ -53,8 +53,30 @@
     { id: 'verified', label: 'Approved' },
     { id: 'rejected', label: 'Rejected' },
     { id: 'events',   label: 'Events'   },
-    { id: 'stats',    label: 'Stats'    }
+    { id: 'stats',    label: 'Stats'    },
+    { id: 'guide',    label: '📖 Guide' }
   ];
+
+  // Active/Alumni logic — same rule the public pages use: grad year in the
+  // future (or this academic year) = Active. Grad year comes from the profile
+  // or is inferred from the pledge class year + 4.
+  var _now = new Date();
+  var CUTOFF = _now.getFullYear() + (_now.getMonth() >= 5 ? 1 : 0);
+  function pledgeYear(cls) {
+    if (!cls) return null;
+    var m4 = cls.match(/(19|20)\d{2}/);
+    if (m4) return parseInt(m4[0], 10);
+    var m2 = cls.match(/'(\d{2})/);
+    if (!m2) return null;
+    var yy = parseInt(m2[1], 10);
+    return yy >= 93 ? 1900 + yy : 2000 + yy;
+  }
+  function statusChip(b) {
+    var grad = b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null);
+    return (grad != null && grad >= CUTOFF)
+      ? '<span class="schip schip--active">● Active</span>'
+      : '<span class="schip">Alumni</span>';
+  }
 
   function renderConsole() {
     root.innerHTML =
@@ -110,24 +132,33 @@
     if (srchEl) srchEl.style.display = BRO_TABS.indexOf(state.tab) !== -1 ? '' : 'none';
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
+    if (state.tab === 'guide') return renderGuideTab(q);
     var rows = state.data[state.tab].slice();
     if (state.q) {
       rows = rows.filter(function (b) {
         return (b.full_name + ' ' + (b.major || '') + ' ' + (b.pledge_class || '')).toLowerCase().indexOf(state.q) !== -1;
       });
     }
+    // Roster additions live on the Approved tab (new rows land there).
+    var addBar = state.tab === 'verified'
+      ? '<div class="admin-addbar"><button class="btn btn--gold" id="addOne">+ Add brother</button>' +
+        '<button class="btn btn--ghost" id="addClass">+ Add pledge class</button></div>'
+      : '';
+
     if (!rows.length) {
-      q.innerHTML = '<p class="admin-empty">' + (state.q ? 'No matches.' : (state.tab === 'pending' ? '🎉 No pending profiles. All caught up.' : 'Nothing here yet.')) + '</p>';
+      q.innerHTML = addBar + '<p class="admin-empty">' + (state.q ? 'No matches.' : (state.tab === 'pending' ? '🎉 No pending profiles. All caught up.' : 'Nothing here yet.')) + '</p>';
+      wireAddBar(q);
       return;
     }
-    q.innerHTML = rows.map(function (b) {
+    q.innerHTML = addBar + rows.map(function (b) {
       var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null), (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null)].filter(Boolean).map(esc).join(' · ');
       return '<div class="admin-row" data-id="' + b.id + '">' +
         '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
-        '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b><span>' + meta + '</span>' +
+        '<div class="admin-row__info"><b>' + esc(b.full_name) + ' ' + statusChip(b) + '</b><span>' + meta + '</span>' +
           (b.quote ? '<em>“' + esc(b.quote) + '”</em>' : '') + '</div>' +
         '<div class="admin-row__act">' + actionsFor(state.tab) + '</div></div>';
     }).join('');
+    wireAddBar(q);
 
     q.querySelectorAll('.admin-row').forEach(function (el) {
       var id = el.dataset.id;
@@ -286,6 +317,147 @@
         close(); renderList();
       });
     };
+  }
+
+  /* ---------------- roster additions ---------------- */
+  function wireAddBar(q) {
+    var a = q.querySelector('#addOne'), c = q.querySelector('#addClass');
+    if (a) a.onclick = openAddOne;
+    if (c) c.onclick = openAddClass;
+  }
+
+  function bigOptions(selectedId) {
+    return ['<option value="">— none / founder —</option>'].concat(
+      state.data.verified.slice()
+        .sort(function (x, y) { return x.full_name.localeCompare(y.full_name); })
+        .map(function (v) {
+          return '<option value="' + v.id + '"' + (selectedId === v.id ? ' selected' : '') + '>' +
+            esc(v.full_name) + ' (' + esc(v.pledge_class || '') + ')</option>';
+        })
+    ).join('');
+  }
+
+  function openAddOne() {
+    var wrap = document.createElement('div');
+    wrap.className = 'admin-modal open';
+    wrap.innerHTML =
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<h3>Add a brother</h3>' +
+      '<p class="form-note">Adds an unclaimed entry to the roster + family tree. If he later makes an account, he claims this name.</p>' +
+      '<div class="form-row">' + fld('Full name *', 'full_name', '') + fld('Pledge class *', 'pledge_class', '') + '</div>' +
+      '<div class="form-row">' + fld('Grad year (controls Active/Alumni)', 'grad_year', '', 'number') +
+        '<div class="field"><label>Big brother</label><select data-f="big_id">' + bigOptions() + '</select></div></div>' +
+      '<button class="btn btn--navy" data-save style="width:100%">Add to roster</button>' +
+      '<p class="form-status" data-status></p></div>';
+    document.body.appendChild(wrap);
+    function close() { wrap.remove(); }
+    wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) close(); });
+    wrap.querySelector('[data-save]').onclick = function () {
+      var get = function (k) { return wrap.querySelector('[data-f="' + k + '"]'); };
+      var st = wrap.querySelector('[data-status]');
+      var name = get('full_name').value.trim(), cls = get('pledge_class').value.trim();
+      if (!name || !cls) { st.className = 'form-status err'; st.textContent = 'Name and pledge class are required.'; return; }
+      st.className = 'form-status'; st.textContent = 'Adding…';
+      Z.addBrothers({
+        full_name: name, pledge_class: cls,
+        grad_year: get('grad_year').value ? parseInt(get('grad_year').value, 10) : null,
+        big_id: get('big_id').value || null,
+        roster_name: name, status: 'verified', user_id: null
+      }).then(function (r) {
+        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+        close(); loadAll();
+      });
+    };
+  }
+
+  function openAddClass() {
+    var wrap = document.createElement('div');
+    wrap.className = 'admin-modal open';
+    wrap.innerHTML =
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<h3>Add a pledge class</h3>' +
+      '<div data-step1>' +
+        '<p class="form-note">Step 1 of 2 — name the class, then paste the new brothers (one name per line).</p>' +
+        fld('Pledge class *', 'pledge_class', '') +
+        '<div class="field"><label>New brothers (one per line) *</label><textarea data-f="names" rows="7" placeholder="First Last&#10;First Last&#10;…"></textarea></div>' +
+        '<button class="btn btn--navy" data-next style="width:100%">Continue → assign bigs</button>' +
+      '</div>' +
+      '<div data-step2 style="display:none">' +
+        '<p class="form-note">Step 2 of 2 — pick each brother\'s big.</p>' +
+        '<div data-rows></div>' +
+        '<button class="btn btn--navy" data-save style="width:100%">Add brothers</button>' +
+      '</div>' +
+      '<p class="form-status" data-status></p></div>';
+    document.body.appendChild(wrap);
+    function close() { wrap.remove(); }
+    wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) close(); });
+    var st = wrap.querySelector('[data-status]');
+    var names = [], cls = '';
+
+    wrap.querySelector('[data-next]').onclick = function () {
+      cls = wrap.querySelector('[data-f="pledge_class"]').value.trim();
+      names = wrap.querySelector('[data-f="names"]').value.split('\n')
+        .map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!cls || !names.length) { st.className = 'form-status err'; st.textContent = 'Class name and at least one brother are required.'; return; }
+      st.textContent = '';
+      wrap.querySelector('[data-rows]').innerHTML = names.map(function (n, i) {
+        return '<div class="form-row" style="align-items:center">' +
+          '<div class="field"><label>' + (i === 0 ? 'Brother' : '&nbsp;') + '</label><input value="' + esc(n) + '" disabled></div>' +
+          '<div class="field"><label>' + (i === 0 ? 'Big brother' : '&nbsp;') + '</label><select data-big="' + i + '">' + bigOptions() + '</select></div></div>';
+      }).join('');
+      wrap.querySelector('[data-step1]').style.display = 'none';
+      wrap.querySelector('[data-step2]').style.display = '';
+    };
+
+    wrap.querySelector('[data-save]').onclick = function () {
+      st.className = 'form-status'; st.textContent = 'Adding ' + names.length + ' brothers…';
+      var rows = names.map(function (n, i) {
+        var sel = wrap.querySelector('[data-big="' + i + '"]');
+        return { full_name: n, pledge_class: cls, big_id: (sel && sel.value) || null,
+                 roster_name: n, status: 'verified', user_id: null };
+      });
+      Z.addBrothers(rows).then(function (r) {
+        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+        close(); loadAll();
+      });
+    };
+  }
+
+  /* ---------------- guide tab ---------------- */
+  function renderGuideTab(q) {
+    function sec(title, body) {
+      return '<details class="guide-sec"><summary>' + title + '</summary><div>' + body + '</div></details>';
+    }
+    q.innerHTML =
+      '<div class="guide-intro"><h3>Webmaster guide</h3><p>Everything you need to run this site lives in this console — no coding, ever. Click a task:</p></div>' +
+      sec('✅ A new brother made an account — approve him', '<ol>' +
+        '<li>Open the <b>Pending</b> tab (the number shows how many are waiting — the 🔔 bell also alerts you).</li>' +
+        '<li>Check the name/pledge class look right (edit if needed).</li>' +
+        '<li>Click <b>Approve</b>. He\'s instantly live on the roster, family tree, gallery and board.</li></ol>' +
+        '<p>Not a real brother? Click <b>Reject</b> — they never appear publicly.</p>') +
+      sec('➕ Add one brother to the roster / family tree', '<ol>' +
+        '<li>Go to the <b>Approved</b> tab → click <b>+ Add brother</b>.</li>' +
+        '<li>Enter his name, pledge class, grad year, and pick his big.</li>' +
+        '<li>He appears in the tree immediately as “unclaimed” — if he later signs up, he claims his own name.</li></ol>') +
+      sec('🎓 Add a whole new pledge class (each semester)', '<ol>' +
+        '<li><b>Approved</b> tab → <b>+ Add pledge class</b>.</li>' +
+        '<li>Type the class name (e.g. “Gamma Sigma · Fall \'26”), paste the names one per line.</li>' +
+        '<li>On step 2, pick each new brother\'s big → <b>Add brothers</b>. Done — tree and rosters update instantly.</li></ol>') +
+      sec('🔁 Someone shows on the wrong page (Active vs Alumni)', '<p>The site decides automatically from the <b>grad year</b>: future grad year = Active page, past = Alumni page. The green/gray chip next to each name here shows the current result.</p>' +
+        '<ol><li>Find the brother (search box) → <b>Edit</b>.</li><li>Fix the <b>Grad year</b> → Save. The chip and the public pages flip immediately.</li></ol>') +
+      sec('🌳 Fix the family tree (wrong big, typo in a name)', '<ol>' +
+        '<li>Find the brother → <b>Edit</b>.</li>' +
+        '<li>Change the <b>Big brother</b> dropdown (moves his whole branch) or fix the name.</li>' +
+        '<li>Save — the tree updates instantly.</li></ol>' +
+        '<p>Remove someone entirely with <b>Delete</b> (his littles stay, but lose their big link — reassign them after).</p>') +
+      sec('👑 Assign e-board titles', '<p>Edit the brother → set <b>Role</b> (President, Vice-President, Treasurer or Secretary — spelled exactly) and <b>Role term</b> (e.g. “Fall 2026”). He appears in the E-Board section of the Active or Alumni page.</p>') +
+      sec('📅 Post events', '<p><b>Events</b> tab → <b>+ New event</b>. Public events show to everyone on the homepage; uncheck “visible to the public” for brothers-only events.</p>') +
+      sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, or board thread (delete links appear for you on each item).</p>') +
+      sec('📊 Check engagement', '<p><b>Stats</b> tab: registrations, pending queue, 30-day activity, recent sign-ins, and a full activity log.</p>') +
+      sec('🔑 Account & handoff basics', '<ul>' +
+        '<li>This console only works for the admin email (currently zbxi.web@gmail.com). Handing off = handing over that Google account (see OWNERSHIP.md in the project).</li>' +
+        '<li>Brothers who forget passwords use “Forgot your password?” on the site — you never manage their passwords.</li>' +
+        '<li>The site itself (hosting, domain) runs itself — nothing to renew except the domain (~$12/yr at Namecheap).</li></ul>');
   }
 
   /* ---------------- stats tab ---------------- */

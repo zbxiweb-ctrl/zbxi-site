@@ -113,6 +113,11 @@
     deleteBrother: function (id) {
       return client.from('brothers').delete().eq('id', id);
     },
+    // Admin: add roster rows directly (single object or array). Unclaimed
+    // (user_id null) + verified so they appear in the tree immediately.
+    addBrothers: function (rows) {
+      return client.from('brothers').insert(rows).select();
+    },
 
     /* ---- member directory (author chips; approved brothers only) ---- */
     memberDirectory: function () {

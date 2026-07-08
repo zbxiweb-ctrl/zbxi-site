@@ -723,3 +723,19 @@ p { margin: 0 0 1em; }
   .thread-row { flex-wrap: wrap; }
   .bell__menu { position: fixed; right: 3vw; left: 3vw; width: auto; top: 64px; }
 }
+
+/* ---------- Admin roster management (v4.1) ---------- */
+.admin-addbar { display: flex; gap: .7rem; margin: 0 0 1.1rem; flex-wrap: wrap; }
+.admin-addbar .btn { padding: .6rem 1.2rem; font-size: .9rem; }
+.schip { display: inline-block; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: .14rem .5rem; margin-left: .45rem; background: #e8e4d8; color: #6b6355; }
+.schip--active { background: #dff0df; color: #2c6e2c; }
+.guide-intro h3 { color: var(--gold-bright); font-family: var(--display); margin: 0 0 .3rem; }
+.guide-intro p { color: #cdd6e6; margin-bottom: 1.2rem; }
+.guide-sec { background: var(--white); border-radius: 12px; margin-bottom: .7rem; box-shadow: var(--shadow-sm); overflow: hidden; }
+.guide-sec summary { cursor: pointer; padding: .95rem 1.2rem; font-weight: 700; color: var(--navy); font-family: var(--display); font-size: 1.02rem; list-style: none; }
+.guide-sec summary::-webkit-details-marker { display: none; }
+.guide-sec summary::before { content: '▸ '; color: var(--gold-deep); }
+.guide-sec[open] summary::before { content: '▾ '; }
+.guide-sec > div { padding: 0 1.3rem 1.1rem; color: var(--ink); font-size: .93rem; }
+.guide-sec ol, .guide-sec ul { margin: .3rem 0 .6rem; padding-left: 1.3rem; }
+.guide-sec li { margin-bottom: .35rem; }
