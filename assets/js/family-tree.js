@@ -36,6 +36,8 @@
   var expanded = {};          // id -> true when branch is open
   var PLACEHOLDER_MODE = true;
   var currentLayout = null;
+  var branchRoot = null;      // focus mode: show ONE founder line, fully open
+  var HYDRATED = false;       // approved viewers get photos + extra detail
 
   function indexData(rows) {
     ALL = rows; byId = {}; descCount = {};
@@ -49,6 +51,10 @@
     rows.filter(function (r) { return !r.big_id || !byId[r.big_id]; }).forEach(count);
   }
 
+  function roots() {
+    return ALL.filter(function (r) { return !r.big_id || !byId[r.big_id]; });
+  }
+
   function visibleRows() {
     var out = [];
     function walk(n, show) {
@@ -56,7 +62,9 @@
       out.push(n);
       if (expanded[n.id]) n._kids.forEach(function (k) { walk(k, true); });
     }
-    ALL.filter(function (r) { return !r.big_id || !byId[r.big_id]; }).forEach(function (root) { walk(root, true); });
+    var rs = roots();
+    if (branchRoot) rs = rs.filter(function (r) { return r.id === branchRoot; });
+    rs.forEach(function (root) { walk(root, true); });
     return out;
   }
 
@@ -114,9 +122,11 @@
           ? '<span class="tree-toggle" data-t="' + r.id + '" title="Collapse branch">▾</span>'
           : '<span class="tree-toggle" data-t="' + r.id + '" title="Expand branch">▸ ' + kidsN + '</span>';
       }
+      var sub = r.pledge_class || '';
+      if (HYDRATED && r.grad_year) sub += (sub ? ' · ' : '') + "'" + String(r.grad_year).slice(-2);
       html += '<button class="tree-node' + reg + '" data-id="' + r.id + '" style="left:' + r._x + 'px;top:' + r._y + 'px;width:' + NODE_W + 'px;height:' + NODE_H + 'px">' +
         '<span class="tree-node__av">' + av + '</span>' +
-        '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + (r.pledge_class || '') + '</small></span>' +
+        '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + sub + '</small></span>' +
         chev +
       '</button>';
     });
@@ -172,8 +182,73 @@
     render(); fitToView(currentLayout);
   });
   if (ca) ca.addEventListener('click', function () {
-    expanded = {}; render(); fitToView(currentLayout);
+    expanded = {}; branchRoot = null; syncFamilyChips();
+    render(); fitToView(currentLayout);
   });
+
+  /* ---------- family (branch) selector: one line at a time ---------- */
+  function expandSubtree(id) {
+    var n = byId[id];
+    if (!n) return;
+    if (n._kids.length) expanded[id] = true;
+    n._kids.forEach(function (k) { expandSubtree(k.id); });
+  }
+
+  function lineLabel(r) {
+    var last = r.full_name.trim().split(/\s+/).pop();
+    return last + ' line';
+  }
+
+  function syncFamilyChips() {
+    var bar = document.getElementById('treeFamilies');
+    if (!bar) return;
+    bar.querySelectorAll('.fam-chip').forEach(function (c) {
+      c.classList.toggle('on', (c.dataset.root || null) === (branchRoot || null) ||
+        (!branchRoot && !c.dataset.root));
+    });
+  }
+
+  function renderFamilyBar() {
+    var bar = document.getElementById('treeFamilies');
+    if (!bar) return;
+    var rs = roots().slice().sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+    if (PLACEHOLDER_MODE || rs.length < 2) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    bar.innerHTML = '<button class="fam-chip on">All families</button>' +
+      rs.map(function (r) {
+        return '<button class="fam-chip" data-root="' + r.id + '" title="' + r.full_name + '">' +
+          lineLabel(r) + ' <i>' + (1 + (descCount[r.id] || 0)) + '</i></button>';
+      }).join('');
+    bar.querySelectorAll('.fam-chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        var id = c.dataset.root || null;
+        branchRoot = id;
+        expanded = {};
+        if (id) expandSubtree(id); // one line, fully open
+        syncFamilyChips();
+        render(); fitToView(currentLayout);
+      });
+    });
+  }
+
+  /* ---------- member hydration: photos + grad year for approved viewers ---------- */
+  function hydrate() {
+    if (PLACEHOLDER_MODE || !window.ZBXI || !window.ZBXI.configured) return;
+    window.ZBXI.amApprovedBrother().then(function (ok) {
+      if (!ok) return;
+      window.ZBXI.listVerifiedDetail().then(function (rows) {
+        (rows || []).forEach(function (d) {
+          var n = byId[d.id];
+          if (!n) return;
+          n.photo_url = d.photo_url || n.photo_url;
+          n.grad_year = d.grad_year || n.grad_year;
+          n.role_term = d.role_term || n.role_term;
+        });
+        HYDRATED = true;
+        render();
+      });
+    });
+  }
 
   /* ---------- node wiring ---------- */
   function wireNodes(L) {
@@ -189,72 +264,24 @@
     canvas.querySelectorAll('.tree-node').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         if (e.target.closest('.tree-toggle')) return;
-        openProfile(byId[btn.dataset.id], L);
+        openProfile(byId[btn.dataset.id]);
       });
     });
   }
 
-  /* ---------- profile modal (details gated to approved brothers) ---------- */
-  function openProfile(r, L) {
-    if (!r) return;
-    var big = r.big_id && byId[r.big_id] ? byId[r.big_id].full_name : '—';
-    var littles = r._kids.map(function (k) { return k.full_name; }).join(', ') || '—';
-    var m = document.getElementById('brotherModal');
-    m.querySelector('[data-f=name]').textContent = r.full_name;
-    m.querySelector('[data-f=sub]').textContent = [r.pledge_class, r.role].filter(Boolean).join(' · ');
-    var av = m.querySelector('[data-f=avatar]');
-    av.innerHTML = ''; av.textContent = r.full_name.replace(/[^A-Za-z ]/g,'').split(' ').filter(Boolean).slice(-2).map(function(s){return s[0];}).join('').toUpperCase();
-    var body = m.querySelector('[data-f=body]');
-
-    var lineage = row('Big', big) + row('Littles', littles);
-
-    if (PLACEHOLDER_MODE) {
-      body.innerHTML = row('Major', r.major) + row('Class of', r.grad_year) + row('Hometown', r.hometown) +
-        lineage + (r.quote ? '<p class="bm__quote">“' + r.quote + '”</p>' : '');
-      showModal(m); return;
-    }
-
-    if (!r.registered) {
-      body.innerHTML = lineage +
-        '<div class="bm__locked">🌳 <b>Profile unclaimed</b><span>Is this you? Sign in and claim your name to bring this profile to life.</span>' +
-        '<a class="btn btn--gold" href="#brothers-portal" data-close>Claim your profile</a></div>';
-      showModal(m); return;
-    }
-
-    body.innerHTML = lineage + '<p class="bm__loading">…</p>';
-    showModal(m);
-    window.ZBXI.amApprovedBrother().then(function (ok) {
-      if (!ok) {
-        body.innerHTML = lineage +
-          '<div class="bm__locked">🔒 <b>Members only</b><span>Sign in as a verified brother to view the full profile.</span>' +
-          '<a class="btn btn--gold" href="#brothers-portal" data-close>Brother sign in</a></div>';
-        return;
-      }
-      window.ZBXI.brotherDetail(r.id).then(function (d) {
-        d = d || {};
-        body.innerHTML =
-          row('Major', d.major) + row('Class of', d.grad_year) + row('Hometown', d.hometown) +
-          lineage +
-          (d.linkedin ? '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(d.linkedin) + '" target="_blank" rel="noopener">profile ↗</a></b></div>' : '') +
-          (d.bio ? '<p class="bm__bio">' + esc(d.bio) + '</p>' : '') +
-          (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
-        if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
-      }).catch(function () { body.innerHTML = lineage + '<p class="bm__loading">Could not load details.</p>'; });
-    });
-  }
-  function showModal(m) { m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); }
+  /* ---------- profile modal (shared renderer; details gated to approved) ---------- */
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
   function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + esc(v) + '</b></div>' : ''; }
 
-  var modal = document.getElementById('brotherModal');
-  if (modal) {
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal || e.target.closest('[data-close]')) {
-        modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
-      }
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+  function openProfile(r) {
+    if (!r || !window.BrotherCard) return;
+    var big = r.big_id && byId[r.big_id] ? byId[r.big_id].full_name : '—';
+    var littles = r._kids.map(function (k) { return k.full_name; }).join(', ') || '—';
+    var lineage = row('Big', big) + row('Littles', littles);
+    window.BrotherCard.open(r, {
+      lineage: lineage,
+      portal: '#brothers-portal',
+      placeholderData: PLACEHOLDER_MODE ? r : null
     });
   }
 
@@ -262,14 +289,16 @@
   function start(rows, placeholder) {
     PLACEHOLDER_MODE = placeholder;
     indexData(rows);
-    expanded = {};
+    expanded = {}; branchRoot = null;
     if (placeholder) { // demo data is small: show everything
       rows.forEach(function (r) { if (r._kids.length) expanded[r.id] = true; });
     }
     var legend = document.getElementById('treeLegend');
     if (legend) legend.style.display = placeholder ? 'none' : 'flex';
+    renderFamilyBar();
     render();
     fitToView(currentLayout);
+    hydrate();
   }
 
   function load() {

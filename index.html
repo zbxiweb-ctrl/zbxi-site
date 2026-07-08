@@ -26,7 +26,8 @@
         <a href="alumni.html">Alumni</a>
         <a href="#family-tree">Family Tree</a>
         <a href="#events">Events</a>
-        <a href="#gallery">Gallery</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="board.html">Board</a>
         <a href="#contact">Contact</a>
       </nav>
       <div class="nav__account" id="navAccount"></div>
@@ -141,6 +142,7 @@
         <hr class="rule" />
         <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, scroll to zoom, and click a brother to see their card. <em>(Placeholder lineage — real brothers populate this as they join.)</em></p>
       </div>
+      <div class="fam-bar" id="treeFamilies" style="display:none"></div>
       <div class="tree-legend" id="treeLegend">
         <span><i class="dot dot--reg"></i> Registered on the site</span>
         <span><i class="dot dot--unreg"></i> Not yet registered</span>
@@ -191,8 +193,7 @@
           <p>Stay connected, come back for reunions, mentor an active brother, or help fund the scholarships, events, and service that keep ΖΒΞ strong for the next generation. Every gift — of time or treasure — carries the legacy forward.</p>
           <div class="hero__cta" style="justify-content:flex-start">
             <a href="#contact" class="btn btn--navy">Reconnect With Us</a>
-            <!-- Replace # with your real donation link (see README). -->
-            <a href="#" class="btn btn--gold" data-placeholder="donation-link">Support ΖΒΞ</a>
+            <a href="index.html#brothers-portal" class="btn btn--gold">Update Your Info</a>
           </div>
         </div>
         <div class="give-card">
@@ -207,6 +208,9 @@
           <a href="#contact" class="btn btn--ghost" style="margin-top:1.4rem">Get in Touch</a>
         </div>
       </div>
+      <!-- Donation campaigns: links come from config.js DONATION_LINKS (chapter
+           pastes Stripe Payment Link / PayPal / Venmo URLs; no code changes). -->
+      <div class="give-grid" id="giveGrid"></div>
     </div>
   </section>
 
@@ -217,26 +221,22 @@
         <p class="eyebrow">On Campus &amp; Beyond</p>
         <h2 class="section-title">Events &amp; Philanthropy</h2>
         <hr class="rule" />
-        <p class="lede"><em>Placeholder events — replace with your chapter's signature traditions and service.</em></p>
+        <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — all in one place.</p>
       </div>
-      <div class="events">
-        <article class="event"><img src="assets/img/tile.svg" alt="Placeholder event photo" /><div class="event__body"><span class="event__tag">Philanthropy</span><h3>Annual Service Drive</h3><p>Our signature giving-back tradition benefiting the Geneseo community. Add your real event details here.</p></div></article>
-        <article class="event"><img src="assets/img/tile.svg" alt="Placeholder event photo" /><div class="event__body"><span class="event__tag">Brotherhood</span><h3>Alumni Reunion Weekend</h3><p>Brothers past and present return to Geneseo to reconnect and celebrate the legacy.</p></div></article>
-        <article class="event"><img src="assets/img/tile.svg" alt="Placeholder event photo" /><div class="event__body"><span class="event__tag">Campus</span><h3>Rush Week Socials</h3><p>Meet-the-brothers nights each fall and spring. Swap in your recurring signature event.</p></div></article>
-      </div>
+      <div class="ev-list" id="eventsList"><p class="page-empty">Loading events…</p></div>
     </div>
   </section>
 
-  <!-- ============ GALLERY ============ -->
+  <!-- ============ GALLERY (private; teaser here) ============ -->
   <section class="section" id="gallery">
     <div class="wrap">
       <div class="center">
         <p class="eyebrow">Moments</p>
-        <h2 class="section-title">Gallery</h2>
+        <h2 class="section-title">Brothers Gallery</h2>
         <hr class="rule" />
-        <p class="lede"><em>Placeholder tiles — drop in real chapter photos (see README).</em></p>
+        <p class="lede">A private photo feed shared by the brotherhood — likes, comments and all.</p>
       </div>
-      <div class="gallery" id="gallery"></div>
+      <div id="galleryTeaser" class="gallery-teaser"></div>
     </div>
   </section>
 
@@ -282,20 +282,13 @@
       <p class="motto">Brothers of Zeta Beta Xi</p>
       <nav class="footer__nav">
         <a href="#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a>
-        <a href="#family-tree">Family Tree</a><a href="#events">Events</a><a href="#gallery">Gallery</a>
-        <a href="#brothers-portal">Brother Login</a><a href="#contact">Contact</a>
+        <a href="#family-tree">Family Tree</a><a href="#events">Events</a><a href="gallery.html">Gallery</a>
+        <a href="board.html">Board</a><a href="#brothers-portal">Brother Login</a><a href="#contact">Contact</a>
       </nav>
       <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
     </div>
   </footer>
 
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox" aria-hidden="true">
-    <button class="lightbox__close" id="lbClose" aria-label="Close">✕</button>
-    <button class="lightbox__nav prev" id="lbPrev" aria-label="Previous">‹</button>
-    <img id="lbImg" src="" alt="Gallery image enlarged" />
-    <button class="lightbox__nav next" id="lbNext" aria-label="Next">›</button>
-  </div>
 
   <!-- Brother profile modal (family tree) -->
   <div class="bmodal" id="brotherModal" aria-hidden="true">
@@ -317,7 +310,9 @@
   <script src="assets/js/supabase-client.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="assets/js/header-account.js"></script>
+  <script src="assets/js/notify.js"></script>
   <script src="assets/js/portal.js"></script>
+  <script src="assets/js/profile-card.js"></script>
   <script src="assets/js/family-tree.js"></script>
 </body>
 </html>

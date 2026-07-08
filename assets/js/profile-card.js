@@ -1,0 +1,106 @@
+/* Shared brother profile-card renderer. One source of truth so the family
+   tree, active/alumni pages and gallery/board show identical profile data.
+   Exposes window.BrotherCard. Requires the #brotherModal markup + ZBXI. */
+(function () {
+  'use strict';
+
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + esc(v) + '</b></div>' : ''; }
+  function initials(name) {
+    return String(name || '').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean)
+      .slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase() || 'ΖΒΞ';
+  }
+
+  // "President · Fall 2019" from role + role_term
+  function titleOf(b) {
+    if (!b || !b.role) return '';
+    return b.role + (b.role_term ? ' · ' + b.role_term : '');
+  }
+
+  // The detail body for an APPROVED viewer, given the full brothers row.
+  function detailHtml(d) {
+    var prefs = String(d.contact_prefs || '').split(',');
+    var contact = '';
+    if (prefs.indexOf('email') !== -1 && d.email)
+      contact += '<div class="bm__row"><span>Email</span><b><a href="mailto:' + esc(d.email) + '">' + esc(d.email) + '</a></b></div>';
+    if (prefs.indexOf('phone') !== -1 && d.phone)
+      contact += row('Phone', d.phone);
+    if ((prefs.indexOf('linkedin') !== -1 || !d.contact_prefs) && d.linkedin)
+      contact += '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(d.linkedin) + '" target="_blank" rel="noopener">profile ↗</a></b></div>';
+
+    return row('Title', titleOf(d)) +
+      row('Major', d.major) +
+      row('Class of', d.grad_year) +
+      row('Occupation', d.occupation) +
+      row('Currently in', d.city) +
+      row('Hometown', d.hometown) +
+      row('Skills & interests', d.skills) +
+      contact +
+      (d.bio ? '<p class="bm__bio">' + esc(d.bio) + '</p>' : '') +
+      (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
+  }
+
+  /* Open the shared modal for brother b (a family_public row or richer).
+     opts: { lineage: html prefix, portal: href to the login portal,
+             placeholderData: row (render details directly, no gating) } */
+  function open(b, opts) {
+    opts = opts || {};
+    var m = document.getElementById('brotherModal');
+    if (!m || !b) return;
+    m.querySelector('[data-f=name]').textContent = b.full_name;
+    m.querySelector('[data-f=sub]').textContent = [b.pledge_class, titleOf(b)].filter(Boolean).join(' · ');
+    var av = m.querySelector('[data-f=avatar]');
+    av.innerHTML = ''; av.textContent = initials(b.full_name);
+    if (b.photo_url) av.innerHTML = '<img src="' + esc(b.photo_url) + '" alt="">';
+    var body = m.querySelector('[data-f=body]');
+    var lineage = opts.lineage || '';
+    var portal = opts.portal || '#brothers-portal';
+    m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+
+    if (opts.placeholderData) { // demo mode: show what we have, ungated
+      var d = opts.placeholderData;
+      body.innerHTML = row('Major', d.major) + row('Class of', d.grad_year) + row('Hometown', d.hometown) +
+        lineage + (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
+      return;
+    }
+
+    if (!b.registered) {
+      body.innerHTML = lineage +
+        '<div class="bm__locked">🌳 <b>Profile unclaimed</b><span>Is this you? Sign in and claim your name to bring this profile to life.</span>' +
+        '<a class="btn btn--gold" href="' + portal + '" data-close>Claim your profile</a></div>';
+      return;
+    }
+
+    body.innerHTML = lineage + '<p class="bm__loading">…</p>';
+    window.ZBXI.amApprovedBrother().then(function (ok) {
+      if (!ok) {
+        body.innerHTML = lineage +
+          '<div class="bm__locked">🔒 <b>Members only</b><span>Sign in as a verified brother to view the full profile.</span>' +
+          '<a class="btn btn--gold" href="' + portal + '" data-close>Brother sign in</a></div>';
+        return;
+      }
+      window.ZBXI.brotherDetail(b.id).then(function (d) {
+        d = d || {};
+        body.innerHTML = lineage + detailHtml(d);
+        m.querySelector('[data-f=sub]').textContent = [d.pledge_class, titleOf(d)].filter(Boolean).join(' · ');
+        if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
+      }).catch(function () { body.innerHTML = lineage + '<p class="bm__loading">Could not load details.</p>'; });
+    });
+  }
+
+  // Wire close behavior once per page.
+  var modal = document.getElementById('brotherModal');
+  if (modal && !modal.dataset.wired) {
+    modal.dataset.wired = '1';
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal || e.target.closest('[data-close]')) {
+        modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+    });
+  }
+
+  window.BrotherCard = { open: open, initials: initials, titleOf: titleOf, esc: esc };
+})();

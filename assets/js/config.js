@@ -7,5 +7,13 @@
 window.ZBXI_CONFIG = {
   SUPABASE_URL:      'https://wqhhomzbeeveuaskirfl.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_BWpWxARZc4e4zATsDfMrMQ_w88RcFbJ',
-  ADMIN_EMAIL:       'zbxi.web@gmail.com'    // the email that can approve brothers
+  ADMIN_EMAIL:       'zbxi.web@gmail.com',   // the email that can approve brothers
+
+  // Giving campaigns: paste the chapter's Stripe Payment Link / PayPal / Venmo
+  // URLs here when ready — the "Give now" buttons appear automatically.
+  DONATION_LINKS: {
+    annual_fund:  '',   // e.g. 'https://buy.stripe.com/…'
+    scholarship:  '',
+    philanthropy: ''
+  }
 };

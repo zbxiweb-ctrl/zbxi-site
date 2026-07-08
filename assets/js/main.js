@@ -19,34 +19,91 @@
     });
   }
 
-  /* ---- Gallery + lightbox (PLACEHOLDER tiles — replace with real photos) ---- */
-  var galleryImgs = ['tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg']
-    .map(function (f) { return 'assets/img/' + f; });
-  var gEl = document.getElementById('gallery');
-  if (gEl) {
-    gEl.innerHTML = galleryImgs.map(function (src, i) {
-      return '<button data-i="' + i + '" aria-label="Open photo ' + (i + 1) + '"><img src="' + src + '" alt="Chapter photo ' + (i + 1) + '" loading="lazy" /></button>';
-    }).join('');
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+
+  /* ---- Gallery teaser: latest posts for approved brothers, CTA otherwise ---- */
+  var teaser = document.getElementById('galleryTeaser');
+  function teaserCta(msg) {
+    teaser.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Brothers only</b>' +
+      '<span>' + msg + '</span>' +
+      '<a class="btn btn--gold" href="gallery.html">Open the gallery</a></div>';
+  }
+  if (teaser) {
+    if (!(window.ZBXI && window.ZBXI.configured)) {
+      teaserCta('The private gallery opens with the members area.');
+    } else {
+      window.ZBXI.amApprovedBrother().then(function (ok) {
+        if (!ok) { teaserCta('Sign in as a verified brother to see photos shared by the brotherhood.'); return; }
+        window.ZBXI.galleryList().then(function (posts) {
+          posts = (posts || []).slice(0, 6);
+          if (!posts.length) { teaserCta('No posts yet — be the first to share a memory.'); return; }
+          var paths = posts.map(function (p) { return p.image_path; });
+          window.ZBXI.gallerySignedUrls(paths).then(function (urls) {
+            teaser.innerHTML = '<div class="gallery">' + posts.map(function (p) {
+              var u = urls[p.image_path];
+              return '<a href="gallery.html" aria-label="Open the gallery">' + (u ? '<img src="' + esc(u) + '" loading="lazy" alt="">' : '') + '</a>';
+            }).join('') + '</div>' +
+            '<p class="center" style="margin-top:1.6rem"><a class="btn btn--navy" href="gallery.html">Open the full gallery →</a></p>';
+          });
+        }).catch(function () { teaserCta('Sign in as a verified brother to see photos shared by the brotherhood.'); });
+      });
+    }
   }
 
-  var lb = document.getElementById('lightbox');
-  var lbImg = document.getElementById('lbImg');
-  var cur = 0;
-  function openLb(i) { cur = i; lbImg.src = galleryImgs[i]; lb.classList.add('open'); lb.setAttribute('aria-hidden', 'false'); }
-  function closeLb() { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); }
-  function step(d) { cur = (cur + d + galleryImgs.length) % galleryImgs.length; lbImg.src = galleryImgs[cur]; }
-  if (gEl) gEl.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) openLb(+b.dataset.i); });
-  var el;
-  if ((el = document.getElementById('lbClose'))) el.addEventListener('click', closeLb);
-  if ((el = document.getElementById('lbPrev'))) el.addEventListener('click', function () { step(-1); });
-  if ((el = document.getElementById('lbNext'))) el.addEventListener('click', function () { step(1); });
-  if (lb) lb.addEventListener('click', function (e) { if (e.target === lb) closeLb(); });
-  document.addEventListener('keydown', function (e) {
-    if (!lb || !lb.classList.contains('open')) return;
-    if (e.key === 'Escape') closeLb();
-    if (e.key === 'ArrowLeft') step(-1);
-    if (e.key === 'ArrowRight') step(1);
-  });
+  /* ---- Events: upcoming from the DB (public for anyone; members see all) ---- */
+  var evEl = document.getElementById('eventsList');
+  if (evEl) {
+    var CAT_LABEL = { rush: 'Rush', philanthropy: 'Philanthropy', reunion: 'Reunion', meeting: 'Chapter Meeting', social: 'Social' };
+    var renderEvents = function (rows) {
+      var upcoming = (rows || []).filter(function (e) {
+        var end = e.ends_at ? new Date(e.ends_at) : new Date(new Date(e.starts_at).getTime() + 3 * 3600 * 1000);
+        return end.getTime() > Date.now();
+      });
+      if (!upcoming.length) {
+        evEl.innerHTML = '<p class="page-empty">No upcoming events on the calendar yet — check back soon.</p>';
+        return;
+      }
+      evEl.innerHTML = upcoming.map(function (e) {
+        var d = new Date(e.starts_at);
+        var mon = d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+        var time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        return '<article class="ev-card' + (e.is_public ? '' : ' ev-card--members') + '">' +
+          '<div class="ev-card__date"><b>' + d.getDate() + '</b><span>' + mon + '</span><small>' + d.getFullYear() + '</small></div>' +
+          '<div class="ev-card__body">' +
+            '<span class="event__tag">' + (CAT_LABEL[e.category] || e.category) + (e.is_public ? '' : ' · members') + '</span>' +
+            '<h3>' + esc(e.title) + '</h3>' +
+            '<p class="ev-card__meta">' + time + (e.location ? ' · ' + esc(e.location) : '') + '</p>' +
+            (e.description ? '<p>' + esc(e.description) + '</p>' : '') +
+          '</div></article>';
+      }).join('');
+    };
+    if (window.ZBXI && window.ZBXI.configured) {
+      window.ZBXI.eventsList().then(renderEvents)
+        .catch(function () { evEl.innerHTML = '<p class="page-empty">Could not load events.</p>'; });
+    } else {
+      evEl.innerHTML = '<p class="page-empty">The events calendar is being set up.</p>';
+    }
+  }
+
+  /* ---- Giving campaigns (links from config.js DONATION_LINKS) ---- */
+  var giveEl = document.getElementById('giveGrid');
+  if (giveEl) {
+    var LINKS = (window.ZBXI_CONFIG && window.ZBXI_CONFIG.DONATION_LINKS) || {};
+    var CAMPAIGNS = [
+      { key: 'annual_fund', icon: '🏛️', title: 'Annual Brotherhood Fund', blurb: 'Keeps the chapter running — rush, brotherhood events and day-to-day operations.' },
+      { key: 'scholarship', icon: '🎓', title: 'Scholarship & Academics', blurb: 'Supports active brothers with books, fees and academic awards.' },
+      { key: 'philanthropy', icon: '🤝', title: 'Philanthropy Drives', blurb: 'Fuels our service work in the Geneseo community and beyond.' }
+    ];
+    giveEl.innerHTML = CAMPAIGNS.map(function (c) {
+      var url = LINKS[c.key];
+      return '<div class="give-tile">' +
+        '<span class="give-tile__ic">' + c.icon + '</span>' +
+        '<h4>' + c.title + '</h4><p>' + c.blurb + '</p>' +
+        (url ? '<a class="btn btn--gold" href="' + esc(url) + '" target="_blank" rel="noopener">Give now</a>'
+             : '<span class="give-tile__soon">Online giving coming soon</span>') +
+      '</div>';
+    }).join('');
+  }
 
   /* ---- Forms (Formspree). Graceful AJAX submit + inline status. ---- */
   function wireForm(formId, statusId) {

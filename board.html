@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Active Brothers · Zeta Beta Xi</title>
-  <meta name="description" content="The active brothers of Zeta Beta Xi — currently pursuing their degrees at SUNY Geneseo." />
+  <title>Brothers Board · Zeta Beta Xi</title>
+  <meta name="description" content="The private discussion board of the Zeta Beta Xi brotherhood." />
   <link rel="icon" href="assets/img/crest.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
-<body data-mode="active" class="page-body">
+<body class="page-body">
 
   <header class="nav">
     <div class="wrap nav__inner">
@@ -21,11 +21,11 @@
       </a>
       <nav class="nav__links" id="navLinks">
         <a href="index.html#about">About</a>
-        <a href="active.html" class="on">Active</a>
+        <a href="active.html">Active</a>
         <a href="alumni.html">Alumni</a>
         <a href="index.html#family-tree">Family Tree</a>
         <a href="gallery.html">Gallery</a>
-        <a href="board.html">Board</a>
+        <a href="board.html" class="on">Board</a>
         <a href="index.html#contact">Contact</a>
       </nav>
       <div class="nav__account" id="navAccount"></div>
@@ -38,22 +38,16 @@
   <main class="page-main">
     <section class="page-hero">
       <div class="wrap center">
-        <p class="eyebrow">The Undergraduate Chapter</p>
-        <h1 class="section-title" style="color:var(--gold-bright)">Active Brothers</h1>
+        <p class="eyebrow">Brothers Only</p>
+        <h1 class="section-title" style="color:var(--gold-bright)">The Board</h1>
         <hr class="rule" />
-        <p class="lede">Brothers currently pursuing their degrees at SUNY Geneseo. <span id="pageCount"></span></p>
+        <p class="lede">Chapter business, advice, jobs &amp; referrals, and everything brotherhood.</p>
       </div>
     </section>
 
     <section class="section" style="padding-top:3rem">
       <div class="wrap">
-        <p class="eyebrow">Executive Board</p>
-        <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
-
-        <p class="eyebrow" style="margin-top:3rem">All Active Brothers</p>
-        <input class="admin-search" id="pageSearch" type="search" placeholder="Search by name or pledge class…" />
-        <div class="page-filters" id="pageFilters"></div>
-        <div class="bro-grid" id="pageGrid"><p class="page-empty">Loading…</p></div>
+        <div id="boardRoot"><p class="page-empty">Loading…</p></div>
       </div>
     </section>
   </main>
@@ -64,26 +58,12 @@
       <p class="motto">Brothers of Zeta Beta Xi</p>
       <nav class="footer__nav">
         <a href="index.html#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a>
-        <a href="index.html#family-tree">Family Tree</a><a href="gallery.html">Gallery</a><a href="board.html">Board</a><a href="index.html#brothers-portal">Brother Login</a><a href="index.html#contact">Contact</a>
+        <a href="index.html#family-tree">Family Tree</a><a href="gallery.html">Gallery</a><a href="board.html">Board</a>
+        <a href="index.html#brothers-portal">Brother Login</a>
       </nav>
       <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
     </div>
   </footer>
-
-  <!-- Brother profile modal -->
-  <div class="bmodal" id="brotherModal" aria-hidden="true">
-    <div class="bmodal__card">
-      <button class="bmodal__close" data-close aria-label="Close">✕</button>
-      <div class="bmodal__head">
-        <div class="bmodal__avatar" data-f="avatar">ΖΒΞ</div>
-        <div>
-          <h3 data-f="name">Brother</h3>
-          <p class="bmodal__sub" data-f="sub"></p>
-        </div>
-      </div>
-      <div class="bmodal__body" data-f="body"></div>
-    </div>
-  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/js/config.js"></script>
@@ -91,7 +71,6 @@
   <script src="assets/js/page-shell.js"></script>
   <script src="assets/js/header-account.js"></script>
   <script src="assets/js/notify.js"></script>
-  <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/brothers-page.js"></script>
+  <script src="assets/js/board.js"></script>
 </body>
 </html>
