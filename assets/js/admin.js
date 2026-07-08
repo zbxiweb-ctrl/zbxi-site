@@ -92,7 +92,10 @@
 
   function renderConsole() {
     root.innerHTML =
-      '<div class="admin-head"><h2>Brotherhood Admin</h2><button class="btn btn--ghost" id="so">Sign out</button></div>' +
+      '<div class="admin-head">' +
+        '<div class="admin-head__id"><img class="crest-badge" src="assets/img/crest.jpg" alt="" />' +
+          '<div><h2>Brotherhood Admin</h2><span class="admin-head__sub">The webmaster console — everything is buttons, never code.</span></div></div>' +
+        '<button class="btn btn--ghost" id="so">Sign out</button></div>' +
       '<div id="tabs">' +
         TAB_GROUPS.map(function (g) {
           return '<div class="admin-tabgroup"><span class="admin-tabgroup__label">' + g.label + '</span>' +
@@ -946,6 +949,10 @@
         '<li>Check the name/pledge class look right (edit if needed).</li>' +
         '<li>Click <b>Approve</b>. He\'s instantly live on the roster, family tree, gallery and board.</li></ol>' +
         '<p>Not a real brother? Click <b>Reject</b> — they never appear publicly.</p>') +
+      sec('🔒 Who can see what (site privacy)', '<ul>' +
+        '<li><b>The public</b> sees the homepage, events, and a demo family tree with fake names — no real brother names anywhere.</li>' +
+        '<li><b>Anyone with an account</b> (even before you approve them) can see names and the real tree — they need that to claim their own name.</li>' +
+        '<li><b>Approved brothers</b> see everything: full profiles, photos, gallery, board, directory.</li></ul>') +
       sec('🗂️ What the tabs mean', '<ul>' +
         '<li><b>Pending</b> — brothers who signed up (or claimed a name) and are waiting for your approval.</li>' +
         '<li><b>Approved</b> — brothers with a real account, approved by you. These are your active members.</li>' +
@@ -967,7 +974,7 @@
       sec('🗳️ Post a poll', '<p>On the <b>Board</b> page (signed in as admin) → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>') +
       sec('💡 Answer suggestions', '<p>Brothers drop ideas in the Suggestion box on the Board page. They land in your <b>💡 Suggestions</b> tab (badge = new ones). Write a response — the brother gets a 🔔 — or archive it.</p>') +
       sec('📅 Post events', '<p><b>Events</b> tab → <b>+ New event</b>. Public events show to everyone on the homepage; uncheck “visible to the public” for brothers-only events.</p>') +
-      sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, or board thread (delete links appear for you on each item).</p>') +
+      sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, board thread, or reply (delete links appear for you on each item). Brothers can attach photos to threads and react 👍 ❤️ 😂 to replies; deleting a thread or reply removes its photo and reactions with it.</p>') +
       sec('📊 Check engagement', '<p><b>Stats</b> tab: registrations, pending queue, 30-day activity, recent sign-ins, and a full activity log.</p>') +
       sec('🔑 Account & handoff basics', '<ul>' +
         '<li>This console only works for the admin email (currently zbxi.web@gmail.com). Handing off = handing over that Google account (see OWNERSHIP.md in the project).</li>' +

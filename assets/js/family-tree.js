@@ -269,6 +269,8 @@
       c.classList.toggle('on', (c.dataset.root || null) === (branchRoot || null) ||
         (!branchRoot && !c.dataset.root));
     });
+    var sel = document.getElementById('famSelect');
+    if (sel) sel.value = branchRoot || '';
   }
 
   function renderFamilyBar() {
@@ -285,6 +287,18 @@
     bar.querySelectorAll('.fam-chip').forEach(function (c) {
       c.addEventListener('click', function () { selectBranch(c.dataset.root || null); });
     });
+
+    // Mobile: the chips become a dropdown (CSS swaps which one is visible).
+    var old = document.getElementById('famSelect');
+    if (old) old.remove();
+    var sel = document.createElement('select');
+    sel.id = 'famSelect';
+    sel.className = 'fam-select';
+    sel.innerHTML = '<option value="">🌳 All families</option>' + rs.map(function (r) {
+      return '<option value="' + r.id + '">' + lineLabel(r) + ' (' + (1 + (descCount[r.id] || 0)) + ')</option>';
+    }).join('');
+    sel.onchange = function () { selectBranch(sel.value || null); };
+    bar.parentNode.insertBefore(sel, bar);
   }
 
   /* ---------- find a brother: search box + jump-to-node ---------- */
@@ -437,6 +451,10 @@
     }
     var legend = document.getElementById('treeLegend');
     if (legend) legend.style.display = placeholder ? 'none' : 'flex';
+    // Demo mode on the live site = viewer isn't signed in (names are members-only).
+    var lockNote = document.getElementById('treeLockNote');
+    if (lockNote) lockNote.style.display =
+      (placeholder && window.ZBXI && window.ZBXI.configured) ? '' : 'none';
     renderFamilyBar();
     wireSearch();
     render();

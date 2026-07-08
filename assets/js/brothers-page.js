@@ -243,11 +243,21 @@
   }
 
   /* ---- load ---- */
+  function lockedRoster() {
+    var lock = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
+      '<span>The brotherhood roster is private. Brothers sign in to browse names, classes and profiles.</span>' +
+      '<a class="btn btn--gold" href="index.html#brothers-portal">Brother sign in</a></div>';
+    gridEl.innerHTML = lock;
+    if (eboardEl) eboardEl.innerHTML = '<p class="page-empty">Members only.</p>';
+    if (searchEl) searchEl.style.display = 'none';
+    if (filtersEl) filtersEl.style.display = 'none';
+  }
+
   if (window.ZBXI && window.ZBXI.configured) {
     window.ZBXI.listFamilyPublic().then(function (rows) {
       if (rows && rows.length) { RAW = rows; render(RAW); hydrate(); }
-      else gridEl.innerHTML = '<p class="page-empty">The brotherhood roster hasn\'t been imported yet.</p>';
-    }).catch(function () { gridEl.innerHTML = '<p class="page-empty">Could not load the roster. Try refreshing.</p>'; });
+      else lockedRoster(); // anon gets an empty result — names are members-only
+    }).catch(function () { lockedRoster(); });
   } else {
     gridEl.innerHTML = '<p class="page-empty">Members area is being set up — check back soon.</p>';
   }

@@ -245,14 +245,11 @@
           };
         });
       } else {
-        // Public teaser (only when there are registered brothers to feature)
-        window.ZBXI.listFamilyPublic().then(function (rows) {
-          if (!(rows || []).some(function (r) { return r.registered; })) return;
-          spotSec.style.display = '';
-          spotEl.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🏅 <b>This month\'s featured brother</b>' +
-            '<span>Every month we spotlight one brother\'s story — where the brotherhood took him. Sign in to read it.</span>' +
-            '<a class="btn btn--gold" href="#brothers-portal">Brother sign in</a></div>';
-        });
+        // Public teaser (names/details are members-only now)
+        spotSec.style.display = '';
+        spotEl.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🏅 <b>This month\'s featured brother</b>' +
+          '<span>Every month we spotlight one brother\'s story — where the brotherhood took him. Sign in to read it.</span>' +
+          '<a class="btn btn--gold" href="#brothers-portal">Brother sign in</a></div>';
       }
     });
   }
@@ -336,7 +333,7 @@
       var yy = parseInt(m2[1], 10); return yy >= 93 ? 1900 + yy : 2000 + yy;
     };
     window.ZBXI.listFamilyPublic().then(function (rows) {
-      if (!rows || !rows.length) return;
+      if (!rows || !rows.length) { caEl.textContent = '🔒 members'; clEl.textContent = '🔒 members'; return; }
       var active = rows.filter(function (b) {
         var grad = (b.registered && b.grad_year) ? b.grad_year
                  : (b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null));
@@ -344,6 +341,6 @@
       }).length;
       caEl.textContent = active + ' brothers';
       clEl.textContent = (rows.length - active) + ' brothers';
-    }).catch(function () {});
+    }).catch(function () { caEl.textContent = '🔒 members'; clEl.textContent = '🔒 members'; });
   }
 })();

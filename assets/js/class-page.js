@@ -47,7 +47,13 @@
   }
 
   Z.listFamilyPublic().then(function (rows) {
-    LIST = (rows || []).filter(function (b) { return (b.pledge_class || '') === cls; })
+    if (!rows || !rows.length) { // anon: names are members-only
+      grid.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
+        '<span>Pledge-class pages are private to the brotherhood.</span>' +
+        '<a class="btn btn--gold" href="index.html#brothers-portal">Brother sign in</a></div>';
+      return;
+    }
+    LIST = rows.filter(function (b) { return (b.pledge_class || '') === cls; })
       .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
     var grads = LIST.map(function (b) { return b.grad_year; }).filter(Boolean);
     statsEl.textContent = LIST.length + ' brothers crossed in this class' +

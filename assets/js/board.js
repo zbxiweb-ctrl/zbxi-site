@@ -18,12 +18,26 @@
   }
 
   var CATS = [
-    { id: 'chapter',       label: 'Chapter Business' },
-    { id: 'advice',        label: 'Advice' },
-    { id: 'social',        label: 'Social' },
-    { id: 'opportunities', label: 'Opportunities 💼' }
+    { id: 'chapter',       label: 'Chapter Business', ic: '⚖️', desc: 'Official chapter matters — meetings, votes, house business.' },
+    { id: 'advice',        label: 'Advice',           ic: '🧭', desc: 'Classes, careers, life — ask the brotherhood anything.' },
+    { id: 'social',        label: 'Social',           ic: '🎉', desc: 'Plans, memories, class threads and everything fun.' },
+    { id: 'opportunities', label: 'Opportunities',    ic: '💼', desc: 'Jobs, internships and referrals — offering or seeking.' }
   ];
   function catLabel(id) { var c = CATS.filter(function (x) { return x.id === id; })[0]; return c ? c.label : id; }
+  function catMeta(id) { return CATS.filter(function (x) { return x.id === id; })[0] || null; }
+
+  /* ---------- unread tracking (per browser) ---------- */
+  function seenMap() { try { return JSON.parse(localStorage.getItem('zbxi_seen') || '{}'); } catch (e) { return {}; } }
+  function markSeen(id) {
+    var m = seenMap(); m[id] = Date.now();
+    try { localStorage.setItem('zbxi_seen', JSON.stringify(m)); } catch (e) {}
+  }
+  function lastActivity(t) { return (META[t.id] && META[t.id].lastAt) || t.created_at; }
+  function isUnread(t) {
+    var seen = seenMap()[t.id];
+    return !seen || new Date(lastActivity(t)).getTime() > seen;
+  }
+  function isHot(t) { return Date.now() - new Date(lastActivity(t)).getTime() < 48 * 3600 * 1000; }
 
   function locked(msg, needSignin) {
     root.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>' + msg + '</b>' +
@@ -36,9 +50,9 @@
 
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
-  var me = null, dir = {}, threads = [], counts = {}, isAdmin = false;
+  var me = null, dir = {}, threads = [], META = {}, isAdmin = false;
   var MY_COMMITTEES = [], POLLS = [], VOTES = [];
-  var state = { cat: 'chapter', thread: null };
+  var state = { cat: 'chapter', thread: null, sort: 'active' };
 
   function committeeOf(id) { return MY_COMMITTEES.filter(function (c) { return c.id === id; })[0]; }
 
@@ -51,54 +65,133 @@
   }
 
   /* ---------- thread list ---------- */
-  function isCommitteeCat() { return !!committeeOf(state.cat); }
-
   function tabsHtml() {
     var std = CATS.map(function (c) {
-      var n = threads.filter(function (t) { return t.category === c.id && !t.committee_id; }).length;
-      return '<button class="' + (state.cat === c.id ? 'on' : '') + '" data-cat="' + c.id + '">' + c.label + (n ? ' <i>' + n + '</i>' : '') + '</button>';
+      var unread = threads.filter(function (t) { return t.category === c.id && !t.committee_id && isUnread(t); }).length;
+      return '<button class="bt bt--' + c.id + (state.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">' +
+        c.ic + ' ' + c.label + (unread ? ' <i class="bt__new">' + unread + '</i>' : '') + '</button>';
     }).join('');
-    var polls = '<button class="' + (state.cat === 'polls' ? 'on' : '') + '" data-cat="polls">🗳️ Polls' +
+    var polls = '<button class="bt bt--polls' + (state.cat === 'polls' ? ' on' : '') + '" data-cat="polls">🗳️ Polls' +
       (POLLS.length ? ' <i>' + POLLS.length + '</i>' : '') + '</button>';
     var comms = MY_COMMITTEES.map(function (c) {
       var n = threads.filter(function (t) { return t.committee_id === c.id; }).length;
-      return '<button class="board-tabs__comm ' + (state.cat === c.id ? 'on' : '') + '" data-cat="' + c.id + '">🔒 ' + esc(c.name) + (n ? ' <i>' + n + '</i>' : '') + '</button>';
+      return '<button class="bt board-tabs__comm' + (state.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">🔒 ' + esc(c.name) + (n ? ' <i>' + n + '</i>' : '') + '</button>';
     }).join('');
-    return '<div class="board-tabs">' + std + polls + comms + '</div>';
+    return '<div class="board-tabs">' + std + polls + comms +
+      '<button class="bt bt--help" id="boardHelp" title="How the board works">❓</button></div>';
+  }
+
+  function avatarOf(uid) {
+    var a = author(uid);
+    return a.photo_url ? '<img src="' + esc(a.photo_url) + '" alt="">' :
+      '<span>' + esc(String(a.full_name || 'Ζ').trim()[0] || 'Ζ') + '</span>';
+  }
+
+  function emptyState(label) {
+    return '<div class="board-empty">' +
+      '<img src="assets/img/crest-cut.png" alt="" />' +
+      '<p><b>Nothing in ' + label + ' yet.</b><br>Be the brother who starts the first thread.</p></div>';
+  }
+
+  function threadCard(t) {
+    var m = META[t.id] || { count: 0 };
+    var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
+    var preview = String(t.body || '').replace(/\s+/g, ' ').slice(0, 92);
+    if ((t.body || '').length > 92) preview += '…';
+    var flags = (isHot(t) ? ' <i class="thr-hot" title="Active in the last 48h">🔥</i>' : '') +
+                (t.image_path ? ' <i title="Has a photo">📷</i>' : '');
+    var a = author(t.author_user);
+    return '<button class="thread-row thread-row--' + (t.committee_id ? 'comm' : t.category) + (isUnread(t) ? ' unread' : '') + '" data-thr="' + t.id + '">' +
+      '<span class="thread-row__av">' + avatarOf(t.author_user) + '</span>' +
+      '<div class="thread-row__main">' +
+        '<b>' + (isUnread(t) ? '<i class="thr-dot"></i>' : '') + tag + esc(t.title) + flags + '</b>' +
+        '<span class="thread-row__prev">' + esc(preview) + '</span>' +
+        '<span>' + esc(a.full_name) + ' · ' + when(lastActivity(t)) + '</span>' +
+      '</div>' +
+      '<div class="thread-row__count">' + m.count + ' ↩</div></button>';
+  }
+
+  function sortThreads(list) {
+    var s = state.sort;
+    return list.slice().sort(function (a, z) {
+      if (s === 'newest') return new Date(z.created_at) - new Date(a.created_at);
+      if (s === 'oldest') return new Date(a.created_at) - new Date(z.created_at);
+      if (s === 'replies') return ((META[z.id] || {}).count || 0) - ((META[a.id] || {}).count || 0);
+      return new Date(lastActivity(z)) - new Date(lastActivity(a)); // active
+    });
+  }
+
+  function sidebarHtml() {
+    var recent = threads.slice().sort(function (a, z) { return new Date(lastActivity(z)) - new Date(lastActivity(a)); }).slice(0, 5);
+    if (!recent.length) return '';
+    return '<aside class="board-aside"><h4>⚡ Latest activity</h4>' + recent.map(function (t) {
+      var a = author(t.author_user);
+      return '<button class="board-aside__row" data-thr="' + t.id + '">' +
+        '<b>' + (isUnread(t) ? '<i class="thr-dot"></i>' : '') + esc(t.title) + '</b>' +
+        '<span>' + esc(a.full_name.split(' ')[0]) + ' · ' + when(lastActivity(t)) + '</span></button>';
+    }).join('') + '</aside>';
   }
 
   function renderList() {
     state.thread = null;
     if (state.cat === 'polls') return renderPolls();
     var comm = committeeOf(state.cat);
+    var meta = catMeta(state.cat);
     var mine = comm
       ? threads.filter(function (t) { return t.committee_id === state.cat; })
       : threads.filter(function (t) { return t.category === state.cat && !t.committee_id; });
+    mine = sortThreads(mine);
 
-    var newBtn = '<p style="margin:1rem 0"><button class="btn btn--gold" id="newThread">+ New ' +
-      (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button></p>';
+    var band = comm
+      ? '<div class="cat-band cat-band--comm">🔒 <div><b>' + esc(comm.name) + '</b><span>Private — only committee members and the webmaster can see this space.</span></div></div>'
+      : (meta ? '<div class="cat-band cat-band--' + meta.id + '">' + meta.ic + ' <div><b>' + meta.label + '</b><span>' + meta.desc + '</span></div></div>' : '');
 
-    var commNote = comm ? '<p class="admin-hint" style="background:var(--white);color:var(--muted)">🔒 <b style="color:var(--navy)">' + esc(comm.name) + '</b> — only committee members (and the webmaster) can see this space.</p>' : '';
+    var controls = '<div class="board-controls">' +
+      '<button class="btn btn--gold" id="newThread">+ New ' + (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button>' +
+      (mine.length > 1 ? '<select class="page-filter" id="threadSort">' +
+        [['active', 'Recently active'], ['newest', 'Newest'], ['replies', 'Most replies'], ['oldest', 'Oldest']].map(function (o) {
+          return '<option value="' + o[0] + '"' + (state.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select>' : '') +
+      '</div>';
 
-    var list = mine.length ? '<div class="thread-list">' + mine.map(function (t) {
-      var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
-      return '<button class="thread-row" data-thr="' + t.id + '">' +
-        '<div class="thread-row__main"><b>' + tag + esc(t.title) + '</b>' +
-          '<span>' + chip(t.author_user) + ' · ' + when(t.created_at) + '</span></div>' +
-        '<div class="thread-row__count">' + (counts[t.id] || 0) + ' ↩</div></button>';
-    }).join('') + '</div>'
-      : '<p class="page-empty">No threads ' + (comm ? 'in ' + esc(comm.name) : 'in ' + catLabel(state.cat)) + ' yet — start the first one.</p>';
+    var list = mine.length ? '<div class="thread-list">' + mine.map(threadCard).join('') + '</div>'
+      : emptyState(comm ? esc(comm.name) : catLabel(state.cat));
 
-    root.innerHTML = suggestionCard() + tabsHtml() + commNote + newBtn + list;
+    root.innerHTML = suggestionCard() + tabsHtml() +
+      '<div class="board-layout"><div>' + band + controls + list + '</div>' + sidebarHtml() + '</div>';
     wireTabs();
     wireSuggestionCard();
+    wireHelp();
     document.getElementById('newThread').onclick = function () { renderCompose(); };
+    var sortSel = document.getElementById('threadSort');
+    if (sortSel) sortSel.onchange = function () { state.sort = sortSel.value; renderList(); };
     root.querySelectorAll('[data-thr]').forEach(function (b) {
       b.addEventListener('click', function () {
         var t = threads.filter(function (x) { return x.id === b.dataset.thr; })[0];
         if (t) renderThread(t);
       });
     });
+  }
+
+  /* ---------- member help popup ---------- */
+  function wireHelp() {
+    var h = document.getElementById('boardHelp');
+    if (h) h.onclick = function () {
+      var wrap = document.createElement('div');
+      wrap.className = 'admin-modal open';
+      wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+        '<h3>❓ How the board works</h3><div class="treeed-help">' +
+        '<p><b>Post a thread.</b> Pick the space that fits (⚖️ Chapter, 🧭 Advice, 🎉 Social, 💼 Opportunities), hit <b>+ New thread</b>, write it, optionally attach a photo.</p>' +
+        '<p><b>Jobs &amp; referrals.</b> In 💼 Opportunities, mark your post <i>Offering</i> (you have something) or <i>Seeking</i> (you\'re looking).</p>' +
+        '<p><b>Reply &amp; react.</b> Open any thread to reply. Tap 👍 ❤️ 😂 under a reply to react — tap again to take it back.</p>' +
+        '<p><b>Gold dots = new.</b> A gold dot means there\'s activity you haven\'t seen yet. It clears when you open the thread.</p>' +
+        '<p><b>🗳️ Polls.</b> Vote once per poll; you can change your vote until it closes.</p>' +
+        '<p><b>🔒 Locked tabs</b> are private committee spaces — you only see the ones you belong to.</p>' +
+        '<p><b>💡 Suggestion box</b> (top of the page) goes straight to the webmaster — you\'ll get a 🔔 when he responds.</p>' +
+        '</div></div>';
+      document.body.appendChild(wrap);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) wrap.remove(); });
+    };
   }
 
   function wireTabs() {
@@ -136,6 +229,7 @@
     root.innerHTML = suggestionCard() + tabsHtml() + newBtn + cards;
     wireTabs();
     wireSuggestionCard();
+    wireHelp();
 
     var np = document.getElementById('newPoll');
     if (np) np.onclick = renderNewPoll;
@@ -252,6 +346,7 @@
             : '') +
           '<div class="field"><label>Title *</label><input name="title" required maxlength="140" value="' + esc(prefillTitle || '') + '"></div>' +
           '<div class="field"><label>Post *</label><textarea name="body" required></textarea></div>' +
+          '<div class="field"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*"></div>' +
           '<button class="btn btn--navy" type="submit" style="width:100%">Post thread</button>' +
           '<p class="form-status" id="thrStatus" role="status"></p>' +
         '</form></div>';
@@ -260,20 +355,28 @@
       e.preventDefault();
       var f = e.target, st = document.getElementById('thrStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
-      f.querySelector('button').disabled = true;
-      Z.threadCreate({
-        author_user: me.id,
-        category: comm ? 'chapter' : state.cat,
-        committee_id: comm ? comm.id : null,
-        tag: isOpp ? f.tag.value : null,
-        title: f.title.value.trim(),
-        body: f.body.value.trim()
+      var btn = f.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Posting…';
+      var file = f.photo.files[0];
+      var photoP = file
+        ? Z.downscale(file, 1600).then(function (blob) { return Z.galleryUpload(me.id, blob, 'jpg'); })
+        : Promise.resolve(null);
+      photoP.then(function (imagePath) {
+        return Z.threadCreate({
+          author_user: me.id,
+          category: comm ? 'chapter' : state.cat,
+          committee_id: comm ? comm.id : null,
+          tag: isOpp ? f.tag.value : null,
+          title: f.title.value.trim(),
+          body: f.body.value.trim(),
+          image_path: imagePath
+        });
       }).then(function (r) {
         if (r.error) throw r.error;
         return loadAll().then(function () { renderThread(r.data); });
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not post.';
-        f.querySelector('button').disabled = false;
+        btn.disabled = false; btn.textContent = 'Post thread';
       });
     };
   }
@@ -282,6 +385,7 @@
   function renderThread(t) {
     state.thread = t;
     state.cat = t.committee_id || t.category;
+    markSeen(t.id);
     var comm = committeeOf(t.committee_id);
     var backLabel = comm ? esc(comm.name) : catLabel(t.category);
     var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
@@ -292,6 +396,7 @@
         '<h2>' + tag + esc(t.title) + '</h2>' +
         '<div class="thread-view__meta">' + chip(t.author_user) + ' · ' + when(t.created_at) +
           (canDel ? ' · <a href="#" id="delThread">delete thread</a>' : '') + '</div>' +
+        (t.image_path ? '<div class="thread-view__photo" id="threadPhoto"></div>' : '') +
         '<div class="thread-view__body">' + esc(t.body).replace(/\n/g, '<br>') + '</div>' +
         '<h3 class="stat-h">Replies</h3>' +
         '<div id="replies"><p class="form-note">…</p></div>' +
@@ -307,6 +412,13 @@
       if (!confirm('Delete this thread and all replies?')) return;
       Z.threadDelete(t.id).then(function () { loadAll().then(renderList); });
     };
+    if (t.image_path) {
+      Z.gallerySignedUrls([t.image_path]).then(function (urls) {
+        var ph = document.getElementById('threadPhoto');
+        var u = urls[t.image_path];
+        if (ph && u) ph.innerHTML = '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt=""></a>';
+      });
+    }
     loadReplies(t);
     document.getElementById('replyForm').onsubmit = function (e) {
       e.preventDefault();
@@ -315,38 +427,60 @@
       if (!body) return;
       input.value = '';
       Z.replyCreate({ thread_id: t.id, author_user: me.id, body: body }).then(function () {
-        counts[t.id] = (counts[t.id] || 0) + 1;
+        var m = META[t.id] = META[t.id] || { count: 0, lastAt: null };
+        m.count++; m.lastAt = new Date().toISOString();
+        markSeen(t.id);
         loadReplies(t);
       });
     };
   }
 
+  var RKINDS = [['up', '👍'], ['heart', '❤️'], ['laugh', '😂']];
   function loadReplies(t) {
     var box = document.getElementById('replies');
     Z.threadReplies(t.id).then(function (rs) {
       if (!rs.length) { box.innerHTML = '<p class="form-note">No replies yet.</p>'; return; }
-      box.innerHTML = rs.map(function (r) {
-        var mine = me && (r.author_user === me.id || isAdmin);
-        return '<div class="gcomment">' + chip(r.author_user) +
-          '<p>' + esc(r.body).replace(/\n/g, '<br>') + '</p>' +
-          '<small>' + when(r.created_at) + (mine ? ' · <a href="#" data-delr="' + r.id + '">delete</a>' : '') + '</small></div>';
-      }).join('');
-      box.querySelectorAll('[data-delr]').forEach(function (a) {
-        a.onclick = function (e) {
-          e.preventDefault();
-          Z.replyDelete(a.dataset.delr).then(function () { loadReplies(t); });
-        };
+      Z.reactionsFor(rs.map(function (r) { return r.id; })).then(function (reacts) {
+        function reactBar(r) {
+          return '<span class="react-bar">' + RKINDS.map(function (k) {
+            var these = reacts.filter(function (x) { return x.reply_id === r.id && x.kind === k[0]; });
+            var mine = me && these.some(function (x) { return x.user_id === me.id; });
+            return '<button class="react' + (mine ? ' on' : '') + '" data-react="' + r.id + '|' + k[0] + '">' +
+              k[1] + (these.length ? ' ' + these.length : '') + '</button>';
+          }).join('') + '</span>';
+        }
+        box.innerHTML = rs.map(function (r) {
+          var mine = me && (r.author_user === me.id || isAdmin);
+          return '<div class="gcomment">' + chip(r.author_user) +
+            '<p>' + esc(r.body).replace(/\n/g, '<br>') + '</p>' +
+            '<small>' + when(r.created_at) + (mine ? ' · <a href="#" data-delr="' + r.id + '">delete</a>' : '') + '</small>' +
+            reactBar(r) + '</div>';
+        }).join('');
+        box.querySelectorAll('[data-delr]').forEach(function (a) {
+          a.onclick = function (e) {
+            e.preventDefault();
+            Z.replyDelete(a.dataset.delr).then(function () { loadReplies(t); });
+          };
+        });
+        box.querySelectorAll('[data-react]').forEach(function (b) {
+          b.onclick = function () {
+            var parts = b.dataset.react.split('|');
+            var on = b.classList.contains('on');
+            (on ? Z.unreact(parts[0], me.id, parts[1]) : Z.react(parts[0], me.id, parts[1]))
+              .then(function () { loadReplies(t); });
+          };
+        });
       });
     });
   }
 
   /* ---------- data ---------- */
   function loadAll() {
-    return Promise.all([Z.threadsList(), Z.replyCounts(), Z.memberDirectory(),
+    return Promise.all([Z.threadsList(), Z.replyMeta(), Z.memberDirectory(),
                         Z.committeesList().catch(function () { return []; }),
                         Z.pollsList().catch(function () { return []; }),
                         Z.pollVotesAll().catch(function () { return []; })]).then(function (res) {
-      threads = res[0]; counts = res[1]; dir = res[2] || {};
+      threads = res[0]; META = res[1]; dir = res[2] || {};
       MY_COMMITTEES = res[3]; POLLS = res[4]; VOTES = res[5];
     });
   }

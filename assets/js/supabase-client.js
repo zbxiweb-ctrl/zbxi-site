@@ -182,12 +182,30 @@
       return client.from('forum_threads').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });
     },
-    replyCounts: function () {
-      return client.from('forum_replies').select('thread_id').then(function (r) {
+    // Per-thread reply meta: {count, lastAt} in one query.
+    replyMeta: function () {
+      return client.from('forum_replies').select('thread_id, created_at').then(function (r) {
         var map = {};
-        (r.data || []).forEach(function (x) { map[x.thread_id] = (map[x.thread_id] || 0) + 1; });
+        (r.data || []).forEach(function (x) {
+          var m = map[x.thread_id] = map[x.thread_id] || { count: 0, lastAt: null };
+          m.count++;
+          if (!m.lastAt || x.created_at > m.lastAt) m.lastAt = x.created_at;
+        });
         return map;
       });
+    },
+    // Reactions on replies (👍 ❤️ 😂)
+    reactionsFor: function (replyIds) {
+      if (!replyIds.length) return Promise.resolve([]);
+      return client.from('reply_reactions').select('reply_id, user_id, kind').in('reply_id', replyIds)
+        .then(function (r) { return r.data || []; });
+    },
+    react: function (replyId, userId, kind) {
+      return client.from('reply_reactions').insert({ reply_id: replyId, user_id: userId, kind: kind });
+    },
+    unreact: function (replyId, userId, kind) {
+      return client.from('reply_reactions').delete()
+        .eq('reply_id', replyId).eq('user_id', userId).eq('kind', kind);
     },
     threadReplies: function (threadId) {
       return client.from('forum_replies').select('*').eq('thread_id', threadId)
