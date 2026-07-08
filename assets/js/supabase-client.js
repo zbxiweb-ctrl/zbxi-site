@@ -48,6 +48,17 @@
       return client.from('brothers').select('*').eq('status', 'verified')
         .then(function (r) { return r.data || []; });
     },
+    // Unregistered (claimable) tree entries, alphabetical — for the claim picker.
+    listUnclaimed: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('family_public').select('id, full_name, pledge_class')
+        .eq('registered', false).order('full_name')
+        .then(function (r) { return r.data || []; });
+    },
+    // Claim an existing tree row for the signed-in account (goes to pending review).
+    claimProfile: function (targetId) {
+      return client.rpc('claim_profile', { target_id: targetId });
+    },
     // One brother's full detail (RLS-gated: approved brother / admin / owner).
     brotherDetail: function (id) {
       if (!configured) return Promise.resolve(null);

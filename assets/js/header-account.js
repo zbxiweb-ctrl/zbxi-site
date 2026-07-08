@@ -12,8 +12,12 @@
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
   function initial(s) { var m = String(s || '').replace(/[^A-Za-z]/g, ''); return (m[0] || 'Z').toUpperCase(); }
 
+  // On subpages (active/alumni/admin), portal links must route back to index.
+  var onIndex = /(^|\/)(index\.html)?$/.test(location.pathname);
+  var PORTAL = (onIndex ? '' : 'index.html') + '#brothers-portal';
+
   function renderLogin() {
-    el.innerHTML = '<a href="#brothers-portal" class="btn btn--gold nav__cta">Brother Login</a>';
+    el.innerHTML = '<a href="' + PORTAL + '" class="btn btn--gold nav__cta">Brother Login</a>';
   }
 
   function renderChip(user, profile) {
@@ -32,7 +36,7 @@
           '<b>' + esc(name) + '</b><span>' + esc(user.email || '') + '</span>' +
           (isAdmin ? '<span class="admin-badge">ADMIN</span>' : '') +
         '</div>' +
-        '<a href="#brothers-portal" role="menuitem">👤 My Profile</a>' +
+        '<a href="' + PORTAL + '" role="menuitem">👤 My Profile</a>' +
         (isAdmin ? '<a href="admin.html" role="menuitem" class="nav__menu-admin">⚙ Admin Console →</a>' : '') +
         '<div class="nav__menu-divider"></div>' +
         '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout">Sign out</button>' +

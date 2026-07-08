@@ -19,58 +19,6 @@
     });
   }
 
-  /* ---- Brother roster (PLACEHOLDER DATA — replace names/roles/photos) ---- */
-  var eboard = [
-    { name: 'Alex Rivera',   role: 'President',      year: "'26", major: 'Political Science', quote: 'Leading the brotherhood we were trusted to carry forward.' },
-    { name: 'Jordan Ellis',  role: 'Vice President', year: "'26", major: 'Business',          quote: 'Every brother makes us stronger than the sum of our parts.' },
-    { name: 'Sam Bennett',   role: 'Treasurer',      year: "'27", major: 'Economics',         quote: 'Stewarding the chapter that raised us.' },
-    { name: 'Chris Nguyen',  role: 'Rush Chair',     year: "'27", major: 'Communication',     quote: 'Come see what independent brotherhood really feels like.' }
-  ];
-  var brothers = [
-    { name: 'Marcus Cole',   year: "'26", major: 'Biology' },
-    { name: 'Devin Park',    year: "'27", major: 'Computer Science' },
-    { name: 'Tyler Brooks',  year: "'27", major: 'History' },
-    { name: 'Noah Fitzgerald', year: "'28", major: 'Psychology' },
-    { name: 'Ethan Ramos',   year: "'28", major: 'Physics' },
-    { name: 'Liam Carter',   year: "'26", major: 'Accounting' },
-    { name: 'Owen Diaz',     year: "'27", major: 'English' },
-    { name: 'Jared Kim',     year: "'28", major: 'Sociology' }
-  ];
-
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
-
-  function card(b) {
-    var role = b.role ? '<span class="role">' + esc(b.role) + '</span>' : '';
-    var frontSub = b.role || b.sub || [b.year, b.major].filter(Boolean).join(' · ');
-    var photo = b.photo || 'assets/img/portrait.svg';
-    var back = b.locked
-      ? '<div class="flip__locked"><span class="flip__lock-ic">🔒</span><span>Sign in as a brother to view details</span></div>'
-      : role +
-        '<p class="quote">' + esc(b.quote || '"Proud to call these brothers family."') + '</p>' +
-        '<p class="meta">' + [ (b.year ? 'Class of ' + String(b.year).replace("'", "20") : ''), b.major ].filter(Boolean).map(esc).join(' · ') + '</p>';
-    return '' +
-      '<div class="flip" tabindex="0">' +
-        '<div class="flip__inner">' +
-          '<div class="flip__face flip__front">' +
-            '<img src="' + esc(photo) + '" alt="Portrait of ' + esc(b.name) + '" />' +
-            '<div class="flip__name"><b>' + esc(b.name) + '</b><span>' + esc(frontSub) + '</span></div>' +
-          '</div>' +
-          '<div class="flip__face flip__back">' + back + '</div>' +
-        '</div>' +
-      '</div>';
-  }
-
-  var eb = document.getElementById('eboard');
-  var br = document.getElementById('brothers');
-  if (eb) eb.innerHTML = eboard.map(card).join('');
-  if (br) br.innerHTML = brothers.map(card).join('');
-
-  // Tap-to-flip on touch devices (hover doesn't exist there)
-  document.addEventListener('click', function (e) {
-    var flip = e.target.closest && e.target.closest('.flip');
-    if (flip && window.matchMedia('(hover: none)').matches) flip.classList.toggle('is-flipped');
-  });
-
   /* ---- Gallery + lightbox (PLACEHOLDER tiles — replace with real photos) ---- */
   var galleryImgs = ['tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg','tile.svg']
     .map(function (f) { return 'assets/img/' + f; });
@@ -146,29 +94,27 @@
   }
   wireForm('contactForm', 'contactStatus');
 
-  /* ---- Roster from Supabase: names public, details for approved brothers ---- */
-  function renderRoster(list) {
-    var ebs = list.filter(function (x) { return x.role; });
-    var brs = list.filter(function (x) { return !x.role; });
-    if (eb && ebs.length) eb.innerHTML = ebs.map(card).join('');
-    if (br && brs.length) br.innerHTML = brs.map(card).join('');
-  }
-  function lockedList(pub) {
-    return pub.map(function (p) { return { name: p.full_name, role: p.role || '', sub: p.pledge_class || '', locked: true }; });
-  }
-  if (window.ZBXI && window.ZBXI.configured && br) {
-    window.ZBXI.listFamilyPublic().then(function (pub) {
-      if (!pub || !pub.length) return; // keep placeholder cards until real data exists
-      window.ZBXI.amApprovedBrother().then(function (approved) {
-        if (!approved) { renderRoster(lockedList(pub)); return; }
-        window.ZBXI.listVerifiedDetail().then(function (full) {
-          var byId = {}; full.forEach(function (f) { byId[f.id] = f; });
-          renderRoster(pub.map(function (p) {
-            var f = byId[p.id] || {};
-            return { name: p.full_name, role: p.role || '', year: f.grad_year ? "'" + String(f.grad_year).slice(-2) : '', major: f.major || '', quote: f.quote || '', photo: f.photo_url || '', locked: false };
-          }));
-        }).catch(function () { renderRoster(lockedList(pub)); });
-      });
+  /* ---- Brotherhood directory counts (Active / Alumni link cards) ---- */
+  var caEl = document.getElementById('countActive');
+  var clEl = document.getElementById('countAlumni');
+  if (caEl && clEl && window.ZBXI && window.ZBXI.configured) {
+    var now = new Date();
+    var CUTOFF = now.getFullYear() + (now.getMonth() >= 5 ? 1 : 0);
+    var pledgeYear = function (cls) {
+      if (!cls) return null;
+      var m4 = cls.match(/(19|20)\d{2}/); if (m4) return parseInt(m4[0], 10);
+      var m2 = cls.match(/'(\d{2})/); if (!m2) return null;
+      var yy = parseInt(m2[1], 10); return yy >= 93 ? 1900 + yy : 2000 + yy;
+    };
+    window.ZBXI.listFamilyPublic().then(function (rows) {
+      if (!rows || !rows.length) return;
+      var active = rows.filter(function (b) {
+        var grad = (b.registered && b.grad_year) ? b.grad_year
+                 : (b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null));
+        return grad != null && grad >= CUTOFF;
+      }).length;
+      caEl.textContent = active + ' brothers';
+      clEl.textContent = (rows.length - active) + ' brothers';
     }).catch(function () {});
   }
 })();

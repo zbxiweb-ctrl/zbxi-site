@@ -305,6 +305,96 @@ p { margin: 0 0 1em; }
 .bm__loading { color: var(--muted); text-align: center; padding: 1rem; }
 .bm__bio { color: var(--ink); font-size: .95rem; margin-top: 1rem; }
 
+/* ---------- Brotherhood directory cards (homepage) ---------- */
+.dir-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; margin-top: 2.6rem; }
+.dir-card {
+  display: block; background: var(--white); border-radius: var(--radius); padding: 2.2rem;
+  box-shadow: var(--shadow-sm); border-top: 5px solid var(--gold); transition: transform .18s, box-shadow .2s;
+}
+.dir-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.dir-card__ic { font-size: 2rem; display: block; margin-bottom: .6rem; }
+.dir-card b { font-family: var(--display); font-size: 1.5rem; color: var(--navy); display: block; }
+.dir-card__count { display: inline-block; min-height: 1.2em; color: var(--gold-deep); font-weight: 700; font-size: .9rem; margin: .2rem 0 .5rem; }
+.dir-card p { color: var(--muted); font-size: .95rem; margin: 0 0 1rem; }
+.dir-card__go { color: var(--gold-deep); font-weight: 600; font-size: .92rem; }
+
+/* ---------- Subpages (active/alumni) ---------- */
+.page-body { background: var(--cream); }
+.page-main { padding-top: 72px; }
+.page-hero { background: var(--navy); color: var(--cream); padding: clamp(3rem, 7vw, 5rem) 0; }
+.page-hero .lede { color: #cdd6e6; }
+#pageCount { color: var(--gold-bright); font-weight: 600; }
+.nav__links a.on { color: var(--gold-bright); font-weight: 700; }
+.page-empty { color: var(--muted); padding: 1.4rem 0; }
+
+.eb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-top: 1rem; }
+.eb-card {
+  background: var(--white); border: 0; border-radius: var(--radius); padding: 1.6rem 1rem; text-align: center;
+  box-shadow: var(--shadow-sm); border-top: 4px solid var(--gold); cursor: pointer; transition: transform .15s, box-shadow .2s;
+  font-family: var(--sans);
+}
+.eb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.eb-card__av { width: 64px; height: 64px; margin: 0 auto .7rem; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
+.eb-card b { display: block; font-family: var(--display); color: var(--navy); font-size: 1.1rem; }
+.eb-card__role { display: block; color: var(--gold-deep); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; margin: .25rem 0; }
+.eb-card small { color: var(--muted); font-size: .78rem; }
+
+.bro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; margin-top: 1rem; }
+.bro-card {
+  display: flex; align-items: center; gap: .8rem; text-align: left; cursor: pointer;
+  background: var(--white); border: 1.5px solid #e4dfd2; border-radius: 12px; padding: .8rem .9rem;
+  font-family: var(--sans); transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+.bro-card:hover { border-color: var(--gold); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.bro-card__av { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--navy-2); color: #cdd6e6; display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem; }
+.bro-card--live .bro-card__av { background: var(--navy); color: var(--gold-bright); }
+.bro-card__dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold-bright); border: 2px solid var(--white); }
+.bro-card__meta { min-width: 0; }
+.bro-card__meta b { display: block; color: var(--navy); font-family: var(--display); font-size: 1.02rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bro-card__meta small { color: var(--muted); font-size: .76rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bro-card__tag { font-style: normal; font-size: .68rem; font-weight: 700; color: var(--gold-deep); }
+.bro-card__tag--off { color: #a9a290; font-weight: 500; }
+.bro-card--live { border-color: rgba(200,162,75,.55); }
+
+/* ---------- Tree: legend, toggles, registration colors ---------- */
+.tree-legend { display: flex; gap: 1.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1.6rem; color: var(--muted); font-size: .85rem; }
+.tree-legend .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: .35rem; vertical-align: -1px; }
+.tree-legend .dot--reg { background: var(--gold); box-shadow: 0 0 0 2px rgba(200,162,75,.3); }
+.tree-legend .dot--unreg { background: var(--navy-2); }
+.tree-legend .dot--chev { width: auto; height: auto; border-radius: 6px; background: var(--white); border: 1px solid #d8d3c4; padding: 0 .4rem; font-size: .75rem; color: var(--gold-deep); font-weight: 700; }
+.tree-toggle {
+  position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%);
+  background: var(--gold); color: var(--navy-deep); border-radius: 999px; padding: .1rem .55rem;
+  font-size: .72rem; font-weight: 800; box-shadow: var(--shadow-sm); white-space: nowrap; z-index: 3;
+}
+.tree-toggle:hover { background: var(--gold-bright); }
+.tree-node--reg { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,162,75,.25), var(--shadow-sm); }
+.tree-node--reg .tree-node__av { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); }
+
+/* ---------- Portal: claim chooser ---------- */
+.portal-choose h3, .portal-claim h3 { color: var(--navy); font-family: var(--display); text-align: center; }
+.portal-choice {
+  display: block; width: 100%; text-align: left; background: var(--cream); border: 1.5px solid #d8d3c4;
+  border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .8rem; cursor: pointer; font-family: var(--sans);
+  transition: border-color .15s, background .15s;
+}
+.portal-choice:hover { border-color: var(--gold); background: #fbf8ef; }
+.portal-choice b { display: block; color: var(--navy); font-size: 1rem; }
+.portal-choice span { color: var(--muted); font-size: .85rem; }
+.claim-list { max-height: 300px; overflow-y: auto; }
+.claim-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%;
+  background: var(--cream); border: 1.5px solid #e4dfd2; border-radius: 10px; padding: .7rem .9rem;
+  margin-bottom: .5rem; cursor: pointer; font-family: var(--sans); text-align: left;
+}
+.claim-row:hover { border-color: var(--gold); }
+.claim-row b { color: var(--navy); }
+.claim-row span { color: var(--muted); font-size: .8rem; flex: none; }
+
+/* ---------- Real crest badge (white-background art on navy) ---------- */
+.crest-badge { background: var(--cream); border-radius: 50%; padding: 6px; border: 2px solid var(--gold); box-shadow: 0 6px 18px rgba(0,0,0,.35); object-fit: contain; }
+.hero__crest.crest-badge { padding: 12px; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
   .split, .rush-grid, .alumni-cta, .contact-grid { grid-template-columns: 1fr; }
@@ -313,6 +403,12 @@ p { margin: 0 0 1em; }
   .grid-cards { grid-template-columns: repeat(2, 1fr); }
   .events { grid-template-columns: 1fr; }
   .gallery { grid-template-columns: repeat(2, 1fr); }
+  .dir-cards { grid-template-columns: 1fr; }
+  .eb-grid { grid-template-columns: repeat(2, 1fr); }
+  .bro-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .bro-grid, .eb-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .nav__links {

@@ -77,7 +77,65 @@
   function renderProfileArea() {
     var pr = state.profile;
     if (pr && pr.status === 'pending') return renderPending(pr);
-    return renderForm(pr); // create (no profile) or edit (verified/rejected)
+    if (!pr) return renderChooser(); // no profile yet: claim an existing tree entry or create new
+    return renderForm(pr); // edit (verified/rejected)
+  }
+
+  /* ---- no profile yet: claim vs create ---- */
+  function renderChooser() {
+    h('<div class="portal-choose">' +
+      '<h3>Welcome, brother!</h3>' +
+      '<p class="form-note">Most brothers are already in our family tree from the chapter records. Claiming your name links this account to your spot in the tree.</p>' +
+      '<button class="portal-choice" id="chooseClaim"><b>🌳 I\'m in the family tree</b><span>Find and claim your name — keeps your lineage intact.</span></button>' +
+      '<button class="portal-choice" id="chooseNew"><b>✨ I\'m not in the tree yet</b><span>Create a brand-new profile from scratch.</span></button>' +
+      signOutBtn() + '</div>');
+    wireSignOut();
+    card.querySelector('#chooseClaim').onclick = renderClaim;
+    card.querySelector('#chooseNew').onclick = function () { renderForm(null); };
+  }
+
+  function renderClaim() {
+    h('<div class="portal-claim"><h3>Claim your name</h3>' +
+      '<p class="form-note">Search for yourself, then confirm. Chapter leadership verifies every claim before it goes live.</p>' +
+      '<div class="field"><label>Search the brotherhood</label><input id="claimSearch" placeholder="Start typing your name…" autocomplete="off"></div>' +
+      '<div id="claimList" class="claim-list"></div>' +
+      '<p class="form-status" id="claimStatus" role="status"></p>' +
+      '<button class="portal-signout" id="claimBack" type="button">← Back</button></div>');
+    card.querySelector('#claimBack').onclick = renderChooser;
+
+    var listEl = card.querySelector('#claimList');
+    var input = card.querySelector('#claimSearch');
+    var all = [];
+    listEl.innerHTML = '<p class="form-note">Loading the brotherhood…</p>';
+    Z.listUnclaimed().then(function (rows) {
+      all = rows || [];
+      listEl.innerHTML = '<p class="form-note">' + all.length + ' unclaimed brothers. Type to search.</p>';
+    });
+
+    input.oninput = function () {
+      var q = input.value.trim().toLowerCase();
+      if (q.length < 2) { listEl.innerHTML = '<p class="form-note">Keep typing…</p>'; return; }
+      var hits = all.filter(function (b) { return b.full_name.toLowerCase().indexOf(q) !== -1; }).slice(0, 12);
+      if (!hits.length) { listEl.innerHTML = '<p class="form-note">No match — use "I\'m not in the tree yet" instead.</p>'; return; }
+      listEl.innerHTML = hits.map(function (b) {
+        return '<button class="claim-row" data-id="' + b.id + '"><b>' + esc(b.full_name) + '</b><span>' + esc(b.pledge_class || '') + '</span></button>';
+      }).join('');
+      listEl.querySelectorAll('.claim-row').forEach(function (row) {
+        row.onclick = function () {
+          var picked = all.filter(function (b) { return b.id === row.dataset.id; })[0];
+          if (!picked) return;
+          if (!confirm('Claim "' + picked.full_name + ' (' + (picked.pledge_class || '') + ')" as your profile?')) return;
+          var st = card.querySelector('#claimStatus');
+          st.className = 'form-status'; st.textContent = 'Claiming…';
+          Z.claimProfile(picked.id).then(function (r) {
+            var msg = (r && r.data) || '';
+            if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+            if (String(msg).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(msg).replace('error: ', ''); return; }
+            refresh(); // -> pending state
+          });
+        };
+      });
+    };
   }
 
   function renderPending(pr) {

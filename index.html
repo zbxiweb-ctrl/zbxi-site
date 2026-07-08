@@ -22,9 +22,9 @@
       </a>
       <nav class="nav__links" id="navLinks">
         <a href="#about">About</a>
-        <a href="#brotherhood">Brotherhood</a>
+        <a href="active.html">Active</a>
+        <a href="alumni.html">Alumni</a>
         <a href="#family-tree">Family Tree</a>
-        <a href="#alumni">Alumni</a>
         <a href="#events">Events</a>
         <a href="#gallery">Gallery</a>
         <a href="#contact">Contact</a>
@@ -99,21 +99,31 @@
     </div>
   </section>
 
-  <!-- ============ BROTHERHOOD ============ -->
+  <!-- ============ BROTHERHOOD (directory) ============ -->
   <section class="section section--cream2" id="brotherhood">
     <div class="wrap">
       <div class="center">
         <p class="eyebrow">The Brothers</p>
         <h2 class="section-title">Meet Zeta Beta Xi</h2>
         <hr class="rule" />
-        <p class="lede">Hover or tap a card to meet a brother. <em>(Placeholder names &amp; photos — swap with your real roster.)</em></p>
+        <p class="lede">From ten founding fathers in 1993 to today's undergraduates — explore the full brotherhood.</p>
       </div>
-
-      <p class="eyebrow eboard-label">Executive Board</p>
-      <div class="grid-cards" id="eboard"></div>
-
-      <p class="eyebrow eboard-label">Active Brothers</p>
-      <div class="grid-cards" id="brothers"></div>
+      <div class="dir-cards">
+        <a class="dir-card" href="active.html">
+          <span class="dir-card__ic">🎓</span>
+          <b>Active Brothers</b>
+          <span class="dir-card__count" id="countActive">&nbsp;</span>
+          <p>Currently pursuing their degrees at SUNY Geneseo — the chapter on campus today.</p>
+          <span class="dir-card__go">View the actives →</span>
+        </a>
+        <a class="dir-card" href="alumni.html">
+          <span class="dir-card__ic">🌍</span>
+          <b>Alumni Brothers</b>
+          <span class="dir-card__count" id="countAlumni">&nbsp;</span>
+          <p>Graduates of Geneseo carrying the brotherhood around the world since 1993.</p>
+          <span class="dir-card__go">View the alumni →</span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -126,8 +136,15 @@
         <hr class="rule" />
         <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, scroll to zoom, and click a brother to see their card. <em>(Placeholder lineage — real brothers populate this as they join.)</em></p>
       </div>
-      <div class="tree-shell" style="margin-top:2rem">
+      <div class="tree-legend" id="treeLegend">
+        <span><i class="dot dot--reg"></i> Registered on the site</span>
+        <span><i class="dot dot--unreg"></i> Not yet registered</span>
+        <span><i class="dot dot--chev">▸ n</i> Click to expand a branch</span>
+      </div>
+      <div class="tree-shell" style="margin-top:1rem">
         <div class="tree-controls">
+          <button id="treeExpandAll" aria-label="Expand all" title="Expand all">⊞</button>
+          <button id="treeCollapseAll" aria-label="Collapse all" title="Collapse all">⊟</button>
           <button id="treeZoomOut" aria-label="Zoom out">−</button>
           <button id="treeReset" aria-label="Reset view">⟳</button>
           <button id="treeZoomIn" aria-label="Zoom in">+</button>
@@ -135,7 +152,7 @@
         <div class="tree-viewport" id="treeViewport">
           <div class="tree-canvas" id="treeCanvas"></div>
         </div>
-        <p class="tree-hint">Drag to pan · Scroll to zoom · Click a brother</p>
+        <p class="tree-hint">Drag to pan · Scroll to zoom · ▸ expands a family line · Click a brother for their card</p>
       </div>
     </div>
   </section>
@@ -259,8 +276,8 @@
       <img src="assets/img/crest.svg" alt="Zeta Beta Xi crest" />
       <p class="motto">Brothers of Zeta Beta Xi</p>
       <nav class="footer__nav">
-        <a href="#about">About</a><a href="#brotherhood">Brotherhood</a><a href="#family-tree">Family Tree</a>
-        <a href="#alumni">Alumni</a><a href="#events">Events</a><a href="#gallery">Gallery</a>
+        <a href="#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a>
+        <a href="#family-tree">Family Tree</a><a href="#events">Events</a><a href="#gallery">Gallery</a>
         <a href="#brothers-portal">Brother Login</a><a href="#contact">Contact</a>
       </nav>
       <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
