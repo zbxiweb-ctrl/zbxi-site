@@ -198,6 +198,50 @@
     replyCreate: function (row) { return client.from('forum_replies').insert(row); },
     replyDelete: function (id) { return client.from('forum_replies').delete().eq('id', id); },
 
+    /* ---- shared: canvas-downscale an image file to a small JPEG ---- */
+    downscale: function (file, maxPx) {
+      return new Promise(function (resolve, reject) {
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (Math.max(w, h) > maxPx) {
+            var k = maxPx / Math.max(w, h);
+            w = Math.round(w * k); h = Math.round(h * k);
+          }
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          cv.toBlob(function (b) { b ? resolve(b) : reject(new Error('Could not process image')); }, 'image/jpeg', 0.86);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Not a readable image')); };
+        img.src = url;
+      });
+    },
+
+    /* ---- event RSVPs (members only; RLS-gated) ---- */
+    rsvpList: function () {
+      return client.from('event_rsvps').select('event_id, user_id')
+        .then(function (r) { return r.data || []; });
+    },
+    rsvp: function (eventId, userId) {
+      return client.from('event_rsvps').insert({ event_id: eventId, user_id: userId });
+    },
+    unrsvp: function (eventId, userId) {
+      return client.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', userId);
+    },
+
+    /* ---- site settings (announcement banner) ---- */
+    getSetting: function (key) {
+      if (!configured) return Promise.resolve(null);
+      return client.from('site_settings').select('value').eq('key', key).maybeSingle()
+        .then(function (r) { return r.data ? r.data.value : null; });
+    },
+    setSetting: function (key, value) {
+      return client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
+    },
+
     /* ---- events ---- */
     eventsList: function () {
       if (!configured) return Promise.resolve([]);

@@ -54,6 +54,48 @@
   var evEl = document.getElementById('eventsList');
   if (evEl) {
     var CAT_LABEL = { rush: 'Rush', philanthropy: 'Philanthropy', reunion: 'Reunion', meeting: 'Chapter Meeting', social: 'Social' };
+
+    /* -- RSVPs (members only) -- */
+    var RSVPS = [], RSVP_ME = null, RSVP_DIR = {}, CAN_RSVP = false;
+    function rsvpsFor(id) { return RSVPS.filter(function (r) { return r.event_id === id; }); }
+    function iGo(id) { return RSVP_ME && RSVPS.some(function (r) { return r.event_id === id && r.user_id === RSVP_ME.id; }); }
+    function rsvpBar(e) {
+      if (!CAN_RSVP) return '';
+      var rs = rsvpsFor(e.id);
+      var names = rs.map(function (r) {
+        var m = RSVP_DIR[r.user_id];
+        return m ? m.full_name.split(' ')[0] : 'a brother';
+      });
+      var who = names.length ? '<small class="ev-rsvp__who">Going: ' + esc(names.slice(0, 6).join(', ')) + (names.length > 6 ? ' +' + (names.length - 6) : '') + '</small>' : '';
+      return '<div class="ev-rsvp" data-rsvp="' + e.id + '">' +
+        '<button class="ev-rsvp__btn' + (iGo(e.id) ? ' on' : '') + '">' + (iGo(e.id) ? '✓ I\'m going' : '✋ I\'m going') + '</button>' +
+        '<b>' + rs.length + '</b> going' + who + '</div>';
+    }
+    function wireRsvps(scope) {
+      scope.querySelectorAll('[data-rsvp]').forEach(function (bar) {
+        var id = bar.dataset.rsvp;
+        bar.querySelector('.ev-rsvp__btn').onclick = function () {
+          if (!RSVP_ME) return;
+          var going = iGo(id);
+          var op = going ? window.ZBXI.unrsvp(id, RSVP_ME.id) : window.ZBXI.rsvp(id, RSVP_ME.id);
+          if (going) RSVPS = RSVPS.filter(function (r) { return !(r.event_id === id && r.user_id === RSVP_ME.id); });
+          else RSVPS.push({ event_id: id, user_id: RSVP_ME.id });
+          renderEvents(EV_ALL);
+          op.then(function (r) { if (r.error) window.ZBXI.rsvpList().then(function (l) { RSVPS = l; renderEvents(EV_ALL); }); });
+        };
+      });
+    }
+    function loadRsvps() {
+      window.ZBXI.amApprovedBrother().then(function (ok) {
+        if (!ok) return;
+        Promise.all([window.ZBXI.getUser(), window.ZBXI.rsvpList(), window.ZBXI.memberDirectory()]).then(function (res) {
+          RSVP_ME = res[0]; RSVPS = res[1]; RSVP_DIR = res[2] || {};
+          CAN_RSVP = true;
+          renderEvents(EV_ALL);
+        });
+      });
+    }
+
     var renderEvents = function (rows) {
       var upcoming = (rows || []).filter(function (e) {
         var end = e.ends_at ? new Date(e.ends_at) : new Date(new Date(e.starts_at).getTime() + 3 * 3600 * 1000);
@@ -74,8 +116,10 @@
             '<h3>' + esc(e.title) + '</h3>' +
             '<p class="ev-card__meta">' + time + (e.location ? ' · ' + esc(e.location) : '') + '</p>' +
             (e.description ? '<p>' + esc(e.description) + '</p>' : '') +
+            rsvpBar(e) +
           '</div></article>';
       }).join('');
+      wireRsvps(evEl);
     };
     /* -- month calendar view -- */
     var monthEl = document.getElementById('eventsMonth');
@@ -137,8 +181,9 @@
           var t = new Date(e.starts_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
           return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || e.category) + (e.is_public ? '' : ' · members') + '</span>' +
             '<b>' + esc(e.title) + '</b><small>' + t + (e.location ? ' · ' + esc(e.location) : '') + '</small>' +
-            (e.description ? '<p>' + esc(e.description) + '</p>' : '') + '</div>';
+            (e.description ? '<p>' + esc(e.description) + '</p>' : '') + rsvpBar(e) + '</div>';
         }).join('');
+      wireRsvps(box);
       box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -158,10 +203,58 @@
       window.ZBXI.eventsList().then(function (rows) {
         EV_ALL = rows || [];
         renderEvents(EV_ALL);
+        loadRsvps();
       }).catch(function () { evEl.innerHTML = '<p class="page-empty">Could not load events.</p>'; });
     } else {
       evEl.innerHTML = '<p class="page-empty">The events calendar is being set up.</p>';
     }
+  }
+
+  /* ---- Brother of the Month (deterministic monthly rotation) ---- */
+  var spotSec = document.getElementById('spotlight');
+  var spotEl = document.getElementById('spotlightCard');
+  if (spotSec && spotEl && window.ZBXI && window.ZBXI.configured) {
+    var monthKey = new Date().getFullYear() + '-' + (new Date().getMonth() + 1);
+    var hash = 0;
+    for (var hi = 0; hi < monthKey.length; hi++) hash = (hash * 31 + monthKey.charCodeAt(hi)) >>> 0;
+
+    window.ZBXI.amApprovedBrother().then(function (ok) {
+      if (ok) {
+        window.ZBXI.listVerifiedDetail().then(function (rows) {
+          var cands = (rows || []).filter(function (b) { return b.user_id && b.photo_url && b.bio; })
+            .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+          if (!cands.length) return; // section stays hidden until profiles are complete
+          var b = cands[hash % cands.length];
+          spotSec.style.display = '';
+          var sub = [b.pledge_class, b.grad_year ? 'Class of ' + b.grad_year : null,
+                     [b.occupation, b.city].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
+          var excerpt = b.bio.length > 260 ? b.bio.slice(0, 260).replace(/\s+\S*$/, '') + '…' : b.bio;
+          spotEl.innerHTML =
+            '<div class="spot-card">' +
+              '<img class="spot-card__photo" src="' + esc(b.photo_url) + '" alt="">' +
+              '<div class="spot-card__body">' +
+                '<h3>' + esc(b.full_name) + '</h3>' +
+                '<p class="spot-card__sub">' + esc(sub) + '</p>' +
+                (b.quote ? '<p class="spot-card__quote">“' + esc(b.quote) + '”</p>' : '') +
+                '<p class="spot-card__bio">' + esc(excerpt) + '</p>' +
+                '<button class="btn btn--navy" id="spotMore">Read his full profile →</button>' +
+              '</div></div>';
+          var more = document.getElementById('spotMore');
+          if (more) more.onclick = function () {
+            if (window.BrotherCard) window.BrotherCard.open({ id: b.id, full_name: b.full_name, pledge_class: b.pledge_class, role: b.role, role_term: b.role_term, photo_url: b.photo_url, registered: true }, { portal: '#brothers-portal' });
+          };
+        });
+      } else {
+        // Public teaser (only when there are registered brothers to feature)
+        window.ZBXI.listFamilyPublic().then(function (rows) {
+          if (!(rows || []).some(function (r) { return r.registered; })) return;
+          spotSec.style.display = '';
+          spotEl.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🏅 <b>This month\'s featured brother</b>' +
+            '<span>Every month we spotlight one brother\'s story — where the brotherhood took him. Sign in to read it.</span>' +
+            '<a class="btn btn--gold" href="#brothers-portal">Brother sign in</a></div>';
+        });
+      }
+    });
   }
 
   /* ---- Giving campaigns (links from config.js DONATION_LINKS) ---- */

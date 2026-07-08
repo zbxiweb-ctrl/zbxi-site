@@ -163,12 +163,50 @@
           var d = det[b.id];
           if (!d) return;
           b.photo_url = d.photo_url; b.city = d.city; b.occupation = d.occupation;
-          b.role_term = d.role_term;
+          b.role_term = d.role_term; b.skills = d.skills; b.major = d.major;
         });
         APPROVED = true;
         render(RAW);
+        renderMentorFinder();
+        // Hand the hydrated roster to other scripts (e.g. the alumni map).
+        window.ZBXI_MEMBERS = RAW;
+        document.dispatchEvent(new CustomEvent('zbxi:hydrated'));
       });
     });
+  }
+
+  /* ---- mentorship finder (alumni page, members only) ---- */
+  function renderMentorFinder() {
+    if (MODE !== 'alumni' || !APPROVED) return;
+    var sec = document.getElementById('mentorFinder');
+    var grid = document.getElementById('mentorGrid');
+    var input = document.getElementById('mentorSearch');
+    var chipsEl = document.getElementById('mentorChips');
+    if (!sec || !grid || !input) return;
+    var pool = LIST.filter(function (b) { return b.skills || b.occupation; });
+    if (!pool.length) return; // stays hidden until profiles carry skills/occupations
+    sec.style.display = '';
+
+    var chips = uniqueSorted(pool.map(function (b) { return b.occupation; })).slice(0, 6);
+    if (chipsEl) {
+      chipsEl.innerHTML = chips.map(function (c) { return '<button class="fam-chip" data-mc="' + esc(c) + '">' + esc(c) + '</button>'; }).join('');
+      chipsEl.querySelectorAll('[data-mc]').forEach(function (c) {
+        c.onclick = function () { input.value = c.dataset.mc; show(c.dataset.mc.toLowerCase()); };
+      });
+    }
+
+    function show(q) {
+      var hits = q
+        ? pool.filter(function (b) {
+            return ((b.skills || '') + ' ' + (b.occupation || '') + ' ' + (b.major || '')).toLowerCase().indexOf(q) !== -1;
+          })
+        : pool;
+      grid.innerHTML = hits.length ? hits.map(card).join('')
+        : '<p class="page-empty">No alumni match that yet — try a broader term.</p>';
+      wire(grid);
+    }
+    input.addEventListener('input', function () { show(input.value.trim().toLowerCase()); });
+    show('');
   }
 
   /* ---- load ---- */

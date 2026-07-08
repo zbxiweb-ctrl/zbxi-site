@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Alumni Brothers · Zeta Beta Xi</title>
   <meta name="description" content="The alumni brotherhood of Zeta Beta Xi — graduates of SUNY Geneseo spanning three decades." />
+    <link rel="canonical" href="https://zetabetaxi.com/alumni.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Alumni Brothers · Zeta Beta Xi" />
+  <meta property="og:description" content="Three decades of Zeta Beta Xi alumni — the lifelong network of the brotherhood." />
+  <meta property="og:url" content="https://zetabetaxi.com/alumni.html" />
+  <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest.jpg" />
+  <meta name="twitter:card" content="summary" />
   <link rel="icon" href="assets/img/crest.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -47,6 +54,18 @@
 
     <section class="section" style="padding-top:3rem">
       <div class="wrap">
+        <div id="alumniMapSec" style="display:none">
+          <p class="eyebrow">🗺️ The Brotherhood Worldwide</p>
+          <div id="alumniMap" class="alumni-map"></div>
+          <p class="form-note" style="margin:.5rem 0 3rem">Pins come from the “current city” on brother profiles — update yours to appear on the map.</p>
+        </div>
+        <div id="mentorFinder" style="display:none">
+          <p class="eyebrow">🎓 Find a Mentor</p>
+          <p class="lede" style="margin-bottom:1rem">Search alumni by skill, field, or profession.</p>
+          <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
+          <div class="mentor-chips" id="mentorChips"></div>
+          <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
+        </div>
         <p class="eyebrow">Alumni Executive Board</p>
         <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
 
@@ -93,5 +112,6 @@
   <script src="assets/js/notify.js"></script>
   <script src="assets/js/profile-card.js"></script>
   <script src="assets/js/brothers-page.js"></script>
+  <script src="assets/js/alumni-map.js"></script>
 </body>
 </html>

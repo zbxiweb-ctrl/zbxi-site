@@ -25,10 +25,14 @@
   function renderChip(user, profile) {
     var isAdmin = (user.email || '').toLowerCase() === Z.adminEmail && !!Z.adminEmail;
     var name = (profile && profile.full_name) ? profile.full_name : (user.email || '').split('@')[0];
+    // Profile photo in the bubble when one exists; falls back to the initial.
+    var avatar = (profile && profile.photo_url)
+      ? '<img src="' + esc(profile.photo_url) + '" alt="" />'
+      : esc(initial(name));
 
     el.innerHTML =
       '<button class="nav__chip" id="navChipBtn" aria-haspopup="true" aria-expanded="false">' +
-        '<span class="nav__avatar">' + esc(initial(name)) + '</span>' +
+        '<span class="nav__avatar">' + avatar + '</span>' +
         '<span class="nav__chip-name">' + esc(name) + '</span>' +
         (isAdmin ? '<span class="admin-badge">ADMIN</span>' : '') +
         '<span class="nav__caret">▾</span>' +

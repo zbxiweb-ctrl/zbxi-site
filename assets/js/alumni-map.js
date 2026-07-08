@@ -1,0 +1,113 @@
+/* Alumni map (members only). Waits for brothers-page.js to hydrate member
+   data (zbxi:hydrated), then lazily loads Leaflet + OpenStreetMap tiles and
+   pins each unique "current city" (geocoded via Nominatim, cached in
+   localStorage so each browser geocodes a city only once). */
+(function () {
+  'use strict';
+  var sec = document.getElementById('alumniMapSec');
+  var mapEl = document.getElementById('alumniMap');
+  if (!sec || !mapEl) return;
+
+  var GEO_KEY = 'zbxi_geo_v1';
+  var started = false;
+
+  function loadLeaflet() {
+    return new Promise(function (resolve, reject) {
+      if (window.L) return resolve();
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(css);
+      var js = document.createElement('script');
+      js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.onload = resolve;
+      js.onerror = function () { reject(new Error('map library failed to load')); };
+      document.head.appendChild(js);
+    });
+  }
+
+  function geoCache() {
+    try { return JSON.parse(localStorage.getItem(GEO_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function saveGeo(cache) {
+    try { localStorage.setItem(GEO_KEY, JSON.stringify(cache)); } catch (e) {}
+  }
+
+  // Geocode one city via Nominatim (throttled by the caller).
+  function geocode(city) {
+    return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(city))
+      .then(function (r) { return r.json(); })
+      .then(function (rows) {
+        if (rows && rows[0]) return { lat: parseFloat(rows[0].lat), lon: parseFloat(rows[0].lon) };
+        return null;
+      }).catch(function () { return null; });
+  }
+
+  function start(members) {
+    if (started) return;
+    started = true;
+    var withCity = members.filter(function (b) { return b.city; });
+    if (!withCity.length) return; // no data yet — section stays hidden
+
+    sec.style.display = '';
+    mapEl.innerHTML = '<p class="page-empty">Loading the map…</p>';
+
+    loadLeaflet().then(function () {
+      mapEl.innerHTML = '';
+      var map = L.map(mapEl, { scrollWheelZoom: false }).setView([41.5, -76], 5);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // group brothers per city
+      var byCity = {};
+      withCity.forEach(function (b) {
+        var key = b.city.trim().toLowerCase();
+        (byCity[key] = byCity[key] || { label: b.city.trim(), brothers: [] }).brothers.push(b);
+      });
+
+      var cache = geoCache();
+      var cities = Object.keys(byCity);
+      var bounds = [];
+      var i = 0;
+
+      function pin(key, pt) {
+        var g = byCity[key];
+        var m = L.marker([pt.lat, pt.lon]).addTo(map);
+        m.bindPopup('<b>' + g.label + '</b><br>' + g.brothers.map(function (b) {
+          return '<a href="#" data-mapbro="' + b.id + '">' + b.full_name + '</a>';
+        }).join('<br>'));
+        bounds.push([pt.lat, pt.lon]);
+        if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
+        else map.setView([pt.lat, pt.lon], 6);
+      }
+
+      function next() {
+        if (i >= cities.length) return;
+        var key = cities[i++];
+        if (cache[key]) { pin(key, cache[key]); next(); return; }
+        geocode(byCity[key].label).then(function (pt) {
+          if (pt) { cache[key] = pt; saveGeo(cache); pin(key, pt); }
+          setTimeout(next, 1100); // Nominatim usage policy: ≤1 req/sec
+        });
+      }
+      next();
+
+      // popup names open the shared profile card
+      mapEl.addEventListener('click', function (e) {
+        var a = e.target.closest('[data-mapbro]');
+        if (!a) return;
+        e.preventDefault();
+        var b = withCity.filter(function (x) { return x.id === a.dataset.mapbro; })[0];
+        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+      });
+    }).catch(function () {
+      mapEl.innerHTML = '<p class="page-empty">The map couldn\'t load right now.</p>';
+    });
+  }
+
+  document.addEventListener('zbxi:hydrated', function () {
+    if (window.ZBXI_MEMBERS) start(window.ZBXI_MEMBERS);
+  });
+  if (window.ZBXI_MEMBERS) start(window.ZBXI_MEMBERS);
+})();

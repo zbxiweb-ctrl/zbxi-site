@@ -858,3 +858,51 @@ p { margin: 0 0 1em; }
   .admin-tabgroup__label { width: 100%; }
   .welcome-step { flex-direction: column; }
 }
+
+/* ============================================================================
+   v6 — avatar photos, banner, RSVPs, spotlight, mentor finder, alumni map
+   ============================================================================ */
+
+/* ---------- Header avatar photo ---------- */
+.nav__avatar { overflow: hidden; }
+.nav__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* ---------- Announcement banner ---------- */
+.site-banner { position: fixed; top: 72px; left: 0; right: 0; z-index: 95;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-deep));
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.site-banner__inner { width: min(var(--wrap), 94vw); margin-inline: auto; display: flex; align-items: center; gap: 1rem; padding: .55rem 0; }
+.site-banner a, .site-banner span { color: var(--navy-deep); font-weight: 700; font-size: .92rem; flex: 1; }
+.site-banner a { text-decoration: underline; }
+.site-banner__x { border: 0; background: rgba(7,22,52,.15); color: var(--navy-deep); width: 26px; height: 26px; border-radius: 50%; cursor: pointer; flex: none; font-size: .8rem; }
+.site-banner__x:hover { background: rgba(7,22,52,.3); }
+
+/* ---------- Event RSVPs ---------- */
+.ev-rsvp { display: flex; align-items: center; gap: .7rem; margin-top: .8rem; flex-wrap: wrap; }
+.ev-rsvp__btn { border: 1.5px solid var(--navy-2); background: var(--white); color: var(--navy); border-radius: 999px; padding: .4rem 1rem; font-size: .84rem; font-weight: 700; cursor: pointer; transition: all .15s; }
+.ev-rsvp__btn:hover { border-color: var(--gold-deep); }
+.ev-rsvp__btn.on { background: var(--navy); color: var(--gold-bright); border-color: var(--navy); }
+.ev-rsvp b { color: var(--navy); }
+.ev-rsvp__who { color: var(--muted); font-size: .8rem; width: 100%; }
+
+/* ---------- Brother spotlight ---------- */
+.spot-card { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 2rem; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; max-width: 860px; margin-inline: auto; text-align: left; }
+.spot-card__photo { width: 100%; height: 100%; min-height: 300px; object-fit: cover; }
+.spot-card__body { padding: 2rem 2.2rem 2rem 0; }
+.spot-card__body h3 { color: var(--navy); font-size: 1.7rem; margin: 0 0 .2rem; }
+.spot-card__sub { color: var(--gold-deep); font-weight: 600; font-size: .9rem; margin: 0 0 .9rem; }
+.spot-card__quote { font-family: var(--serif); font-style: italic; color: var(--navy-2); font-size: 1.1rem; margin: 0 0 .8rem; }
+.spot-card__bio { color: var(--muted); font-size: .95rem; margin: 0 0 1.3rem; }
+@media (max-width: 720px) {
+  .spot-card { grid-template-columns: 1fr; }
+  .spot-card__photo { min-height: 240px; max-height: 320px; }
+  .spot-card__body { padding: 0 1.5rem 1.6rem; }
+}
+
+/* ---------- Mentor finder ---------- */
+.mentor-chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: .8rem 0 1.2rem; }
+
+/* ---------- Alumni map ---------- */
+.alumni-map { height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--cream-2); }
+.alumni-map .leaflet-popup-content a { color: var(--gold-deep); text-decoration: underline; display: inline-block; padding: .1rem 0; }
+@media (max-width: 620px) { .alumni-map { height: 300px; } }

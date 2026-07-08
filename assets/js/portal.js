@@ -392,7 +392,13 @@
 
       var chosen = ['email', 'phone', 'linkedin'].filter(function (k) { return f['pref_' + k].checked; });
       var file = f.photo.files[0];
-      var photoP = file ? Z.uploadPhoto(state.user.id, file) : Promise.resolve(pr.photo_url || null);
+      // Downscale headshots before upload (fast mobile loads, small storage).
+      var photoP = file
+        ? Z.downscale(file, 800).then(function (blob) {
+            blob.name = 'photo.jpg';
+            return Z.uploadPhoto(state.user.id, blob);
+          })
+        : Promise.resolve(pr.photo_url || null);
       photoP.then(function (url) {
         var row = {
           user_id: state.user.id,

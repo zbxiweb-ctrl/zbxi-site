@@ -262,8 +262,23 @@
 
   function renderEventsTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading events…</p>';
-    Z.eventsList().then(function (rows) {
+    Promise.all([Z.eventsList(), Z.getSetting('announcement')]).then(function (res) {
+      var rows = res[0];
+      var ann = res[1] || { text: '', link: '', active: false };
       state.events = rows;
+
+      var annCard =
+        '<div class="acct-block" style="margin-bottom:1.4rem"><h4>📣 Site announcement banner</h4>' +
+        '<p class="form-note" style="margin-top:0">Shows as a gold strip at the top of every page — great for rush week, reunion tickets, or big news.</p>' +
+        '<div class="form-row">' +
+          '<div class="field"><label>Message</label><input id="annText" maxlength="140" value="' + esc(ann.text || '') + '" placeholder="e.g. 🎟️ Reunion Weekend tickets are live — Oct 12-14"></div>' +
+          '<div class="field"><label>Link (optional)</label><input id="annLink" value="' + esc(ann.link || '') + '" placeholder="https://… or board.html"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
+          '<button class="btn btn--gold" id="annShow">' + (ann.active ? 'Update banner' : 'Show banner') + '</button>' +
+          (ann.active ? '<button class="btn btn--ghost" id="annHide">Hide banner</button>' : '') +
+        '</div>' +
+        '<p class="form-status" id="annStatus">' + (ann.active ? '● Banner is currently LIVE on the site.' : '') + '</p></div>';
       var list = rows.length ? rows.map(function (e) {
         var d = new Date(e.starts_at);
         var when = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
@@ -276,8 +291,22 @@
           '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
-      q.innerHTML = '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
+      q.innerHTML = annCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
       document.getElementById('evNew').onclick = function () { openEventEdit(null); };
+
+      function saveAnn(active) {
+        var text = document.getElementById('annText').value.trim();
+        var st = document.getElementById('annStatus');
+        if (active && !text) { st.className = 'form-status err'; st.textContent = 'Write a message first.'; return; }
+        Z.setSetting('announcement', { text: text, link: document.getElementById('annLink').value.trim(), active: active })
+          .then(function (r) {
+            if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+            renderList();
+          });
+      }
+      document.getElementById('annShow').onclick = function () { saveAnn(true); };
+      var annHide = document.getElementById('annHide');
+      if (annHide) annHide.onclick = function () { saveAnn(false); };
       q.querySelectorAll('[data-ev]').forEach(function (el) {
         var ev = state.events.filter(function (x) { return x.id === el.dataset.ev; })[0];
         each(el, '[data-evedit]', function () { openEventEdit(ev); });
@@ -712,6 +741,9 @@
         }).join('') + '</div>';
       }
 
+      html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
+        '<span style="color:#cdd6e6;font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>';
+
       html += '<h3 class="stat-h">Activity log</h3>';
       html += acts.length ? '<div class="stat-list">' + acts.map(function (a) {
         var d = new Date(a.created_at);
@@ -720,6 +752,26 @@
       }).join('') + '</div>' : '<p class="admin-empty">No activity recorded yet.</p>';
 
       q.innerHTML = html;
+
+      var exp = document.getElementById('exportCsv');
+      if (exp) exp.onclick = function () {
+        var all = state.data.pending.concat(state.data.verified, state.data.rejected);
+        var cols = ['full_name', 'pledge_class', 'grad_year', 'big', 'status', 'registered', 'role', 'role_term', 'major', 'city', 'occupation', 'hometown', 'email', 'phone', 'skills'];
+        var csvEsc = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+        var lines = [cols.join(',')].concat(all.map(function (b) {
+          return cols.map(function (c) {
+            if (c === 'big') return csvEsc(b.big_id && bigName(b.big_id) || '');
+            if (c === 'registered') return b.user_id ? 'yes' : 'no';
+            return csvEsc(b[c]);
+          }).join(',');
+        }));
+        var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'zbxi-roster-' + new Date().toISOString().slice(0, 10) + '.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      };
     }).catch(function (e2) {
       q.innerHTML = '<p class="form-status err">' + esc(e2.message || 'Could not load stats — run supabase/upgrade3.sql first.') + '</p>';
     });

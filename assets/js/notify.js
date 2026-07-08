@@ -98,4 +98,24 @@
   boot();
   Z.onAuth(function () { boot(); });
   window.addEventListener('focus', function () { if (wrap) fetchNotifs(); });
+
+  /* ---- site-wide announcement banner (admin-set via site_settings) ---- */
+  Z.getSetting('announcement').then(function (ann) {
+    if (!ann || !ann.active || !ann.text) return;
+    if (sessionStorage.getItem('zbxi_ann_dismissed') === String(ann.text)) return;
+    var bar = document.createElement('div');
+    bar.className = 'site-banner';
+    var inner = ann.link
+      ? '<a href="' + esc(ann.link) + '">' + esc(ann.text) + ' →</a>'
+      : '<span>' + esc(ann.text) + '</span>';
+    bar.innerHTML = '<div class="site-banner__inner">' + inner +
+      '<button class="site-banner__x" aria-label="Dismiss">✕</button></div>';
+    document.body.insertBefore(bar, document.body.firstChild);
+    document.body.classList.add('has-banner');
+    bar.querySelector('.site-banner__x').onclick = function () {
+      sessionStorage.setItem('zbxi_ann_dismissed', String(ann.text));
+      bar.remove();
+      document.body.classList.remove('has-banner');
+    };
+  }).catch(function () {});
 })();

@@ -98,7 +98,7 @@
       var f = fileIn.files[0];
       if (!f) return;
       btn.disabled = true; btn.textContent = 'Posting…';
-      downscale(f).then(function (blob) {
+      Z.downscale(f, 1600).then(function (blob) {
         return Z.galleryUpload(me.id, blob, 'jpg');
       }).then(function (path) {
         return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null });
@@ -111,28 +111,6 @@
         btn.disabled = false; btn.textContent = 'Post';
       });
     };
-  }
-
-  function downscale(file) {
-    return new Promise(function (resolve, reject) {
-      var img = new Image();
-      var url = URL.createObjectURL(file);
-      img.onload = function () {
-        URL.revokeObjectURL(url);
-        var MAX = 1600;
-        var w = img.naturalWidth, h = img.naturalHeight;
-        if (Math.max(w, h) > MAX) {
-          var k = MAX / Math.max(w, h);
-          w = Math.round(w * k); h = Math.round(h * k);
-        }
-        var cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        cv.getContext('2d').drawImage(img, 0, 0, w, h);
-        cv.toBlob(function (b) { b ? resolve(b) : reject(new Error('Could not process image')); }, 'image/jpeg', 0.86);
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Not a readable image')); };
-      img.src = url;
-    });
   }
 
   /* ---------- post modal ---------- */
