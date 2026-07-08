@@ -106,18 +106,19 @@
     </div>
   </section>
 
-  <!-- ============ RECOGNITION / BADGES ============ -->
-  <section class="section section--navy">
+  <!-- ============ RECOGNITION / AWARDS (admin-editable; see console → Awards) ============ -->
+  <section class="section section--navy" id="awards">
     <div class="wrap center">
       <p class="eyebrow">Recognized Excellence</p>
-      <h2 class="section-title">2024–25 Greek Excellence Badges</h2>
+      <h2 class="section-title" id="awardsTitle">2024–25 Greek Excellence Awards</h2>
       <hr class="rule" />
-      <p class="lede">Awarded by SUNY Geneseo for our conduct and contribution across four pillars of Greek life.</p>
-      <div class="badges">
-        <div class="badge"><div class="badge__seal">★</div><b>Community</b><span>Greek Community Badge</span></div>
-        <div class="badge"><div class="badge__seal">✚</div><b>Service</b><span>Service Badge</span></div>
-        <div class="badge"><div class="badge__seal">♛</div><b>Leadership</b><span>Leadership Excellence</span></div>
-        <div class="badge"><div class="badge__seal">⚖</div><b>Responsibility</b><span>Responsibility Badge</span></div>
+      <p class="lede">Awarded by SUNY Geneseo for our conduct and contribution across the pillars of Greek life.</p>
+      <div class="award-years" id="awardYears" style="display:none"></div>
+      <div class="medals" id="awardsGrid">
+        <div class="medal"><div class="medal__seal"><span>★</span></div><b>Greek Community Badge</b><span class="medal__pillar">Community</span></div>
+        <div class="medal"><div class="medal__seal"><span>✚</span></div><b>Service Badge</b><span class="medal__pillar">Service</span></div>
+        <div class="medal"><div class="medal__seal"><span>♛</span></div><b>Leadership Excellence</b><span class="medal__pillar">Leadership</span></div>
+        <div class="medal"><div class="medal__seal"><span>⚖</span></div><b>Responsibility Badge</b><span class="medal__pillar">Responsibility</span></div>
       </div>
     </div>
   </section>
@@ -157,7 +158,7 @@
         <p class="eyebrow">Our Lineage</p>
         <h2 class="section-title">The Family Tree</h2>
         <hr class="rule" />
-        <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, scroll to zoom, and tap a brother for his card.</p>
+        <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, pinch or scroll to zoom, and tap a brother for his card — or go fullscreen for the whole map.</p>
         <p class="tree-lockline" id="treeLockNote" style="display:none">🔒 <b>The real tree is members-only.</b> The demo below shows how it works — brothers <a href="#brothers-portal">sign in</a> to explore all ten family lines.</p>
       </div>
       <div class="tree-search" style="display:none">
@@ -171,17 +172,21 @@
         <span><i class="dot dot--chev">▸ n</i> Click to expand a branch</span>
       </div>
       <div class="tree-shell" style="margin-top:1rem">
-        <div class="tree-controls">
-          <button id="treeExpandAll" aria-label="Expand all" title="Expand all">⊞</button>
-          <button id="treeCollapseAll" aria-label="Collapse all" title="Collapse all">⊟</button>
-          <button id="treeZoomOut" aria-label="Zoom out">−</button>
-          <button id="treeReset" aria-label="Reset view">⟳</button>
-          <button id="treeZoomIn" aria-label="Zoom in">+</button>
-        </div>
         <div class="tree-viewport" id="treeViewport">
           <div class="tree-canvas" id="treeCanvas"></div>
+          <div class="tree-hintchip" id="treeHintChip">✋ Drag to move &nbsp;·&nbsp; 🤏 Pinch or scroll to zoom &nbsp;·&nbsp; Tap a brother for his card</div>
+          <div class="tree-controls">
+            <button id="treeExpandAll" aria-label="Expand all" title="Expand all family lines">⊞</button>
+            <button id="treeCollapseAll" aria-label="Back to all families" title="Back to all families">⊟</button>
+            <span class="tree-controls__sep" aria-hidden="true"></span>
+            <button id="treeZoomOut" aria-label="Zoom out" title="Zoom out">−</button>
+            <button id="treeReset" aria-label="Fit to view" title="Fit to view">⟳</button>
+            <button id="treeZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+            <span class="tree-controls__sep" aria-hidden="true"></span>
+            <button id="treeFull" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+          </div>
+          <button class="tree-fullclose" id="treeFullClose" aria-label="Close fullscreen">✕ Close</button>
         </div>
-        <p class="tree-hint">Drag to pan · Scroll to zoom · ▸ expands a family line · Click a brother for their card</p>
       </div>
     </div>
   </section>
@@ -244,14 +249,9 @@
         <p class="eyebrow">On Campus &amp; Beyond</p>
         <h2 class="section-title">Events &amp; Philanthropy</h2>
         <hr class="rule" />
-        <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — all in one place.</p>
+        <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — the brotherhood's schedule in one place.</p>
       </div>
-      <div class="ev-toggle" id="evToggle">
-        <button data-view="list" class="on">☰ List</button>
-        <button data-view="month">📅 Calendar</button>
-      </div>
-      <div class="ev-list" id="eventsList"><p class="page-empty">Loading events…</p></div>
-      <div id="eventsMonth" style="display:none"></div>
+      <div id="calWrap" style="margin-top:2.4rem"><p class="page-empty">Loading the calendar…</p></div>
     </div>
   </section>
 

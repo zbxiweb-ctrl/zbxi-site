@@ -63,6 +63,7 @@
       { id: 'eboard',     label: '👑 E-Board' },
       { id: 'committees', label: '👥 Committees' },
       { id: 'events',     label: 'Events'   },
+      { id: 'awards',     label: '🏅 Awards' },
       { id: 'suggest',    label: '💡 Suggestions <span class="tab-count" data-count="suggest" style="display:none"></span>' },
       { id: 'stats',      label: 'Stats'    },
       { id: 'guide',      label: '📖 Guide' }
@@ -160,6 +161,7 @@
     if (state.tab === 'eboard') return renderEboardTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
+    if (state.tab === 'awards') return renderAwardsTab(q);
     if (state.tab === 'suggest') return renderSuggestTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
@@ -302,7 +304,7 @@
         var past = d.getTime() < Date.now();
         return '<div class="admin-row' + (past ? ' admin-row--past' : '') + '" data-ev="' + e.id + '">' +
           '<div class="admin-row__ph">📅</div>' +
-          '<div class="admin-row__info"><b>' + esc(e.title) + (e.is_public ? '' : ' <span class="tab-count">members only</span>') + '</b>' +
+          '<div class="admin-row__info"><b>' + esc(e.title) + (e.all_day ? ' <span class="tab-count">all-day</span>' : '') + '</b>' +
             '<span>' + esc(when) + (e.location ? ' · ' + esc(e.location) : '') + ' · ' + esc(e.category) + '</span></div>' +
           '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
@@ -348,6 +350,7 @@
       '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
       '<h3>' + (e.id ? 'Edit event' : 'New event') + '</h3>' +
       '<div class="field"><label>Title *</label><input data-f="title" value="' + esc(e.title) + '"></div>' +
+      '<div class="field"><label class="pref-box"><input type="checkbox" data-f="all_day"' + (e.all_day ? ' checked' : '') + '> All-day event (no start/end time)</label></div>' +
       '<div class="form-row">' +
         '<div class="field"><label>Starts *</label><input data-f="starts_at" type="datetime-local" value="' + toLocalInput(e.starts_at) + '"></div>' +
         '<div class="field"><label>Ends</label><input data-f="ends_at" type="datetime-local" value="' + toLocalInput(e.ends_at) + '"></div>' +
@@ -359,7 +362,7 @@
         '</select></div>' +
       '</div>' +
       '<div class="field"><label>Description</label><textarea data-f="description">' + esc(e.description) + '</textarea></div>' +
-      '<div class="field"><label class="pref-box"><input type="checkbox" data-f="is_public"' + (e.is_public === false ? '' : ' checked') + '> Visible to the public (uncheck = members only)</label></div>' +
+      '<p class="form-note" style="margin:0 0 .8rem">🔒 The calendar is members-only — every event is visible to signed-in brothers.</p>' +
       '<button class="btn btn--navy" data-save style="width:100%">' + (e.id ? 'Save changes' : 'Create event') + '</button>' +
       '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
@@ -370,16 +373,97 @@
       var get = function (k) { return wrap.querySelector('[data-f="' + k + '"]'); };
       var row = {
         title: get('title').value.trim(),
+        all_day: get('all_day').checked,
         starts_at: get('starts_at').value ? new Date(get('starts_at').value).toISOString() : null,
         ends_at: get('ends_at').value ? new Date(get('ends_at').value).toISOString() : null,
         location: get('location').value.trim() || null,
         category: get('category').value,
-        description: get('description').value.trim() || null,
-        is_public: get('is_public').checked
+        description: get('description').value.trim() || null
       };
       if (!row.title || !row.starts_at) { st.className = 'form-status err'; st.textContent = 'Title and start time are required.'; return; }
       st.className = 'form-status'; st.textContent = 'Saving…';
       (e.id ? Z.eventUpdate(e.id, row) : Z.eventCreate(row)).then(function (r) {
+        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+        close(); renderList();
+      });
+    };
+  }
+
+  /* ---------------- awards tab (Greek Excellence showcase) ---------------- */
+  var PILLARS = [
+    { id: 'community',      ic: '★', label: 'Community' },
+    { id: 'service',        ic: '✚', label: 'Service' },
+    { id: 'leadership',     ic: '♛', label: 'Leadership' },
+    { id: 'responsibility', ic: '⚖', label: 'Responsibility' },
+    { id: 'other',          ic: '◆', label: 'Other' }
+  ];
+  function pillarOf(id) { return PILLARS.filter(function (p) { return p.id === id; })[0] || PILLARS[4]; }
+
+  function renderAwardsTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading awards…</p>';
+    Z.awardsList().then(function (rows) {
+      var years = [];
+      rows.forEach(function (a) { if (years.indexOf(a.year_label) === -1) years.push(a.year_label); });
+      var html = '<p class="admin-hint">These are the gold medallions in the <b>Recognized Excellence</b> section of the homepage. ' +
+        'When SUNY Geneseo hands out next year\'s Greek awards, add them here — the homepage updates itself and older years become a little archive.</p>' +
+        '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="awNew">+ Add award</button></p>';
+      if (!rows.length) {
+        html += '<p class="admin-empty">No awards saved yet — the homepage is showing its built-in 2024–25 badges. Add them here to take control.</p>';
+      } else {
+        years.forEach(function (y) {
+          html += '<h4 class="aw-year">' + esc(y) + '</h4>' + rows.filter(function (a) { return a.year_label === y; }).map(function (a) {
+            var p = pillarOf(a.pillar);
+            return '<div class="admin-row" data-aw="' + a.id + '">' +
+              '<div class="admin-row__ph">' + p.ic + '</div>' +
+              '<div class="admin-row__info"><b>' + esc(a.title) + '</b><span>' + p.label + (a.note ? ' · ' + esc(a.note) : '') + '</span></div>' +
+              '<div class="admin-row__act">' + btn('awedit', 'Edit', 'ghost') + btn('awdel', 'Delete', 'danger') + '</div></div>';
+          }).join('');
+        });
+      }
+      q.innerHTML = html;
+      document.getElementById('awNew').onclick = function () { openAwardEdit(null, years[0] || ''); };
+      q.querySelectorAll('[data-aw]').forEach(function (el) {
+        var a = rows.filter(function (x) { return x.id === el.dataset.aw; })[0];
+        each(el, '[data-awedit]', function () { openAwardEdit(a); });
+        each(el, '[data-awdel]', function () {
+          if (confirm('Delete "' + a.title + '" from the homepage?')) Z.awardDelete(a.id).then(function () { renderList(); });
+        });
+      });
+    });
+  }
+
+  function openAwardEdit(a, presetYear) {
+    a = a || {};
+    var wrap = document.createElement('div');
+    wrap.className = 'admin-modal open';
+    wrap.innerHTML =
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<h3>' + (a.id ? 'Edit award' : 'Add award') + '</h3>' +
+      '<div class="form-row">' +
+        '<div class="field"><label>Academic year *</label><input data-f="year_label" value="' + esc(a.year_label || presetYear || '') + '" placeholder="e.g. 2025–26"></div>' +
+        '<div class="field"><label>Pillar</label><select data-f="pillar">' +
+          PILLARS.map(function (p) { return '<option value="' + p.id + '"' + ((a.pillar || 'community') === p.id ? ' selected' : '') + '>' + p.ic + ' ' + p.label + '</option>'; }).join('') +
+        '</select></div>' +
+      '</div>' +
+      '<div class="field"><label>Award title *</label><input data-f="title" value="' + esc(a.title) + '" placeholder="e.g. Greek Community Badge"></div>' +
+      '<div class="field"><label>One-line note (optional)</label><input data-f="note" value="' + esc(a.note) + '" placeholder="e.g. Awarded for chapter-wide philanthropy hours"></div>' +
+      '<button class="btn btn--navy" data-save style="width:100%">' + (a.id ? 'Save changes' : 'Add to homepage') + '</button>' +
+      '<p class="form-status" data-status></p></div>';
+    document.body.appendChild(wrap);
+    function close() { wrap.remove(); }
+    wrap.addEventListener('click', function (ev2) { if (ev2.target === wrap || ev2.target.closest('[data-x]')) close(); });
+    wrap.querySelector('[data-save]').onclick = function () {
+      var st = wrap.querySelector('[data-status]');
+      var get = function (k) { return wrap.querySelector('[data-f="' + k + '"]'); };
+      var row = {
+        year_label: get('year_label').value.trim(),
+        pillar: get('pillar').value,
+        title: get('title').value.trim(),
+        note: get('note').value.trim() || null
+      };
+      if (!row.year_label || !row.title) { st.className = 'form-status err'; st.textContent = 'Year and title are required.'; return; }
+      st.className = 'form-status'; st.textContent = 'Saving…';
+      (a.id ? Z.awardUpdate(a.id, row) : Z.awardCreate(row)).then(function (r) {
         if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
         close(); renderList();
       });
@@ -973,7 +1057,12 @@
       sec('👥 Committees & private spaces', '<p><b>👥 Committees</b> tab: create a committee (e.g. Rush Committee), add brothers with accounts. Each committee gets a private space on the Board that only its members and you can see. Current officers are auto-kept in the “E-Board Officers” committee.</p>') +
       sec('🗳️ Post a poll', '<p>On the <b>Board</b> page (signed in as admin) → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>') +
       sec('💡 Answer suggestions', '<p>Brothers drop ideas in the Suggestion box on the Board page. They land in your <b>💡 Suggestions</b> tab (badge = new ones). Write a response — the brother gets a 🔔 — or archive it.</p>') +
-      sec('📅 Post events', '<p><b>Events</b> tab → <b>+ New event</b>. Public events show to everyone on the homepage; uncheck “visible to the public” for brothers-only events.</p>') +
+      sec('📅 Run the chapter calendar', '<p>The calendar is <b>members-only</b> — the public sees a sign-in card instead. Two ways to add events:</p><ul>' +
+        '<li><b>Right on the calendar</b> (easiest): sign in on the homepage, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
+        '<li><b>Here in the console</b>: <b>Events</b> tab → <b>+ New event</b> (same fields, plus the announcement banner editor).</li></ul>' +
+        '<p>Tick <b>All-day</b> for things without a start time. If you type a location, it becomes a map link automatically. Brothers RSVP with one tap so you know who\'s coming.</p>') +
+      sec('🏅 Update the Greek Excellence awards', '<p>The gold medallions on the homepage come from the <b>🏅 Awards</b> tab. When Geneseo announces next year\'s Greek awards: <b>+ Add award</b> → type the year (e.g. “2025–26”), pick the pillar, give it its title. The homepage switches to the newest year automatically and keeps older years as an archive you can flip through.</p>') +
+      sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, board thread, or reply (delete links appear for you on each item). Brothers can attach photos to threads and react 👍 ❤️ 😂 to replies; deleting a thread or reply removes its photo and reactions with it.</p>') +
       sec('📊 Check engagement', '<p><b>Stats</b> tab: registrations, pending queue, 30-day activity, recent sign-ins, and a full activity log.</p>') +
       sec('🔑 Account & handoff basics', '<ul>' +

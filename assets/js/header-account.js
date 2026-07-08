@@ -39,14 +39,27 @@
       '</button>' +
       '<div class="nav__menu" id="navMenu" role="menu">' +
         '<div class="nav__menu-head">' +
-          '<b>' + esc(name) + '</b><span>' + esc(user.email || '') + '</span>' +
-          (isAdmin ? '<span class="admin-badge">ADMIN</span>' : '') +
+          '<span class="nav__menu-av">' + avatar + '</span>' +
+          '<div class="nav__menu-id"><b>' + esc(name) + '</b><span>' + esc(user.email || '') + '</span>' +
+            (isAdmin ? '<span class="role-pill role-pill--admin">★ Admin</span>' : '<span class="role-pill">Brother of ΖΒΞ</span>') +
+          '</div>' +
         '</div>' +
-        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem">👤 My Profile</a>' +
-        (isAdmin ? '<a href="admin.html" role="menuitem" class="nav__menu-admin">⚙ Admin Console →</a>' : '') +
+        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> My Profile</a>' +
+        '<a href="gallery.html" role="menuitem"><i>🖼</i> Gallery</a>' +
+        '<a href="board.html" role="menuitem"><i>💬</i> Board</a>' +
+        (isAdmin ? '<a href="admin.html" role="menuitem" class="nav__menu-admin"><i>⚙</i> Admin Console <span class="nav__menu-badge" id="navPendingBadge" style="display:none"></span><em>→</em></a>' : '') +
         '<div class="nav__menu-divider"></div>' +
-        '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout">Sign out</button>' +
+        '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout"><i>↦</i> Sign out</button>' +
       '</div>';
+
+    // Admin: surface how many brothers are waiting for approval
+    if (isAdmin && Z.listPending) {
+      Z.listPending().then(function (rows) {
+        var n = (rows || []).length;
+        var b = document.getElementById('navPendingBadge');
+        if (b && n) { b.style.display = ''; b.textContent = n + ' pending'; }
+      }).catch(function () {});
+    }
 
     var btn = document.getElementById('navChipBtn');
     var menu = document.getElementById('navMenu');
@@ -86,4 +99,12 @@
 
   render();
   if (Z && Z.configured) Z.onAuth(function () { render(); });
+
+  /* ---- scrolled nav state: hairline + deeper shadow once the page moves ---- */
+  var nav = document.querySelector('.nav');
+  if (nav) {
+    var onScroll = function () { nav.classList.toggle('nav--scrolled', window.scrollY > 14); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
 })();

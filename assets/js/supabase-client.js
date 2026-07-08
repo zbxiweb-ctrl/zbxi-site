@@ -317,6 +317,16 @@
     eventUpdate: function (id, row) { return client.from('events').update(row).eq('id', id); },
     eventDelete: function (id) { return client.from('events').delete().eq('id', id); },
 
+    /* ---- awards (Greek Excellence showcase; public read, admin write) ---- */
+    awardsList: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('awards').select('*').order('year_label', { ascending: false }).order('sort')
+        .then(function (r) { return r.data || []; });
+    },
+    awardCreate: function (row) { return client.from('awards').insert(row); },
+    awardUpdate: function (id, row) { return client.from('awards').update(row).eq('id', id); },
+    awardDelete: function (id) { return client.from('awards').delete().eq('id', id); },
+
     /* ---- notifications ---- */
     notifList: function () {
       return client.from('notifications').select('*')

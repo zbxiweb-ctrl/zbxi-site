@@ -181,6 +181,7 @@
       var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
       var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
       var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
+      if (branchRoot && r.id === branchRoot) reg += ' tree-node--rootsel';
       var kidsN = descCount[r.id] || 0;
       var chev = '';
       if (r._kids.length) {
@@ -201,53 +202,162 @@
     wireNodes(L);
   }
 
-  /* ---------- pan + zoom ---------- */
+  /* ---------- pan + zoom (single-finger drag, two-finger pinch, wheel) ---------- */
   var tx = 0, ty = 0, scale = 1;
+  var MIN_S = 0.25, MAX_S = 2.2;
   function apply() { canvas.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'; }
+  function applySmooth() {
+    canvas.style.transition = 'transform .28s ease';
+    apply();
+    setTimeout(function () { canvas.style.transition = ''; }, 300);
+  }
   function fitToView(L) {
     var vw = viewport.clientWidth, vh = viewport.clientHeight;
     scale = Math.min(1, Math.min(vw / (L.width + 60), vh / (L.height + 40)) || 1);
-    scale = Math.max(0.25, scale);
+    scale = Math.max(MIN_S, scale);
     tx = (vw - L.width * scale) / 2;
     ty = 24;
-    apply();
+    applySmooth();
   }
 
-  var drag = null;
+  var pointers = {};      // pointerId -> {x,y}
+  var nPointers = 0;
+  var drag = null;        // {x,y} pan offset base, or {pend:true,...} awaiting drag threshold on a node
+  var pinch = null;       // start snapshot for two-finger gesture
+  var moved = false;      // true once a gesture actually moved -> suppress the trailing click
+  function pList() { return Object.keys(pointers).map(function (k) { return pointers[k]; }); }
+  function hideHint() {
+    var h = document.getElementById('treeHintChip');
+    if (h) h.classList.add('gone');
+  }
+
   viewport.addEventListener('pointerdown', function (e) {
-    if (e.target.closest('.tree-node')) return;
-    drag = { x: e.clientX - tx, y: e.clientY - ty };
-    viewport.setPointerCapture(e.pointerId);
-    viewport.classList.add('grabbing');
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    nPointers++;
+    moved = false;
+    hideHint();
+    if (nPointers === 2) {
+      // second finger down -> pinch takes over; both pointers are ours now
+      var pts = pList();
+      try { viewport.setPointerCapture(e.pointerId); } catch (err) {}
+      pinch = {
+        dist: Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)),
+        mid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+        scale: scale, tx: tx, ty: ty
+      };
+      drag = null;
+      moved = true;
+      viewport.classList.add('grabbing');
+    } else if (nPointers === 1) {
+      if (e.target.closest('.tree-node')) {
+        // starting on a card: wait for a 6px move before treating it as a pan,
+        // so a plain tap still opens the profile instantly
+        drag = { pend: true, sx: e.clientX, sy: e.clientY, x: e.clientX - tx, y: e.clientY - ty };
+      } else {
+        drag = { x: e.clientX - tx, y: e.clientY - ty };
+        try { viewport.setPointerCapture(e.pointerId); } catch (err) {}
+        viewport.classList.add('grabbing');
+      }
+    }
   });
+
   viewport.addEventListener('pointermove', function (e) {
+    if (!pointers[e.pointerId]) return;
+    pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pinch && nPointers >= 2) {
+      var pts = pList();
+      var dist = Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+      var mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      var rect = viewport.getBoundingClientRect();
+      var ns = Math.max(MIN_S, Math.min(MAX_S, pinch.scale * (dist / pinch.dist)));
+      // keep the world point that was under the start-midpoint pinned under the current midpoint
+      var wx = (pinch.mid.x - rect.left - pinch.tx) / pinch.scale;
+      var wy = (pinch.mid.y - rect.top - pinch.ty) / pinch.scale;
+      tx = (mid.x - rect.left) - wx * ns;
+      ty = (mid.y - rect.top) - wy * ns;
+      scale = ns;
+      apply();
+      return;
+    }
     if (!drag) return;
+    if (drag.pend) {
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+      drag = { x: drag.x, y: drag.y };
+      try { viewport.setPointerCapture(e.pointerId); } catch (err) {}
+      viewport.classList.add('grabbing');
+    }
+    moved = true;
     tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply();
   });
-  viewport.addEventListener('pointerup', function () { drag = null; viewport.classList.remove('grabbing'); });
-  viewport.addEventListener('pointercancel', function () { drag = null; viewport.classList.remove('grabbing'); });
+
+  function endPointer(e) {
+    if (pointers[e.pointerId]) { delete pointers[e.pointerId]; nPointers = Math.max(0, nPointers - 1); }
+    if (nPointers < 2) pinch = null;
+    if (nPointers === 1) {
+      // one finger left after a pinch: continue as a pan from its position
+      var p = pList()[0];
+      drag = { x: p.x - tx, y: p.y - ty };
+    } else if (nPointers === 0) {
+      drag = null;
+      viewport.classList.remove('grabbing');
+    }
+  }
+  viewport.addEventListener('pointerup', endPointer);
+  viewport.addEventListener('pointercancel', endPointer);
+
+  // a drag/pinch must never fire the card underneath it
+  viewport.addEventListener('click', function (e) {
+    if (moved) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+
   viewport.addEventListener('wheel', function (e) {
     e.preventDefault();
+    hideHint();
     var rect = viewport.getBoundingClientRect();
     var cx = e.clientX - rect.left, cy = e.clientY - rect.top;
     var factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    var ns = Math.max(0.25, Math.min(2.2, scale * factor));
+    var ns = Math.max(MIN_S, Math.min(MAX_S, scale * factor));
     tx = cx - (cx - tx) * (ns / scale);
     ty = cy - (cy - ty) * (ns / scale);
     scale = ns; apply();
   }, { passive: false });
 
-  function zoomBy(f) { scale = Math.max(0.25, Math.min(2.2, scale * f)); apply(); }
+  function zoomBy(f) {
+    var vw = viewport.clientWidth / 2, vh = viewport.clientHeight / 2;
+    var ns = Math.max(MIN_S, Math.min(MAX_S, scale * f));
+    tx = vw - (vw - tx) * (ns / scale);
+    ty = vh - (vh - ty) * (ns / scale);
+    scale = ns; applySmooth();
+  }
   var zi = document.getElementById('treeZoomIn'), zo = document.getElementById('treeZoomOut'), zr = document.getElementById('treeReset');
   var xa = document.getElementById('treeExpandAll'), ca = document.getElementById('treeCollapseAll');
-  if (zi) zi.addEventListener('click', function () { zoomBy(1.15); });
-  if (zo) zo.addEventListener('click', function () { zoomBy(1 / 1.15); });
+  if (zi) zi.addEventListener('click', function () { zoomBy(1.18); });
+  if (zo) zo.addEventListener('click', function () { zoomBy(1 / 1.18); });
   if (zr) zr.addEventListener('click', function () { if (currentLayout) fitToView(currentLayout); });
   if (xa) xa.addEventListener('click', function () {
     ALL.forEach(function (r) { if (r._kids.length) expanded[r.id] = true; });
     render(); fitToView(currentLayout);
   });
   if (ca) ca.addEventListener('click', function () { selectBranch(null); });
+
+  /* ---------- fullscreen explorer ---------- */
+  var shell = viewport.closest('.tree-shell');
+  var fullBtn = document.getElementById('treeFull');
+  var fullClose = document.getElementById('treeFullClose');
+  function setFull(on) {
+    if (!shell) return;
+    shell.classList.toggle('tree-shell--full', on);
+    document.body.classList.toggle('tree-lock', on);
+    if (fullBtn) { fullBtn.textContent = on ? '⛶' : '⛶'; fullBtn.title = on ? 'Exit fullscreen' : 'Fullscreen'; }
+    if (currentLayout) fitToView(currentLayout);
+  }
+  if (fullBtn) fullBtn.addEventListener('click', function () {
+    setFull(!shell.classList.contains('tree-shell--full'));
+  });
+  if (fullClose) fullClose.addEventListener('click', function () { setFull(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && shell && shell.classList.contains('tree-shell--full')) setFull(false);
+  });
 
   /* ---------- family (branch) selector: one line at a time ---------- */
   function expandSubtree(id) {
@@ -263,34 +373,20 @@
   }
 
   function syncFamilyChips() {
-    var bar = document.getElementById('treeFamilies');
-    if (!bar) return;
-    bar.querySelectorAll('.fam-chip').forEach(function (c) {
-      c.classList.toggle('on', (c.dataset.root || null) === (branchRoot || null) ||
-        (!branchRoot && !c.dataset.root));
-    });
     var sel = document.getElementById('famSelect');
     if (sel) sel.value = branchRoot || '';
   }
 
+  // One family selector for every screen size: a styled dropdown (the chip bar
+  // used to overflow on phones, and desktop now matches mobile for consistency).
   function renderFamilyBar() {
     var bar = document.getElementById('treeFamilies');
     if (!bar) return;
-    var rs = sortedRoots();
-    if (PLACEHOLDER_MODE || rs.length < 2) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
-    bar.innerHTML = '<button class="fam-chip on">All families</button>' +
-      rs.map(function (r) {
-        return '<button class="fam-chip" data-root="' + r.id + '" title="' + r.full_name + '">' +
-          lineLabel(r) + ' <i>' + (1 + (descCount[r.id] || 0)) + '</i></button>';
-      }).join('');
-    bar.querySelectorAll('.fam-chip').forEach(function (c) {
-      c.addEventListener('click', function () { selectBranch(c.dataset.root || null); });
-    });
-
-    // Mobile: the chips become a dropdown (CSS swaps which one is visible).
+    bar.style.display = 'none';
     var old = document.getElementById('famSelect');
     if (old) old.remove();
+    var rs = sortedRoots();
+    if (PLACEHOLDER_MODE || rs.length < 2) return;
     var sel = document.createElement('select');
     sel.id = 'famSelect';
     sel.className = 'fam-select';

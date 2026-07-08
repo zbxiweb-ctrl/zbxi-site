@@ -107,10 +107,10 @@
     if (sessionStorage.getItem('zbxi_ann_dismissed') === String(ann.text)) return;
     var bar = document.createElement('div');
     bar.className = 'site-banner';
-    var inner = ann.link
-      ? '<a href="' + esc(ann.link) + '">' + esc(ann.text) + ' →</a>'
-      : '<span>' + esc(ann.text) + '</span>';
-    bar.innerHTML = '<div class="site-banner__inner">' + inner +
+    bar.innerHTML = '<div class="site-banner__inner">' +
+      '<span class="site-banner__ic">📣</span>' +
+      '<span class="site-banner__msg">' + esc(ann.text) + '</span>' +
+      (ann.link ? '<a class="site-banner__go" href="' + esc(ann.link) + '">Open →</a>' : '') +
       '<button class="site-banner__x" aria-label="Dismiss">✕</button></div>';
     document.body.insertBefore(bar, document.body.firstChild);
     document.body.classList.add('has-banner');
