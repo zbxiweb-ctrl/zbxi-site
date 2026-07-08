@@ -59,10 +59,13 @@
       { id: 'rejected',  label: 'Rejected'  }
     ]},
     { label: 'Site', tabs: [
-      { id: 'tree',   label: '🌳 Tree'  },
-      { id: 'events', label: 'Events'   },
-      { id: 'stats',  label: 'Stats'    },
-      { id: 'guide',  label: '📖 Guide' }
+      { id: 'tree',       label: '🌳 Tree'  },
+      { id: 'eboard',     label: '👑 E-Board' },
+      { id: 'committees', label: '👥 Committees' },
+      { id: 'events',     label: 'Events'   },
+      { id: 'suggest',    label: '💡 Suggestions <span class="tab-count" data-count="suggest" style="display:none"></span>' },
+      { id: 'stats',      label: 'Stats'    },
+      { id: 'guide',      label: '📖 Guide' }
     ]}
   ];
 
@@ -135,6 +138,9 @@
           var c = document.querySelector('.tab-count[data-count="' + t + '"]');
           if (c) c.textContent = state.data[t].length;
         });
+        Z.suggestionsMine().then(function (rows) {
+          setSuggestBadge(rows.filter(function (s) { return s.status === 'new'; }).length);
+        }).catch(function () {});
         renderList();
       }).catch(function (e) {
         document.getElementById('q').innerHTML = '<p class="form-status err">' + esc(e.message || 'Load failed') + '</p>';
@@ -148,7 +154,10 @@
     var srchEl = document.getElementById('adminSearch');
     if (srchEl) srchEl.style.display = BRO_TABS.indexOf(state.tab) !== -1 ? '' : 'none';
     if (state.tab === 'tree') return renderTreeTab(q);
+    if (state.tab === 'eboard') return renderEboardTab(q);
+    if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
+    if (state.tab === 'suggest') return renderSuggestTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
     var rows = state.data[state.tab].slice();
@@ -227,8 +236,12 @@
       '<div class="form-row">' + fld('Full name', 'full_name', b.full_name) + fld('Pledge class', 'pledge_class', b.pledge_class) + '</div>' +
       '<div class="form-row">' + fld('Grad year', 'grad_year', b.grad_year, 'number') + fld('Major', 'major', b.major) + '</div>' +
       '<div class="form-row">' + fld('Hometown', 'hometown', b.hometown) + fld('Role (e-board)', 'role', b.role) + '</div>' +
-      '<div class="form-row">' + fld('Role term', 'role_term', b.role_term) + fld('City', 'city', b.city) + '</div>' +
-      '<div class="form-row">' + fld('Occupation', 'occupation', b.occupation) + fld('Skills', 'skills', b.skills) + '</div>' +
+      '<div class="form-row">' + fld('Role term', 'role_term', b.role_term) +
+        '<div class="field"><label>Board (for the title)</label><select data-f="role_scope">' +
+          ['', 'active', 'alumni', 'previous'].map(function (s) { return '<option value="' + s + '"' + ((b.role_scope || '') === s ? ' selected' : '') + '>' + (s || '— none —') + '</option>'; }).join('') +
+        '</select></div></div>' +
+      '<div class="form-row">' + fld('City', 'city', b.city) + fld('Occupation', 'occupation', b.occupation) + '</div>' +
+      fld('Skills', 'skills', b.skills) +
       '<div class="field"><label>Big brother</label><select data-f="big_id">' + opts + '</select></div>' +
       '<div class="field"><label>Quote</label><input data-f="quote" value="' + esc(b.quote) + '"></div>' +
       '<div class="field"><label>Status</label><select data-f="status">' +
@@ -667,6 +680,260 @@
       '<p style="color:var(--muted)">Every change is live on the public Family Tree the moment you save. You can\'t break anything that can\'t be fixed with the same buttons.</p></div>');
   }
 
+  /* ---------------- e-board tab ---------------- */
+  var SEAT_TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
+
+  function officersCommitteeId() {
+    return Z.committeesList().then(function (cs) {
+      var c = cs.filter(function (x) { return x.name === 'E-Board Officers'; })[0];
+      return c ? c.id : null;
+    });
+  }
+  function syncOfficer(brother, add) {
+    if (!brother || !brother.user_id) return Promise.resolve();
+    return officersCommitteeId().then(function (cid) {
+      if (!cid) return;
+      return add ? Z.committeeAdd(cid, brother.user_id) : Z.committeeRemove(cid, brother.user_id);
+    });
+  }
+
+  function renderEboardTab(q) {
+    function holder(scope, title) {
+      return state.data.verified.filter(function (b) { return b.role === title && b.role_scope === scope; })[0];
+    }
+    function panel(scope, label) {
+      return '<div class="acct-block"><h4>' + label + '</h4>' +
+        SEAT_TITLES.map(function (t) {
+          var h = holder(scope, t);
+          return '<div class="seat-row">' +
+            '<span class="seat-row__title">' + t + '</span>' +
+            (h ? '<span class="seat-row__who"><b>' + esc(h.full_name) + '</b><small>' + esc(h.role_term || '') + '</small></span>'
+               : '<span class="seat-row__who seat-row__who--empty">— open seat —</span>') +
+            '<span class="seat-row__act">' +
+              '<button class="btn btn--gold" data-assign="' + scope + '|' + t + '">' + (h ? 'Replace' : 'Assign') + '</button>' +
+              (h ? '<button class="btn btn--ghost" data-retire="' + h.id + '">Retire</button>' : '') +
+            '</span></div>';
+        }).join('') + '</div>';
+    }
+
+    var prev = state.data.verified.filter(function (b) { return b.role && b.role_scope === 'previous'; })
+      .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+
+    q.innerHTML =
+      '<p class="admin-hint">The Active and Alumni boards are separate. Assigning a seat moves the previous holder to “Previous officers” automatically, and current officers are kept in the private <b>E-Board Officers</b> committee on the Board.</p>' +
+      panel('active', '🎓 Active Brothers Executive Board') +
+      panel('alumni', '🌍 Alumni Brothers Executive Board') +
+      '<div class="acct-block acct-block--danger"><h4>🔄 Semester rollover</h4>' +
+        '<p class="form-note">Run once each semester: every current officer (both boards) moves to Previous officers and the Officers committee is emptied. Then assign the new boards above and add the new pledge class in 📋 Unclaimed.</p>' +
+        '<button class="btn btn--ghost-danger" id="rolloverBtn">Run semester rollover</button>' +
+        '<p class="form-status" id="rolloverStatus"></p></div>' +
+      '<h3 class="stat-h">Previous officers (' + prev.length + ')</h3>' +
+      (prev.length ? '<div class="stat-list">' + prev.map(function (b) {
+        return '<div class="stat-list__row"><b>' + esc(b.full_name) + '</b><span>' + esc(b.role) + (b.role_term ? ' · ' + esc(b.role_term) : '') + '</span>' +
+          '<em><a href="#" data-cleartitle="' + b.id + '">clear title</a></em></div>';
+      }).join('') + '</div>' : '<p class="admin-empty">No previous officers recorded yet.</p>');
+
+    q.querySelectorAll('[data-assign]').forEach(function (b) {
+      b.onclick = function () {
+        var parts = b.dataset.assign.split('|');
+        openAssignSeat(parts[0], parts[1]);
+      };
+    });
+    q.querySelectorAll('[data-retire]').forEach(function (b) {
+      b.onclick = function () {
+        var h = state.verifiedById[b.dataset.retire];
+        if (!h || !confirm('Retire ' + h.full_name + ' to Previous officers?')) return;
+        Z.updateBrother(h.id, { role_scope: 'previous' })
+          .then(function () { return syncOfficer(h, false); })
+          .then(loadAll);
+      };
+    });
+    q.querySelectorAll('[data-cleartitle]').forEach(function (a) {
+      a.onclick = function (e) {
+        e.preventDefault();
+        var h = state.verifiedById[a.dataset.cleartitle];
+        if (!h || !confirm('Remove the title from ' + h.full_name + ' entirely?')) return;
+        Z.updateBrother(h.id, { role: null, role_term: null, role_scope: null }).then(loadAll);
+      };
+    });
+    var ro = document.getElementById('rolloverBtn');
+    if (ro) ro.onclick = function () {
+      if (!confirm('Semester rollover: move ALL current officers (both boards) to Previous officers and empty the Officers committee?')) return;
+      var st = document.getElementById('rolloverStatus');
+      st.className = 'form-status'; st.textContent = 'Rolling over…';
+      var officers = state.data.verified.filter(function (b) { return b.role && (b.role_scope === 'active' || b.role_scope === 'alumni'); });
+      Promise.all(officers.map(function (b) { return Z.updateBrother(b.id, { role_scope: 'previous' }); }))
+        .then(function () { return officersCommitteeId(); })
+        .then(function (cid) {
+          if (!cid) return;
+          return Promise.all(officers.filter(function (b) { return b.user_id; })
+            .map(function (b) { return Z.committeeRemove(cid, b.user_id); }));
+        })
+        .then(loadAll);
+    };
+  }
+
+  function openAssignSeat(scope, title) {
+    var boardName = scope === 'active' ? 'Active' : 'Alumni';
+    var wrap = treeModal('Assign ' + title + ' — ' + boardName + ' E-Board',
+      '<div class="field"><label>Search brothers</label><input data-search placeholder="Start typing a name…"></div>' +
+      '<div class="field"><label>Brother</label><select data-f="who" size="6" style="height:auto"></select></div>' +
+      fld('Term', 'role_term', '') +
+      '<p class="form-note" data-preview></p>' +
+      '<button class="btn btn--navy" data-save style="width:100%">Assign seat</button>');
+    var sel = wrap.querySelector('[data-f="who"]');
+    function fill(qs) {
+      var opts = state.data.verified
+        .filter(function (v) { return !qs || v.full_name.toLowerCase().indexOf(qs) !== -1; })
+        .sort(function (x, y) { return x.full_name.localeCompare(y.full_name); }).slice(0, 200);
+      sel.innerHTML = opts.map(function (v) {
+        return '<option value="' + v.id + '">' + esc(v.full_name) + ' (' + esc(v.pledge_class || '') + ')</option>';
+      }).join('');
+    }
+    fill('');
+    wrap.querySelector('[data-search]').oninput = function (e) { fill(e.target.value.trim().toLowerCase()); };
+    wrap.querySelector('[data-save]').onclick = function () {
+      var pick = state.verifiedById[sel.value];
+      var st = wrap.querySelector('[data-status]');
+      if (!pick) { st.className = 'form-status err'; st.textContent = 'Pick a brother first.'; return; }
+      var term = wrap.querySelector('[data-f="role_term"]').value.trim() || null;
+      var displaced = state.data.verified.filter(function (b) {
+        return b.id !== pick.id && b.role === title && b.role_scope === scope;
+      })[0];
+      st.className = 'form-status'; st.textContent = 'Assigning…';
+      var steps = Promise.resolve();
+      if (displaced) {
+        steps = steps.then(function () { return Z.updateBrother(displaced.id, { role_scope: 'previous' }); })
+          .then(function () { return syncOfficer(displaced, false); });
+      }
+      steps.then(function () { return Z.updateBrother(pick.id, { role: title, role_term: term, role_scope: scope }); })
+        .then(function () { return syncOfficer(pick, true); })
+        .then(function () { wrap.close(); loadAll(); });
+    };
+  }
+
+  /* ---------------- committees tab ---------------- */
+  function renderCommitteesTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading committees…</p>';
+    Z.committeesList().then(function (cs) {
+      q.innerHTML =
+        '<p class="admin-hint">Each committee gets a private space on the Board that only its members (and you) can see. Only brothers with accounts can be added.</p>' +
+        '<div class="admin-addbar"><button class="btn btn--gold" id="commNew">+ New committee</button></div>' +
+        (cs.length ? cs.map(function (c) {
+          return '<div class="admin-row" data-comm="' + c.id + '">' +
+            '<div class="admin-row__ph">👥</div>' +
+            '<div class="admin-row__info"><b>' + esc(c.name) + '</b><span data-commcount>…</span></div>' +
+            '<div class="admin-row__act">' +
+              '<button class="btn btn--ghost" data-members>Members</button>' +
+              '<button class="btn btn--danger" data-del>Delete</button>' +
+            '</div></div>';
+        }).join('') : '<p class="admin-empty">No committees yet.</p>');
+
+      document.getElementById('commNew').onclick = function () {
+        var name = prompt('Committee name (e.g. Rush Committee):');
+        if (!name || !name.trim()) return;
+        Z.committeeCreate(name.trim()).then(function () { renderList(); });
+      };
+      q.querySelectorAll('[data-comm]').forEach(function (el) {
+        var c = cs.filter(function (x) { return x.id === el.dataset.comm; })[0];
+        Z.committeeMembers(c.id).then(function (ids) {
+          el.querySelector('[data-commcount]').textContent = ids.length + ' member' + (ids.length === 1 ? '' : 's');
+        });
+        each(el, '[data-members]', function () { openCommitteeMembers(c); });
+        each(el, '[data-del]', function () {
+          if (confirm('Delete "' + c.name + '"? Its private threads are deleted too.')) Z.committeeDelete(c.id).then(function () { renderList(); });
+        });
+      });
+    });
+  }
+
+  function openCommitteeMembers(c) {
+    var registered = state.data.verified.filter(function (b) { return b.user_id; });
+    var wrap = treeModal('👥 ' + esc(c.name),
+      '<div class="field"><label>Add a brother (accounts only)</label><select data-f="add">' +
+        '<option value="">— pick a brother —</option>' +
+        registered.sort(function (x, y) { return x.full_name.localeCompare(y.full_name); })
+          .map(function (b) { return '<option value="' + b.user_id + '">' + esc(b.full_name) + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div data-list><p class="form-note">Loading members…</p></div>');
+    function refreshList() {
+      Z.committeeMembers(c.id).then(function (ids) {
+        var box = wrap.querySelector('[data-list]');
+        if (!ids.length) { box.innerHTML = '<p class="form-note">No members yet.</p>'; return; }
+        box.innerHTML = ids.map(function (uid) {
+          var b = registered.filter(function (x) { return x.user_id === uid; })[0];
+          return '<div class="stat-list__row"><b>' + esc(b ? b.full_name : 'Unknown account') + '</b>' +
+            '<em><a href="#" data-rm="' + uid + '">remove</a></em></div>';
+        }).join('');
+        box.querySelectorAll('[data-rm]').forEach(function (a) {
+          a.onclick = function (e) {
+            e.preventDefault();
+            Z.committeeRemove(c.id, a.dataset.rm).then(refreshList);
+          };
+        });
+      });
+    }
+    refreshList();
+    wrap.querySelector('[data-f="add"]').onchange = function (e) {
+      if (!e.target.value) return;
+      Z.committeeAdd(c.id, e.target.value).then(function () { e.target.value = ''; refreshList(); });
+    };
+  }
+
+  /* ---------------- suggestions tab ---------------- */
+  function renderSuggestTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading suggestions…</p>';
+    Z.suggestionsMine().then(function (rows) { // RLS: admin sees all
+      var groups = { new: [], responded: [], archived: [] };
+      rows.forEach(function (s) { (groups[s.status] || groups.new).push(s); });
+      setSuggestBadge(groups.new.length);
+
+      function block(title, list, showActions) {
+        if (!list.length) return '';
+        return '<h3 class="stat-h">' + title + ' (' + list.length + ')</h3>' + list.map(function (s) {
+          var d = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          return '<div class="sug-card" data-sug="' + s.id + '">' +
+            '<p class="sug-card__body">' + esc(s.body) + '</p>' +
+            '<small>' + d + '</small>' +
+            (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +
+            (showActions
+              ? '<div class="sug-card__act">' +
+                  '<textarea data-resp placeholder="Write a response — the brother gets a 🔔"></textarea>' +
+                  '<div><button class="btn btn--gold" data-send>Respond</button>' +
+                  '<button class="btn btn--ghost" data-arch>Archive</button></div></div>'
+              : '<div class="sug-card__act"><button class="btn btn--ghost" data-arch>Archive</button></div>') +
+          '</div>';
+        }).join('');
+      }
+
+      q.innerHTML = (rows.length
+        ? block('🆕 New', groups.new, true) + block('✅ Responded', groups.responded, false) + block('📦 Archived', groups.archived, false)
+        : '<p class="admin-empty">No suggestions yet — brothers submit them from the Board page.</p>');
+
+      q.querySelectorAll('[data-sug]').forEach(function (el) {
+        var id = el.dataset.sug;
+        var send = el.querySelector('[data-send]');
+        if (send) send.onclick = function () {
+          var resp = el.querySelector('[data-resp]').value.trim();
+          if (!resp) return;
+          Z.suggestionUpdate(id, { response: resp, status: 'responded', responded_at: new Date().toISOString() })
+            .then(function () { renderList(); });
+        };
+        var arch = el.querySelector('[data-arch]');
+        if (arch) arch.onclick = function () {
+          Z.suggestionUpdate(id, { status: 'archived' }).then(function () { renderList(); });
+        };
+      });
+    });
+  }
+
+  function setSuggestBadge(n) {
+    var b = document.querySelector('.tab-count[data-count="suggest"]');
+    if (!b) return;
+    b.style.display = n ? '' : 'none';
+    b.textContent = n;
+  }
+
   /* ---------------- guide tab ---------------- */
   function renderGuideTab(q) {
     function sec(title, body) {
@@ -695,7 +962,10 @@
       sec('🔁 Someone shows on the wrong page (Active vs Alumni)', '<p>The site decides automatically from the <b>grad year</b>: future grad year = Active page, past = Alumni page. The green/gray chip next to each name here shows the current result.</p>' +
         '<ol><li>Find the brother (search box) → <b>Edit</b>.</li><li>Fix the <b>Grad year</b> → Save. The chip and the public pages flip immediately.</li></ol>') +
       sec('🌳 Fix the family tree (wrong big, typo, add/remove someone)', '<p>Use the dedicated <b>🌳 Tree</b> tab — it shows each family line as an indented list with plain buttons on every brother: <b>Rename</b>, <b>Change big</b>, <b>+ Little</b>, <b>Remove</b>. There\'s a “❓ How do I use this?” button inside with step-by-step instructions. Every save is live on the public tree instantly.</p>') +
-      sec('👑 Assign e-board titles', '<p>Edit the brother → set <b>Role</b> (President, Vice-President, Treasurer or Secretary — spelled exactly) and <b>Role term</b> (e.g. “Fall 2026”). He appears in the E-Board section of the Active or Alumni page.</p>') +
+      sec('👑 Run the executive boards', '<p>Use the <b>👑 E-Board</b> tab. The Active and Alumni boards are separate — each has four seats. Click <b>Assign</b> on a seat, pick the brother and term; the previous holder automatically moves to “Previous officers” (shown on the Alumni page with title filters). Each semester, hit <b>🔄 Semester rollover</b> once, then assign the new boards.</p>') +
+      sec('👥 Committees & private spaces', '<p><b>👥 Committees</b> tab: create a committee (e.g. Rush Committee), add brothers with accounts. Each committee gets a private space on the Board that only its members and you can see. Current officers are auto-kept in the “E-Board Officers” committee.</p>') +
+      sec('🗳️ Post a poll', '<p>On the <b>Board</b> page (signed in as admin) → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>') +
+      sec('💡 Answer suggestions', '<p>Brothers drop ideas in the Suggestion box on the Board page. They land in your <b>💡 Suggestions</b> tab (badge = new ones). Write a response — the brother gets a 🔔 — or archive it.</p>') +
       sec('📅 Post events', '<p><b>Events</b> tab → <b>+ New event</b>. Public events show to everyone on the homepage; uncheck “visible to the public” for brothers-only events.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, or board thread (delete links appear for you on each item).</p>') +
       sec('📊 Check engagement', '<p><b>Stats</b> tab: registrations, pending queue, 30-day activity, recent sign-ins, and a full activity log.</p>') +
@@ -740,6 +1010,32 @@
           return '<div class="stat-list__row"><b>' + esc(u.name || u.email) + '</b><span>' + esc(u.email) + '</span><em>' + d + '</em></div>';
         }).join('') + '</div>';
       }
+
+      /* ---- monthly engagement digest ---- */
+      var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+      var nameOf = function (uid) {
+        var all = state.data.pending.concat(state.data.verified, state.data.rejected);
+        var b = all.filter(function (x) { return x.user_id === uid; })[0];
+        return b ? b.full_name : null;
+      };
+      var monthActs = acts.filter(function (a) { return new Date(a.created_at).getTime() >= monthStart; });
+      var byActor = {};
+      monthActs.forEach(function (a) { if (a.user_id) byActor[a.user_id] = (byActor[a.user_id] || 0) + 1; });
+      var top = Object.keys(byActor).map(function (uid) { return { name: nameOf(uid) || 'A brother', n: byActor[uid] }; })
+        .sort(function (a, z) { return z.n - a.n; }).slice(0, 5);
+      var newRegs = monthActs.filter(function (a) { return a.action === 'profile_created'; }).length;
+      var nudge = state.data.verified.filter(function (b) { return b.user_id && (!b.photo_url || !b.bio); });
+
+      html += '<h3 class="stat-h">📬 This month</h3><div class="stat-list">' +
+        '<div class="stat-list__row"><b>New profiles</b><span>' + newRegs + ' created this month</span><em></em></div>' +
+        '<div class="stat-list__row"><b>Top contributors</b><span>' +
+          (top.length ? top.map(function (t) { return esc(t.name) + ' (' + t.n + ')'; }).join(' · ') : 'no member activity yet') +
+        '</span><em></em></div>' +
+        '<div class="stat-list__row"><b>Worth a nudge</b><span>' +
+          (nudge.length ? nudge.length + ' registered brothers missing a photo or bio: ' +
+            esc(nudge.slice(0, 4).map(function (b) { return b.full_name; }).join(', ')) + (nudge.length > 4 ? '…' : '')
+          : 'every registered profile is complete 🎉') +
+        '</span><em></em></div></div>';
 
       html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
         '<span style="color:#cdd6e6;font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>';

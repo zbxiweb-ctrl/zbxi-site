@@ -37,7 +37,10 @@
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
   var me = null, dir = {}, threads = [], counts = {}, isAdmin = false;
+  var MY_COMMITTEES = [], POLLS = [], VOTES = [];
   var state = { cat: 'chapter', thread: null };
+
+  function committeeOf(id) { return MY_COMMITTEES.filter(function (c) { return c.id === id; })[0]; }
 
   function author(uid) { return dir[uid] || { full_name: 'A brother', photo_url: null }; }
   function chip(uid) {
@@ -48,16 +51,34 @@
   }
 
   /* ---------- thread list ---------- */
+  function isCommitteeCat() { return !!committeeOf(state.cat); }
+
+  function tabsHtml() {
+    var std = CATS.map(function (c) {
+      var n = threads.filter(function (t) { return t.category === c.id && !t.committee_id; }).length;
+      return '<button class="' + (state.cat === c.id ? 'on' : '') + '" data-cat="' + c.id + '">' + c.label + (n ? ' <i>' + n + '</i>' : '') + '</button>';
+    }).join('');
+    var polls = '<button class="' + (state.cat === 'polls' ? 'on' : '') + '" data-cat="polls">🗳️ Polls' +
+      (POLLS.length ? ' <i>' + POLLS.length + '</i>' : '') + '</button>';
+    var comms = MY_COMMITTEES.map(function (c) {
+      var n = threads.filter(function (t) { return t.committee_id === c.id; }).length;
+      return '<button class="board-tabs__comm ' + (state.cat === c.id ? 'on' : '') + '" data-cat="' + c.id + '">🔒 ' + esc(c.name) + (n ? ' <i>' + n + '</i>' : '') + '</button>';
+    }).join('');
+    return '<div class="board-tabs">' + std + polls + comms + '</div>';
+  }
+
   function renderList() {
     state.thread = null;
-    var mine = threads.filter(function (t) { return t.category === state.cat; });
-    var tabs = '<div class="board-tabs">' + CATS.map(function (c) {
-      var n = threads.filter(function (t) { return t.category === c.id; }).length;
-      return '<button class="' + (state.cat === c.id ? 'on' : '') + '" data-cat="' + c.id + '">' + c.label + (n ? ' <i>' + n + '</i>' : '') + '</button>';
-    }).join('') + '</div>';
+    if (state.cat === 'polls') return renderPolls();
+    var comm = committeeOf(state.cat);
+    var mine = comm
+      ? threads.filter(function (t) { return t.committee_id === state.cat; })
+      : threads.filter(function (t) { return t.category === state.cat && !t.committee_id; });
 
     var newBtn = '<p style="margin:1rem 0"><button class="btn btn--gold" id="newThread">+ New ' +
       (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button></p>';
+
+    var commNote = comm ? '<p class="admin-hint" style="background:var(--white);color:var(--muted)">🔒 <b style="color:var(--navy)">' + esc(comm.name) + '</b> — only committee members (and the webmaster) can see this space.</p>' : '';
 
     var list = mine.length ? '<div class="thread-list">' + mine.map(function (t) {
       var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
@@ -66,13 +87,12 @@
           '<span>' + chip(t.author_user) + ' · ' + when(t.created_at) + '</span></div>' +
         '<div class="thread-row__count">' + (counts[t.id] || 0) + ' ↩</div></button>';
     }).join('') + '</div>'
-      : '<p class="page-empty">No threads in ' + catLabel(state.cat) + ' yet — start the first one.</p>';
+      : '<p class="page-empty">No threads ' + (comm ? 'in ' + esc(comm.name) : 'in ' + catLabel(state.cat)) + ' yet — start the first one.</p>';
 
-    root.innerHTML = tabs + newBtn + list;
-    root.querySelectorAll('[data-cat]').forEach(function (b) {
-      b.onclick = function () { state.cat = b.dataset.cat; renderList(); };
-    });
-    document.getElementById('newThread').onclick = renderCompose;
+    root.innerHTML = suggestionCard() + tabsHtml() + commNote + newBtn + list;
+    wireTabs();
+    wireSuggestionCard();
+    document.getElementById('newThread').onclick = function () { renderCompose(); };
     root.querySelectorAll('[data-thr]').forEach(function (b) {
       b.addEventListener('click', function () {
         var t = threads.filter(function (x) { return x.id === b.dataset.thr; })[0];
@@ -81,20 +101,156 @@
     });
   }
 
-  /* ---------- new thread ---------- */
-  function renderCompose() {
-    var isOpp = state.cat === 'opportunities';
+  function wireTabs() {
+    root.querySelectorAll('[data-cat]').forEach(function (b) {
+      b.onclick = function () { state.cat = b.dataset.cat; renderList(); };
+    });
+  }
+
+  /* ---------- polls ---------- */
+  function renderPolls() {
+    var newBtn = isAdmin ? '<p style="margin:1rem 0"><button class="btn btn--gold" id="newPoll">+ New poll</button></p>' : '';
+    var cards = POLLS.length ? POLLS.map(function (p) {
+      var opts = p.options || [];
+      var votes = VOTES.filter(function (v) { return v.poll_id === p.id; });
+      var myVote = me && (votes.filter(function (v) { return v.user_id === me.id; })[0] || null);
+      var total = votes.length;
+      var closed = p.closes_at && new Date(p.closes_at).getTime() < Date.now();
+      var bars = opts.map(function (o, i) {
+        var n = votes.filter(function (v) { return v.choice === i; }).length;
+        var pct = total ? Math.round(100 * n / total) : 0;
+        var mine = myVote && myVote.choice === i;
+        return '<button class="poll-opt' + (mine ? ' on' : '') + (closed ? ' closed' : '') + '" data-vote="' + i + '">' +
+          '<span class="poll-opt__bar" style="width:' + pct + '%"></span>' +
+          '<span class="poll-opt__label">' + (mine ? '✓ ' : '') + esc(o) + '</span>' +
+          '<span class="poll-opt__n">' + n + ' · ' + pct + '%</span></button>';
+      }).join('');
+      var meta = total + ' vote' + (total === 1 ? '' : 's') +
+        (p.closes_at ? (closed ? ' · <b class="poll-closed">CLOSED</b>' : ' · closes ' + new Date(p.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : '');
+      return '<div class="poll-card" data-poll="' + p.id + '">' +
+        '<h3>' + esc(p.question) + '</h3>' + bars +
+        '<div class="poll-card__meta">' + meta +
+        (isAdmin ? ' · <a href="#" data-delpoll>delete</a>' : '') + '</div></div>';
+    }).join('') : '<p class="page-empty">No polls yet' + (isAdmin ? ' — post the first one.' : '.') + '</p>';
+
+    root.innerHTML = suggestionCard() + tabsHtml() + newBtn + cards;
+    wireTabs();
+    wireSuggestionCard();
+
+    var np = document.getElementById('newPoll');
+    if (np) np.onclick = renderNewPoll;
+    root.querySelectorAll('[data-poll]').forEach(function (card) {
+      var p = POLLS.filter(function (x) { return x.id === card.dataset.poll; })[0];
+      var closed = p.closes_at && new Date(p.closes_at).getTime() < Date.now();
+      if (!closed) card.querySelectorAll('[data-vote]').forEach(function (b) {
+        b.onclick = function () {
+          var choice = parseInt(b.dataset.vote, 10);
+          VOTES = VOTES.filter(function (v) { return !(v.poll_id === p.id && v.user_id === me.id); });
+          VOTES.push({ poll_id: p.id, user_id: me.id, choice: choice });
+          renderPolls();
+          Z.pollVote(p.id, me.id, choice).then(function (r) {
+            if (r.error) Z.pollVotesAll().then(function (vs) { VOTES = vs; renderPolls(); });
+          });
+        };
+      });
+      var del = card.querySelector('[data-delpoll]');
+      if (del) del.onclick = function (e) {
+        e.preventDefault();
+        if (!confirm('Delete this poll and its votes?')) return;
+        Z.pollDelete(p.id).then(function () {
+          POLLS = POLLS.filter(function (x) { return x.id !== p.id; });
+          renderPolls();
+        });
+      };
+    });
+  }
+
+  function renderNewPoll() {
     root.innerHTML =
-      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + catLabel(state.cat) + '</button>' +
+      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
+      '<div class="card-form" style="max-width:640px">' +
+        '<h3 style="color:var(--navy);font-family:var(--display)">New poll</h3>' +
+        '<form id="pollForm" novalidate>' +
+          '<div class="field"><label>Question *</label><input name="question" required maxlength="200"></div>' +
+          '<div class="field"><label>Options (one per line, 2–6) *</label><textarea name="opts" rows="5" required></textarea></div>' +
+          '<div class="field"><label>Closes (optional)</label><input name="closes" type="datetime-local"></div>' +
+          '<button class="btn btn--navy" type="submit" style="width:100%">Post poll</button>' +
+          '<p class="form-status" id="pollStatus"></p>' +
+        '</form></div>';
+    document.getElementById('backList').onclick = renderList;
+    document.getElementById('pollForm').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, st = document.getElementById('pollStatus');
+      var opts = f.opts.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!f.question.value.trim() || opts.length < 2 || opts.length > 6) {
+        st.className = 'form-status err'; st.textContent = 'Question plus 2–6 options required.'; return;
+      }
+      Z.pollCreate({
+        question: f.question.value.trim(),
+        options: opts,
+        closes_at: f.closes.value ? new Date(f.closes.value).toISOString() : null
+      }).then(function (r) {
+        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+        Z.pollsList().then(function (ps) { POLLS = ps; renderList(); });
+      });
+    };
+  }
+
+  /* ---------- suggestion box ---------- */
+  var MY_SUGS = null;
+  function suggestionCard() {
+    return '<div class="sug-box" id="sugBox">' +
+      '<div class="sug-box__head"><b>💡 Suggestion box</b><span>Tell the webmaster what would make this site better.</span></div>' +
+      '<form class="gcompose" id="sugForm"><input id="sugInput" placeholder="Your idea…" maxlength="600"><button class="btn btn--navy" type="submit">Send</button></form>' +
+      '<div id="sugMine"></div></div>';
+  }
+  function wireSuggestionCard() {
+    var form = document.getElementById('sugForm');
+    if (!form) return;
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var input = document.getElementById('sugInput');
+      var body = input.value.trim();
+      if (!body) return;
+      input.value = '';
+      Z.suggestionCreate(me.id, body).then(function () { MY_SUGS = null; renderMySugs(); });
+    };
+    renderMySugs();
+  }
+  function renderMySugs() {
+    var box = document.getElementById('sugMine');
+    if (!box) return;
+    var draw = function () {
+      if (!MY_SUGS.length) { box.innerHTML = ''; return; }
+      box.innerHTML = MY_SUGS.slice(0, 3).map(function (s) {
+        var chipHtml = s.status === 'responded' ? '<i class="schip schip--active">answered</i>' : '<i class="schip">' + esc(s.status) + '</i>';
+        return '<div class="sug-mine">' + chipHtml + ' <span>' + esc(s.body) + '</span>' +
+          (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') + '</div>';
+      }).join('');
+    };
+    if (MY_SUGS) return draw();
+    Z.suggestionsMine().then(function (rows) {
+      MY_SUGS = isAdmin ? [] : rows; // the admin manages these in the console instead
+      draw();
+    });
+  }
+
+  /* ---------- new thread ---------- */
+  function renderCompose(prefillTitle) {
+    var comm = committeeOf(state.cat);
+    var isOpp = state.cat === 'opportunities';
+    var where = comm ? esc(comm.name) : catLabel(state.cat);
+    root.innerHTML =
+      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
       '<div class="card-form" style="max-width:680px">' +
-        '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (isOpp ? 'opportunity' : 'thread') + ' · ' + catLabel(state.cat) + '</h3>' +
+        '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (isOpp ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
         '<form id="thrForm" novalidate>' +
           (isOpp
             ? '<div class="field"><label>Type</label><select name="tag">' +
                 '<option value="offering">💼 Offering — I have a job/internship/referral</option>' +
                 '<option value="seeking">🔎 Seeking — I\'m looking for opportunities</option></select></div>'
             : '') +
-          '<div class="field"><label>Title *</label><input name="title" required maxlength="140"></div>' +
+          '<div class="field"><label>Title *</label><input name="title" required maxlength="140" value="' + esc(prefillTitle || '') + '"></div>' +
           '<div class="field"><label>Post *</label><textarea name="body" required></textarea></div>' +
           '<button class="btn btn--navy" type="submit" style="width:100%">Post thread</button>' +
           '<p class="form-status" id="thrStatus" role="status"></p>' +
@@ -107,7 +263,8 @@
       f.querySelector('button').disabled = true;
       Z.threadCreate({
         author_user: me.id,
-        category: state.cat,
+        category: comm ? 'chapter' : state.cat,
+        committee_id: comm ? comm.id : null,
         tag: isOpp ? f.tag.value : null,
         title: f.title.value.trim(),
         body: f.body.value.trim()
@@ -124,10 +281,13 @@
   /* ---------- thread view ---------- */
   function renderThread(t) {
     state.thread = t;
+    state.cat = t.committee_id || t.category;
+    var comm = committeeOf(t.committee_id);
+    var backLabel = comm ? esc(comm.name) : catLabel(t.category);
     var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
     var canDel = me && (t.author_user === me.id || isAdmin);
     root.innerHTML =
-      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + catLabel(t.category) + '</button>' +
+      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + backLabel + '</button>' +
       '<article class="thread-view">' +
         '<h2>' + tag + esc(t.title) + '</h2>' +
         '<div class="thread-view__meta">' + chip(t.author_user) + ' · ' + when(t.created_at) +
@@ -182,8 +342,12 @@
 
   /* ---------- data ---------- */
   function loadAll() {
-    return Promise.all([Z.threadsList(), Z.replyCounts(), Z.memberDirectory()]).then(function (res) {
+    return Promise.all([Z.threadsList(), Z.replyCounts(), Z.memberDirectory(),
+                        Z.committeesList().catch(function () { return []; }),
+                        Z.pollsList().catch(function () { return []; }),
+                        Z.pollVotesAll().catch(function () { return []; })]).then(function (res) {
       threads = res[0]; counts = res[1]; dir = res[2] || {};
+      MY_COMMITTEES = res[3]; POLLS = res[4]; VOTES = res[5];
     });
   }
 
@@ -194,10 +358,20 @@
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
       loadAll().then(function () {
-        // Deep link: board.html#thread=<id> (from notifications)
+        // Deep links: #thread=<id> (notifications), #compose=<title> (class pages)
         var m = location.hash.match(/thread=([\w-]+)/);
         var t = m && threads.filter(function (x) { return x.id === m[1]; })[0];
-        if (t) { state.cat = t.category; renderThread(t); } else renderList();
+        if (t) { renderThread(t); return; }
+        var cm = location.hash.match(/compose=([^&]+)/);
+        if (cm) {
+          var title = decodeURIComponent(cm[1]);
+          var existing = threads.filter(function (x) { return x.title === title; })[0];
+          if (existing) { renderThread(existing); return; }
+          state.cat = 'social';
+          renderCompose(title);
+          return;
+        }
+        renderList();
       }).catch(function () {
         root.innerHTML = '<p class="page-empty">Could not load the board. Try refreshing.</p>';
       });

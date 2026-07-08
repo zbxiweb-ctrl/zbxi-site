@@ -48,7 +48,11 @@
     var m = document.getElementById('brotherModal');
     if (!m || !b) return;
     m.querySelector('[data-f=name]').textContent = b.full_name;
-    m.querySelector('[data-f=sub]').textContent = [b.pledge_class, titleOf(b)].filter(Boolean).join(' · ');
+    // The pledge class links to that class's reunion page.
+    var subBits = [];
+    if (b.pledge_class) subBits.push('<a class="bm-class" href="class.html?c=' + encodeURIComponent(b.pledge_class) + '">' + esc(b.pledge_class) + '</a>');
+    if (titleOf(b)) subBits.push(esc(titleOf(b)));
+    m.querySelector('[data-f=sub]').innerHTML = subBits.join(' · ');
     var av = m.querySelector('[data-f=avatar]');
     av.innerHTML = ''; av.textContent = initials(b.full_name);
     if (b.photo_url) av.innerHTML = '<img src="' + esc(b.photo_url) + '" alt="">';
@@ -82,7 +86,10 @@
       window.ZBXI.brotherDetail(b.id).then(function (d) {
         d = d || {};
         body.innerHTML = lineage + detailHtml(d);
-        m.querySelector('[data-f=sub]').textContent = [d.pledge_class, titleOf(d)].filter(Boolean).join(' · ');
+        var dBits = [];
+        if (d.pledge_class) dBits.push('<a class="bm-class" href="class.html?c=' + encodeURIComponent(d.pledge_class) + '">' + esc(d.pledge_class) + '</a>');
+        if (titleOf(d)) dBits.push(esc(titleOf(d)));
+        m.querySelector('[data-f=sub]').innerHTML = dBits.join(' · ');
         if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
       }).catch(function () { body.innerHTML = lineage + '<p class="bm__loading">Could not load details.</p>'; });
     });

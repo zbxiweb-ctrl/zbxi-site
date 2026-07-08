@@ -242,6 +242,53 @@
       return client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
     },
 
+    /* ---- polls (admin-created; members vote) ---- */
+    pollsList: function () {
+      return client.from('polls').select('*').order('created_at', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    pollVotesAll: function () {
+      return client.from('poll_votes').select('poll_id, user_id, choice')
+        .then(function (r) { return r.data || []; });
+    },
+    pollVote: function (pollId, userId, choice) {
+      return client.from('poll_votes').upsert({ poll_id: pollId, user_id: userId, choice: choice });
+    },
+    pollCreate: function (row) { return client.from('polls').insert(row); },
+    pollDelete: function (id) { return client.from('polls').delete().eq('id', id); },
+
+    /* ---- suggestion dropbox ---- */
+    suggestionsMine: function () {
+      return client.from('suggestions').select('*').order('created_at', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    suggestionCreate: function (userId, body) {
+      return client.from('suggestions').insert({ author_user: userId, body: body });
+    },
+    suggestionUpdate: function (id, fields) {
+      return client.from('suggestions').update(fields).eq('id', id);
+    },
+    suggestionDelete: function (id) { return client.from('suggestions').delete().eq('id', id); },
+
+    /* ---- committees (RLS: members see their own; admin sees all) ---- */
+    committeesList: function () {
+      return client.from('committees').select('*').order('name')
+        .then(function (r) { return r.data || []; });
+    },
+    committeeMembers: function (cid) {
+      return client.from('committee_members').select('user_id').eq('committee_id', cid)
+        .then(function (r) { return (r.data || []).map(function (x) { return x.user_id; }); });
+    },
+    committeeCreate: function (name) { return client.from('committees').insert({ name: name }).select().single(); },
+    committeeRename: function (id, name) { return client.from('committees').update({ name: name }).eq('id', id); },
+    committeeDelete: function (id) { return client.from('committees').delete().eq('id', id); },
+    committeeAdd: function (cid, userId) {
+      return client.from('committee_members').upsert({ committee_id: cid, user_id: userId });
+    },
+    committeeRemove: function (cid, userId) {
+      return client.from('committee_members').delete().eq('committee_id', cid).eq('user_id', userId);
+    },
+
     /* ---- events ---- */
     eventsList: function () {
       if (!configured) return Promise.resolve([]);

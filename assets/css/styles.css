@@ -906,3 +906,51 @@ p { margin: 0 0 1em; }
 .alumni-map { height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--cream-2); }
 .alumni-map .leaflet-popup-content a { color: var(--gold-deep); text-decoration: underline; display: inline-block; padding: .1rem 0; }
 @media (max-width: 620px) { .alumni-map { height: 300px; } }
+
+/* ============================================================================
+   v7 — e-board manager, polls, committees, suggestions, class pages
+   ============================================================================ */
+
+/* ---------- Admin: e-board seats ---------- */
+.seat-row { display: flex; align-items: center; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid #f2ede0; flex-wrap: wrap; }
+.seat-row:last-child { border-bottom: 0; }
+.seat-row__title { flex: none; width: 120px; font-weight: 700; color: var(--gold-deep); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; }
+.seat-row__who { flex: 1; min-width: 140px; }
+.seat-row__who b { color: var(--navy); }
+.seat-row__who small { display: block; color: var(--muted); font-size: .78rem; }
+.seat-row__who--empty { color: var(--muted); font-style: italic; }
+.seat-row__act { display: flex; gap: .4rem; flex: none; }
+.seat-row__act .btn { padding: .4rem .9rem; font-size: .8rem; }
+
+/* ---------- Polls ---------- */
+.poll-card { background: var(--white); border-radius: var(--radius); padding: 1.4rem 1.6rem; box-shadow: var(--shadow-sm); margin-bottom: 1.1rem; max-width: 680px; }
+.poll-card h3 { color: var(--navy); font-family: var(--display); margin: 0 0 .9rem; font-size: 1.25rem; }
+.poll-opt { position: relative; display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left; border: 1.5px solid #e3ddcc; background: var(--cream); border-radius: 10px; padding: .65rem .9rem; margin-bottom: .5rem; cursor: pointer; overflow: hidden; transition: border-color .15s; }
+.poll-opt:hover { border-color: var(--gold-deep); }
+.poll-opt.on { border-color: var(--gold); }
+.poll-opt.closed { cursor: default; }
+.poll-opt__bar { position: absolute; inset: 0 auto 0 0; background: rgba(200,162,75,.18); transition: width .3s; }
+.poll-opt__label { position: relative; font-weight: 600; color: var(--navy); font-size: .92rem; }
+.poll-opt__n { position: relative; color: var(--muted); font-size: .8rem; flex: none; }
+.poll-card__meta { color: var(--muted); font-size: .82rem; margin-top: .5rem; }
+.poll-card__meta a { color: #b54848; text-decoration: underline; }
+.poll-closed { color: #b54848; }
+
+/* ---------- Board: committee tabs + suggestion box ---------- */
+.board-tabs__comm { border-style: dashed !important; }
+.sug-box { background: var(--white); border: 1.5px dashed #cfc7b2; border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1.4rem; }
+.sug-box__head b { color: var(--navy); font-family: var(--display); }
+.sug-box__head span { color: var(--muted); font-size: .85rem; margin-left: .5rem; }
+.sug-box .gcompose { border-top: 0; padding-top: .7rem; }
+.sug-mine { padding: .45rem 0 0; font-size: .86rem; color: var(--ink); }
+.sug-mine .schip { margin: 0 .4rem 0 0; }
+.sug-card { background: var(--white); border-radius: 12px; padding: 1rem 1.2rem; box-shadow: var(--shadow-sm); margin-bottom: .8rem; }
+.sug-card__body { color: var(--ink); margin: 0 0 .2rem; }
+.sug-card small { color: var(--muted); font-size: .76rem; }
+.sug-card__resp { background: var(--cream-2); border-left: 3px solid var(--gold); border-radius: 6px; padding: .5rem .8rem; margin: .6rem 0 0; color: var(--ink); font-size: .88rem; }
+.sug-card__act { margin-top: .7rem; }
+.sug-card__act textarea { width: 100%; min-height: 60px; border: 1.5px solid #d8d2c2; border-radius: 8px; padding: .6rem .8rem; font-family: var(--sans); font-size: .88rem; margin-bottom: .5rem; }
+.sug-card__act .btn { padding: .45rem 1rem; font-size: .82rem; margin-right: .4rem; }
+
+/* ---------- Class page + modal class link ---------- */
+.bm-class { color: var(--gold-deep); text-decoration: underline; }

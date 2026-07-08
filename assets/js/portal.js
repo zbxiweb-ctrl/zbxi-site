@@ -329,6 +329,10 @@
     var titleOpts = ['<option value="">— no title —</option>'].concat(
       TITLES.map(function (t) { return '<option value="' + t + '"' + (pr.role === t ? ' selected' : '') + '>' + t + '</option>'; })
     ).join('');
+    var SCOPES = [['active', 'Active E-Board (current)'], ['alumni', 'Alumni E-Board (current)'], ['previous', 'Previous officer']];
+    var scopeOpts = ['<option value="">— which board? —</option>'].concat(
+      SCOPES.map(function (s) { return '<option value="' + s[0] + '"' + (pr.role_scope === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; })
+    ).join('');
     var prefs = String(pr.contact_prefs || '').split(',');
     function prefBox(key, label) {
       return '<label class="pref-box"><input type="checkbox" name="pref_' + key + '"' +
@@ -351,6 +355,8 @@
             '<div class="field"><label>Chapter title (if held)</label><select name="role">' + titleOpts + '</select></div>' +
             fld('Title term', 'role_term', pr.role_term, 'text', false, 'e.g. Fall 2019') +
           '</div>' +
+          '<div class="field"><label>Which board is the title on?</label><select name="role_scope">' + scopeOpts + '</select>' +
+            '<p class="form-note" style="margin:.35rem 0 0">Current officers pick Active or Alumni E-Board; past officers pick Previous.</p></div>' +
           '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Where you are now</legend>' +
@@ -408,6 +414,7 @@
           major: f.major.value.trim() || null,
           role: f.role.value || null,
           role_term: f.role_term.value.trim() || null,
+          role_scope: f.role.value ? (f.role_scope.value || 'previous') : null,
           big_id: f.big_id.value || null,
           city: f.city.value.trim() || null,
           occupation: f.occupation.value.trim() || null,

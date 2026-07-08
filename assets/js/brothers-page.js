@@ -123,21 +123,29 @@
     if (fj) fj.onchange = function () { F.occupation = fj.value; renderGrid(); };
   }
 
+  var ALL_ROWS = [];
   function wire(scope) {
     scope.querySelectorAll('[data-id]').forEach(function (el) {
       el.addEventListener('click', function () {
-        var b = LIST.filter(function (x) { return x.id === el.dataset.id; })[0] ||
-                EB.filter(function (x) { return x.id === el.dataset.id; })[0];
+        var b = ALL_ROWS.filter(function (x) { return x.id === el.dataset.id; })[0];
         if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
       });
     });
   }
 
+  function ebOrder(a, z) {
+    return EBOARD_ORDER.indexOf(String(a.role).toLowerCase().replace(/\s+/g, '-')) -
+           EBOARD_ORDER.indexOf(String(z.role).toLowerCase().replace(/\s+/g, '-'));
+  }
+
   function render(all) {
+    ALL_ROWS = all;
     var side = all.filter(MODE === 'active' ? isActive : function (b) { return !isActive(b); });
-    EB = side.filter(function (b) { return b.role && EBOARD_ORDER.indexOf(String(b.role).toLowerCase().replace(/\s+/g, '-')) !== -1; })
-      .sort(function (a, z) { return EBOARD_ORDER.indexOf(a.role.toLowerCase().replace(/\s+/g, '-')) - EBOARD_ORDER.indexOf(z.role.toLowerCase().replace(/\s+/g, '-')); });
+    // E-boards are assigned explicitly (role + which board), independent of
+    // the grad-year page split — the Active and Alumni boards are separate.
+    EB = all.filter(function (b) { return b.role && b.role_scope === MODE; }).sort(ebOrder);
     LIST = side.slice().sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+    if (MODE === 'alumni') renderPrevBoard(all);
 
     if (countEl) countEl.textContent = side.length + (MODE === 'active' ? ' active brothers' : ' alumni brothers');
     if (eboardEl) {
@@ -147,6 +155,31 @@
     }
     renderFilters();
     renderGrid();
+  }
+
+  /* ---- Previous Executive Board (alumni page): filterable by title ---- */
+  var PREV_F = '';
+  function renderPrevBoard(all) {
+    var sec = document.getElementById('prevEboard');
+    var grid = document.getElementById('prevGrid');
+    var chipsEl = document.getElementById('prevChips');
+    if (!sec || !grid) return;
+    var prev = all.filter(function (b) { return b.role && b.role_scope === 'previous'; })
+      .sort(function (a, z) { return ebOrder(a, z) || String(z.role_term || '').localeCompare(String(a.role_term || '')); });
+    if (!prev.length) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    var TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
+    chipsEl.innerHTML = '<button class="fam-chip' + (!PREV_F ? ' on' : '') + '" data-pf="">All titles</button>' +
+      TITLES.map(function (t) {
+        return '<button class="fam-chip' + (PREV_F === t ? ' on' : '') + '" data-pf="' + t + '">' + t + '</button>';
+      }).join('');
+    chipsEl.querySelectorAll('[data-pf]').forEach(function (c) {
+      c.onclick = function () { PREV_F = c.dataset.pf; renderPrevBoard(all); };
+    });
+    var rows = PREV_F ? prev.filter(function (b) { return b.role === PREV_F; }) : prev;
+    grid.innerHTML = rows.length ? rows.map(eboardCard).join('')
+      : '<p class="page-empty">No previous ' + esc(PREV_F) + 's recorded yet.</p>';
+    wire(grid);
   }
 
   if (searchEl) searchEl.addEventListener('input', function () { F.q = searchEl.value.trim().toLowerCase(); renderGrid(); });
