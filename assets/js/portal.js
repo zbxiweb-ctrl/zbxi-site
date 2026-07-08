@@ -24,10 +24,15 @@
     Z.getUser().then(function (u) {
       state.user = u;
       if (!u) return renderAuth();
-      return Promise.all([Z.myProfile(u.id), Z.listVerified()]).then(function (res) {
+      return Promise.all([Z.myProfile(u.id), Z.listVerifiedDetail()]).then(function (res) {
         state.profile = res[0]; state.verified = res[1] || [];
         renderProfileArea();
       });
+    }).catch(function (err) {
+      h('<div class="portal-msg"><div class="portal-msg__ic">⚠️</div>' +
+        '<h3>Something went wrong</h3>' +
+        '<p>We couldn\'t load the members area. Please refresh the page and try again.</p>' +
+        '<p class="form-note">' + esc(err && err.message ? err.message : 'Unknown error') + '</p></div>');
     });
   }
 

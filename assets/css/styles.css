@@ -140,11 +140,25 @@ p { margin: 0 0 1em; }
   position: relative; min-height: 100svh; display: flex; align-items: center;
   color: var(--cream); padding-top: 72px; overflow: hidden;
 }
-.hero__bg { position: absolute; inset: 0; z-index: 0; }
-.hero__bg img { width: 100%; height: 100%; object-fit: cover; }
+/* Smooth navy field with a warm gold accent glow — the crest floats on top. */
+.hero__bg {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(120% 90% at 50% 8%, rgba(200,162,75,.22), rgba(200,162,75,0) 55%),
+    radial-gradient(140% 120% at 50% 120%, var(--navy-2), rgba(18,48,95,0) 60%),
+    linear-gradient(180deg, var(--navy-deep) 0%, var(--navy) 55%, var(--navy-deep) 100%);
+}
+/* Real crest, white background already cut out — floats as the hero centerpiece. */
+.hero__crest-bg {
+  position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%);
+  width: min(720px, 86vw); height: min(720px, 78svh);
+  background: url('../img/crest-cut.png') no-repeat center center;
+  background-size: contain;
+  opacity: .9;
+  filter: drop-shadow(0 18px 46px rgba(0,0,0,.5));
+}
 /* No dark gradient overlay on the image (workspace rule) — legibility via text-shadow. */
 .hero__inner { position: relative; z-index: 2; text-align: center; width: min(var(--wrap), 92vw); margin-inline: auto; }
-.hero__crest { height: 132px; width: auto; margin: 0 auto 1.4rem; filter: drop-shadow(0 8px 20px rgba(0,0,0,.45)); }
 .hero__kicker { font-size: .82rem; letter-spacing: .35em; text-transform: uppercase; color: var(--gold-bright); font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
 .hero h1 { font-size: clamp(2.8rem, 7vw, 5.4rem); margin: .5rem 0; text-shadow: 0 4px 24px rgba(0,0,0,.75), 0 1px 3px rgba(0,0,0,.9); }
 .hero h1 .amp { color: var(--gold-bright); }
@@ -394,7 +408,6 @@ p { margin: 0 0 1em; }
 /* ---------- Real crest badge (white-background art framed on navy) ---------- */
 .crest-badge { background: #fff; border-radius: 10px; padding: 3px; border: 1.5px solid var(--gold); box-shadow: 0 5px 16px rgba(0,0,0,.3); object-fit: contain; }
 .brand .crest-badge { border-radius: 8px; padding: 2px; }
-.hero__crest.crest-badge { padding: 10px; border-radius: 18px; }
 .footer .crest-badge { border-radius: 14px; padding: 6px; }
 
 /* ---------- Responsive ---------- */
