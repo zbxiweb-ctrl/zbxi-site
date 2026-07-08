@@ -35,7 +35,9 @@
     Z.getUser().then(function (u) {
       state.user = u;
       if (!u) return renderAuth();
-      return Promise.all([Z.myProfile(u.id), Z.listVerifiedDetail()]).then(function (res) {
+      // Big-brother options come from the PUBLIC roster view so the dropdown
+      // works before approval too (details stay members-only).
+      return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
         state.profile = res[0]; state.verified = res[1] || [];
         renderProfileArea();
       });
@@ -238,7 +240,8 @@
     pr = pr || {};
     var host = target || card.querySelector('#portalTabBody') || card;
     var bigOpts = ['<option value="">— none / I\'m a founder —</option>'].concat(
-      state.verified.filter(function (b) { return b.user_id !== state.user.id; })
+      state.verified.filter(function (b) { return b.id !== pr.id; })
+        .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); })
         .map(function (b) { return '<option value="' + b.id + '"' + (pr.big_id === b.id ? ' selected' : '') + '>' + esc(b.full_name) + ' (' + esc(b.pledge_class || '') + ')</option>'; })
     ).join('');
     var titleOpts = ['<option value="">— no title —</option>'].concat(
