@@ -1,47 +1,88 @@
-/* "Are you a brother?" portal: sign up / log in / password reset / claim /
-   create + edit profile / account settings. Renders into #portalCard.
-   Uses window.ZBXI (supabase-client.js). */
+/* Brother portal. The homepage section (#portalCard) is a slim sign-in/up
+   card beside a member-perks grid (#portalPerks). All profile management
+   (claim / create / edit / account settings) lives in the #profileModal
+   popup, opened from the header "My Profile" menu or auto-opened for new
+   sign-ins with no profile yet. Uses window.ZBXI (supabase-client.js). */
 (function () {
   'use strict';
   var card = document.getElementById('portalCard');
   if (!card) return;
+  var perksEl = document.getElementById('portalPerks');
+  var modal = document.getElementById('profileModal');
+  var mbody = modal ? modal.querySelector('[data-pm-body]') : null;
   var Z = window.ZBXI;
 
-  function h(html) { card.innerHTML = html; }
+  // Where the current render goes: the section card (auth) or the popup body.
+  var target = card;
+  function h(html) { target.innerHTML = html; }
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
 
   if (!Z || !Z.configured) {
-    h('<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +
+    card.innerHTML = '<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +
       '<h3>Brother sign-in is coming soon</h3>' +
       '<p>The members area is being set up. Soon you\'ll be able to create your brother profile and join the family tree here.</p>' +
-      '<p class="form-note">Are you a prospective member instead? <a href="#contact">Reach out here</a>.</p></div>');
+      '<p class="form-note">Are you a prospective member instead? <a href="#contact">Reach out here</a>.</p></div>';
     return;
   }
 
-  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false };
+  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false };
+
+  /* ---------------- popup plumbing ---------------- */
+  function openModal() {
+    if (!modal) return;
+    modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+    if (state.recovery) return renderNewPassword();
+    if (state.loaded && state.user) renderProfileArea();
+    else { target = mbody; h('<p class="form-note">Loading…</p>'); state.wantModal = true; }
+  }
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+  }
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal || e.target.closest('[data-pm-close]')) closeModal();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+  }
+  // Header menu + other pages open the popup via this hook (or #my-profile hash).
+  window.ZBXIPortal = { open: function () { state.wantModal = true; openModal(); } };
+  if (location.hash === '#my-profile') state.wantModal = true;
 
   // Password-recovery links land back here with a recovery session.
   Z.onAuth(function (event) {
     if (event === 'PASSWORD_RECOVERY') {
       state.recovery = true;
-      renderNewPassword();
-      var sec = document.getElementById('brothers-portal');
-      if (sec) sec.scrollIntoView();
+      openModal();
     }
   });
 
+  /* ---------------- main refresh ---------------- */
   function refresh() {
-    if (state.recovery) return; // stay on the set-new-password screen
     Z.getUser().then(function (u) {
       state.user = u;
-      if (!u) return renderAuth();
-      // Big-brother options come from the PUBLIC roster view so the dropdown
-      // works before approval too (details stay members-only).
+      if (!u) {
+        state.loaded = true; state.profile = null;
+        closeModal();
+        renderPerks(false);
+        return renderAuth();
+      }
       return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
         state.profile = res[0]; state.verified = res[1] || [];
-        renderProfileArea();
+        state.loaded = true;
+        renderMemberCard();
+        renderPerks(true);
+        // First sign-in with no profile: walk them straight into onboarding.
+        if (!state.profile && !sessionStorage.getItem('zbxi_onboard_shown')) {
+          sessionStorage.setItem('zbxi_onboard_shown', '1');
+          state.wantModal = true;
+        }
+        if (state.wantModal || (modal && modal.classList.contains('open'))) {
+          openModal(); renderProfileArea();
+        }
       });
     }).catch(function (err) {
+      target = card;
       h('<div class="portal-msg"><div class="portal-msg__ic">⚠️</div>' +
         '<h3>Something went wrong</h3>' +
         '<p>We couldn\'t load the members area. Please refresh the page and try again.</p>' +
@@ -49,8 +90,44 @@
     });
   }
 
-  /* ---- signed out: sign up / log in / forgot password ---- */
+  /* ---------------- member perks grid ---------------- */
+  var PERKS = [
+    { ic: '📸', title: 'Private Gallery', blurb: 'Photos from the house & reunions — likes and comments, brothers only.', href: 'gallery.html' },
+    { ic: '💬', title: 'Brothers Board', blurb: 'Chapter business, advice, and the job & referral board.', href: 'board.html' },
+    { ic: '🌳', title: 'Family Tree', blurb: 'Claim your name and see full profiles across every line.', href: '#family-tree' },
+    { ic: '🔎', title: 'Member Directory', blurb: 'Find brothers by class year, city, and profession.', href: 'alumni.html' }
+  ];
+  function renderPerks(signedIn) {
+    if (!perksEl) return;
+    perksEl.innerHTML = '<h3 class="perks__title">' + (signedIn ? 'Your member access' : 'What brothers get') + '</h3>' +
+      PERKS.map(function (p) {
+        return signedIn
+          ? '<a class="perk perk--live" href="' + p.href + '"><span class="perk__ic">' + p.ic + '</span><span><b>' + p.title + '</b><small>' + p.blurb + '</small></span><i>→</i></a>'
+          : '<div class="perk"><span class="perk__ic">' + p.ic + '</span><span><b>' + p.title + '</b><small>' + p.blurb + '</small></span><i>🔒</i></div>';
+      }).join('');
+  }
+
+  /* ---------------- signed-in section card ---------------- */
+  function renderMemberCard() {
+    target = card;
+    var pr = state.profile;
+    var name = (pr && pr.full_name) || (state.user.email || '').split('@')[0];
+    var line = !pr ? 'Your account isn\'t linked to a profile yet — set that up now.'
+      : pr.status === 'pending' ? 'Your profile is awaiting verification by chapter leadership.'
+      : 'You\'re live on the site. Manage your profile anytime.';
+    h('<div class="portal-msg" style="padding:1.4rem 0">' +
+      '<div class="portal-msg__ic">🤝</div>' +
+      '<h3>Welcome back, ' + esc(name.split(' ')[0]) + '</h3>' +
+      '<p>' + line + '</p>' +
+      '<button class="btn btn--navy" id="openProfileBtn" style="width:100%">' + (!pr ? 'Set up my profile' : '👤 Manage my profile') + '</button>' +
+      signOutBtn() + '</div>');
+    wireSignOut();
+    card.querySelector('#openProfileBtn').onclick = function () { state.wantModal = true; openModal(); };
+  }
+
+  /* ---------------- signed out: sign up / log in / forgot password ---------------- */
   function renderAuth() {
+    target = card;
     var signup = state.mode === 'signup';
     h('<div class="portal-tabs">' +
         '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin">Log in</button>' +
@@ -97,6 +174,7 @@
   }
 
   function renderForgot() {
+    target = card;
     h('<div class="portal-claim"><h3>Reset your password</h3>' +
       '<p class="form-note">Enter your account email and we\'ll send you a reset link.</p>' +
       '<form id="resetForm" novalidate>' +
@@ -123,6 +201,7 @@
   }
 
   function renderNewPassword() {
+    target = mbody || card;
     h('<div class="portal-claim"><h3>Choose a new password</h3>' +
       '<form id="newPwForm" novalidate>' +
         '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required placeholder="8+ characters"></div>' +
@@ -130,9 +209,9 @@
         '<button class="btn btn--navy" style="width:100%" type="submit">Save new password</button>' +
         '<p class="form-status" id="newPwStatus" role="status"></p>' +
       '</form></div>');
-    card.querySelector('#newPwForm').onsubmit = function (e) {
+    target.querySelector('#newPwForm').onsubmit = function (e) {
       e.preventDefault();
-      var f = e.target, st = card.querySelector('#newPwStatus');
+      var f = e.target, st = f.querySelector('#newPwStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
       if (f.pw.value !== f.pw2.value) { st.className = 'form-status err'; st.textContent = 'Passwords don\'t match.'; return; }
       f.querySelector('button').disabled = true;
@@ -140,7 +219,7 @@
         if (r.error) throw r.error;
         state.recovery = false;
         st.className = 'form-status ok'; st.textContent = '✓ Password updated — signing you in…';
-        setTimeout(refresh, 800);
+        setTimeout(function () { closeModal(); refresh(); }, 800);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not update password.';
         f.querySelector('button').disabled = false;
@@ -148,8 +227,9 @@
     };
   }
 
-  /* ---- signed in ---- */
+  /* ---------------- popup: profile area ---------------- */
   function renderProfileArea() {
+    target = mbody;
     var pr = state.profile;
     if (pr && pr.status === 'pending') return renderPending(pr);
     if (!pr) return renderChooser(); // no profile yet: claim an existing tree entry or create new
@@ -157,12 +237,13 @@
   }
 
   function renderShell(pr) {
+    target = mbody;
     var onAccount = state.tab === 'account';
     h('<div class="portal-tabs">' +
         '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile">My Profile</button>' +
         '<button class="' + (onAccount ? 'on' : '') + '" data-ptab="account">Account</button>' +
       '</div><div id="portalTabBody"></div>');
-    card.querySelectorAll('[data-ptab]').forEach(function (b) {
+    mbody.querySelectorAll('[data-ptab]').forEach(function (b) {
       b.onclick = function () { state.tab = b.dataset.ptab; renderShell(pr); };
     });
     if (onAccount) renderAccount(pr); else renderForm(pr);
@@ -170,28 +251,29 @@
 
   /* ---- no profile yet: claim vs create ---- */
   function renderChooser() {
+    target = mbody;
     h('<div class="portal-choose">' +
       '<h3>Welcome, brother!</h3>' +
       '<p class="form-note">Most brothers are already in our family tree from the chapter records. Claiming your name links this account to your spot in the tree.</p>' +
       '<button class="portal-choice" id="chooseClaim"><b>🌳 I\'m in the family tree</b><span>Find and claim your name — keeps your lineage intact.</span></button>' +
       '<button class="portal-choice" id="chooseNew"><b>✨ I\'m not in the tree yet</b><span>Create a brand-new profile from scratch.</span></button>' +
-      signOutBtn() + '</div>');
-    wireSignOut();
-    card.querySelector('#chooseClaim').onclick = renderClaim;
-    card.querySelector('#chooseNew').onclick = function () { renderForm(null, card); };
+      '</div>');
+    mbody.querySelector('#chooseClaim').onclick = renderClaim;
+    mbody.querySelector('#chooseNew').onclick = function () { renderForm(null, true); };
   }
 
   function renderClaim() {
+    target = mbody;
     h('<div class="portal-claim"><h3>Claim your name</h3>' +
       '<p class="form-note">Search for yourself, then confirm. Chapter leadership verifies every claim before it goes live.</p>' +
       '<div class="field"><label>Search the brotherhood</label><input id="claimSearch" placeholder="Start typing your name…" autocomplete="off"></div>' +
       '<div id="claimList" class="claim-list"></div>' +
       '<p class="form-status" id="claimStatus" role="status"></p>' +
       '<button class="portal-signout" id="claimBack" type="button">← Back</button></div>');
-    card.querySelector('#claimBack').onclick = renderChooser;
+    mbody.querySelector('#claimBack').onclick = renderChooser;
 
-    var listEl = card.querySelector('#claimList');
-    var input = card.querySelector('#claimSearch');
+    var listEl = mbody.querySelector('#claimList');
+    var input = mbody.querySelector('#claimSearch');
     var all = [];
     listEl.innerHTML = '<p class="form-note">Loading the brotherhood…</p>';
     Z.listUnclaimed().then(function (rows) {
@@ -212,12 +294,13 @@
           var picked = all.filter(function (b) { return b.id === row.dataset.id; })[0];
           if (!picked) return;
           if (!confirm('Claim "' + picked.full_name + ' (' + (picked.pledge_class || '') + ')" as your profile?')) return;
-          var st = card.querySelector('#claimStatus');
+          var st = mbody.querySelector('#claimStatus');
           st.className = 'form-status'; st.textContent = 'Claiming…';
           Z.claimProfile(picked.id).then(function (r) {
             var msg = (r && r.data) || '';
             if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
             if (String(msg).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(msg).replace('error: ', ''); return; }
+            state.wantModal = true;
             refresh(); // -> pending state
           });
         };
@@ -226,19 +309,18 @@
   }
 
   function renderPending(pr) {
+    target = mbody;
     h('<div class="portal-msg"><div class="portal-msg__ic">⏳</div>' +
       '<h3>Profile awaiting verification</h3>' +
-      '<p>Thanks, <b>' + esc(pr.full_name) + '</b>. Chapter leadership will review your profile shortly. Once approved, you\'ll appear in the brotherhood roster and family tree — and unlock the gallery, board and member directory.</p>' +
-      signOutBtn() + '</div>');
-    wireSignOut();
+      '<p>Thanks, <b>' + esc(pr.full_name) + '</b>. Chapter leadership will review your profile shortly. Once approved, you\'ll appear in the brotherhood roster and family tree — and unlock the gallery, board and member directory.</p></div>');
   }
 
   /* ---- profile form ---- */
   var TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
 
-  function renderForm(pr, target) {
+  function renderForm(pr, showBack) {
     pr = pr || {};
-    var host = target || card.querySelector('#portalTabBody') || card;
+    var host = mbody.querySelector('#portalTabBody') || mbody;
     var bigOpts = ['<option value="">— none / I\'m a founder —</option>'].concat(
       state.verified.filter(function (b) { return b.id !== pr.id; })
         .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); })
@@ -282,14 +364,11 @@
           '</div>' +
           '<div class="form-row">' +
             fld('Contact email', 'email', pr.email || (state.user && state.user.email), 'email') +
-            '<div class="field"><label>&nbsp;</label><p class="form-note" style="margin:0">Contact details are visible to verified brothers only.</p></div>' +
-          '</div>' +
-          '<div class="form-row">' +
             fld('LinkedIn', 'linkedin', pr.linkedin, 'url', false, 'https://…') +
-            '<div class="field"><label>Reach me via</label><div class="pref-row">' +
-              prefBox('email', 'Email') + prefBox('phone', 'Phone') + prefBox('linkedin', 'LinkedIn') +
-            '</div></div>' +
           '</div>' +
+          '<div class="field"><label>Reach me via</label><div class="pref-row">' +
+            prefBox('email', 'Email') + prefBox('phone', 'Phone') + prefBox('linkedin', 'LinkedIn') +
+          '</div><p class="form-note" style="margin:.4rem 0 0">Contact details are visible to verified brothers only.</p></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Your story</legend>' +
           '<div class="field"><label>Short quote</label><input name="quote" value="' + esc(pr.quote) + '" maxlength="140"></div>' +
@@ -299,9 +378,8 @@
         '</fieldset>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (pr.id ? 'Save profile' : 'Submit for verification') + '</button>' +
         '<p class="form-status" id="profStatus" role="status"></p>' +
-      '</form>' + (target ? '<button class="portal-signout" id="formBack" type="button">← Back</button>' : signOutBtn());
+      '</form>' + (showBack ? '<button class="portal-signout" id="formBack" type="button">← Back</button>' : '');
 
-    wireSignOut();
     var back = host.querySelector('#formBack');
     if (back) back.onclick = renderChooser;
 
@@ -343,6 +421,7 @@
       }).then(function (r) {
         if (r.error) throw r.error;
         st.className = 'form-status ok'; st.textContent = '✓ Submitted — pending verification.';
+        state.wantModal = true;
         setTimeout(refresh, 900);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not save.';
@@ -353,7 +432,7 @@
 
   /* ---- account settings tab ---- */
   function renderAccount(pr) {
-    var host = card.querySelector('#portalTabBody');
+    var host = mbody.querySelector('#portalTabBody');
     var inTree = !!pr.roster_name;
     host.innerHTML =
       '<div class="acct-block"><h4>Change password</h4>' +
@@ -372,9 +451,7 @@
           : '<p class="form-note">This profile was created from scratch (not claimed from the tree). Disconnecting will <b>delete</b> this profile entirely.</p>' +
             '<button class="btn btn--ghost-danger" id="releaseBtn" type="button">Delete my profile</button>') +
         '<p class="form-status" id="releaseStatus" role="status"></p>' +
-      '</div>' + signOutBtn();
-
-    wireSignOut();
+      '</div>';
 
     host.querySelector('#pwForm').onsubmit = function (e) {
       e.preventDefault();
@@ -403,6 +480,7 @@
         if (String(out).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(out).replace('error: ', ''); return; }
         state.profile = null; state.tab = 'profile';
         Z._approvedCache = undefined; // re-evaluate member access
+        state.wantModal = true;
         refresh(); // -> chooser
       });
     };
@@ -415,7 +493,7 @@
   function signOutBtn() { return '<button class="portal-signout" id="signOut" type="button">Sign out</button>'; }
   function wireSignOut() {
     var b = card.querySelector('#signOut');
-    if (b) b.onclick = function () { Z.signOut().then(function () { state.profile = null; state.mode = 'signin'; state.tab = 'profile'; refresh(); }); };
+    if (b) b.onclick = function () { Z.signOut().then(function () { state.profile = null; state.mode = 'signin'; state.tab = 'profile'; state.wantModal = false; refresh(); }); };
   }
 
   refresh();

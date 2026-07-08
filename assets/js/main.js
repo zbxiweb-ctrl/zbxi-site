@@ -77,9 +77,88 @@
           '</div></article>';
       }).join('');
     };
+    /* -- month calendar view -- */
+    var monthEl = document.getElementById('eventsMonth');
+    var toggleEl = document.getElementById('evToggle');
+    var EV_ALL = [];
+    var cal = (function () { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
+
+    function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+    function renderMonth() {
+      if (!monthEl) return;
+      var first = new Date(cal.y, cal.m, 1);
+      var today = new Date();
+      var startDow = (first.getDay() + 6) % 7; // Monday-first
+      var daysInMonth = new Date(cal.y, cal.m + 1, 0).getDate();
+      var title = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+      var head = '<div class="cal-head">' +
+        '<button class="cal-nav" data-cal="-1" aria-label="Previous month">‹</button>' +
+        '<b>' + title + '</b>' +
+        '<button class="cal-nav" data-cal="1" aria-label="Next month">›</button></div>';
+
+      var dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<span class="cal-dow">' + d + '</span>'; }).join('');
+
+      var cells = '';
+      for (var i = 0; i < startDow; i++) cells += '<span class="cal-cell cal-cell--pad"></span>';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var date = new Date(cal.y, cal.m, day);
+        var evs = EV_ALL.filter(function (e) { return sameDay(new Date(e.starts_at), date); });
+        var chips = evs.slice(0, 2).map(function (e) {
+          return '<span class="cal-chip cal-chip--' + e.category + '">' + esc(e.title) + '</span>';
+        }).join('') + (evs.length > 2 ? '<span class="cal-more">+' + (evs.length - 2) + '</span>' : '');
+        cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') + (evs.length ? ' cal-cell--has' : '') + '" data-day="' + day + '">' +
+          '<span class="cal-cell__n">' + day + '</span>' + chips + '</button>';
+      }
+
+      monthEl.innerHTML = head + '<div class="cal-grid">' + dows + cells + '</div><div class="cal-detail" id="calDetail"></div>';
+
+      monthEl.querySelectorAll('[data-cal]').forEach(function (b) {
+        b.onclick = function () {
+          cal.m += parseInt(b.dataset.cal, 10);
+          if (cal.m < 0) { cal.m = 11; cal.y--; }
+          if (cal.m > 11) { cal.m = 0; cal.y++; }
+          renderMonth();
+        };
+      });
+      monthEl.querySelectorAll('.cal-cell--has').forEach(function (c) {
+        c.onclick = function () { showDay(parseInt(c.dataset.day, 10)); };
+      });
+    }
+
+    function showDay(day) {
+      var date = new Date(cal.y, cal.m, day);
+      var evs = EV_ALL.filter(function (e) { return sameDay(new Date(e.starts_at), date); });
+      var box = document.getElementById('calDetail');
+      if (!box || !evs.length) return;
+      box.innerHTML = '<h4>' + date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + '</h4>' +
+        evs.map(function (e) {
+          var t = new Date(e.starts_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || e.category) + (e.is_public ? '' : ' · members') + '</span>' +
+            '<b>' + esc(e.title) + '</b><small>' + t + (e.location ? ' · ' + esc(e.location) : '') + '</small>' +
+            (e.description ? '<p>' + esc(e.description) + '</p>' : '') + '</div>';
+        }).join('');
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    if (toggleEl) {
+      toggleEl.querySelectorAll('[data-view]').forEach(function (b) {
+        b.onclick = function () {
+          toggleEl.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+          var month = b.dataset.view === 'month';
+          evEl.style.display = month ? 'none' : '';
+          if (monthEl) monthEl.style.display = month ? '' : 'none';
+          if (month) renderMonth();
+        };
+      });
+    }
+
     if (window.ZBXI && window.ZBXI.configured) {
-      window.ZBXI.eventsList().then(renderEvents)
-        .catch(function () { evEl.innerHTML = '<p class="page-empty">Could not load events.</p>'; });
+      window.ZBXI.eventsList().then(function (rows) {
+        EV_ALL = rows || [];
+        renderEvents(EV_ALL);
+      }).catch(function () { evEl.innerHTML = '<p class="page-empty">Could not load events.</p>'; });
     } else {
       evEl.innerHTML = '<p class="page-empty">The events calendar is being set up.</p>';
     }

@@ -142,6 +142,10 @@
         <hr class="rule" />
         <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, scroll to zoom, and click a brother to see their card. <em>(Placeholder lineage — real brothers populate this as they join.)</em></p>
       </div>
+      <div class="tree-search" style="display:none">
+        <input id="treeSearchInput" type="search" placeholder="🔎 Find a brother…" autocomplete="off" />
+        <div class="tree-search__results" id="treeSearchResults"></div>
+      </div>
       <div class="fam-bar" id="treeFamilies" style="display:none"></div>
       <div class="tree-legend" id="treeLegend">
         <span><i class="dot dot--reg"></i> Registered on the site</span>
@@ -164,17 +168,18 @@
     </div>
   </section>
 
-  <!-- ============ BROTHER PORTAL ============ -->
+  <!-- ============ BROTHER PORTAL (login + member perks; profile editing lives in a popup) ============ -->
   <section class="section section--navy" id="brothers-portal">
     <div class="wrap">
       <div class="center">
         <p class="eyebrow">Members</p>
         <h2 class="section-title">Are You a Brother?</h2>
         <hr class="rule" />
-        <p class="lede">Established brothers: create your profile to join the roster and the family tree. New profiles are verified by chapter leadership before they go public.</p>
+        <p class="lede">Sign in to unlock the members side of ΖΒΞ. New profiles are verified by chapter leadership before they go public.</p>
       </div>
-      <div class="portal-wrap" style="margin-top:2.4rem">
-        <div class="card-form" id="portalCard"><p class="form-note">Loading…</p></div>
+      <div class="portal-duo" style="margin-top:2.4rem">
+        <div class="card-form card-form--slim" id="portalCard"><p class="form-note">Loading…</p></div>
+        <div class="perks" id="portalPerks"></div>
       </div>
     </div>
   </section>
@@ -223,7 +228,12 @@
         <hr class="rule" />
         <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — all in one place.</p>
       </div>
+      <div class="ev-toggle" id="evToggle">
+        <button data-view="list" class="on">☰ List</button>
+        <button data-view="month">📅 Calendar</button>
+      </div>
       <div class="ev-list" id="eventsList"><p class="page-empty">Loading events…</p></div>
+      <div id="eventsMonth" style="display:none"></div>
     </div>
   </section>
 
@@ -267,8 +277,6 @@
             <!-- Confirm/replace these links (see README). -->
             <a class="social" href="https://www.facebook.com/groups/ZetaBetaXi/" target="_blank" rel="noopener"><span class="ic">f</span><span><b>Facebook</b><span>Zeta Beta Xi group</span></span></a>
             <a class="social" href="#" data-placeholder="instagram"><span class="ic">◎</span><span><b>Instagram</b><span>@add_your_handle</span></span></a>
-            <a class="social" href="#" data-placeholder="tiktok"><span class="ic">♪</span><span><b>TikTok</b><span>Geneseo Zeta Beta Xi</span></span></a>
-            <a class="social" href="https://zbxi.org" target="_blank" rel="noopener"><span class="ic">◈</span><span><b>zbxi.org</b><span>Verify this link is live</span></span></a>
           </div>
         </div>
       </div>
@@ -289,6 +297,14 @@
     </div>
   </footer>
 
+
+  <!-- My Profile / Account popup (opened from the header menu) -->
+  <div class="pmodal" id="profileModal" aria-hidden="true">
+    <div class="pmodal__card card-form">
+      <button class="pmodal__close" data-pm-close aria-label="Close">✕</button>
+      <div data-pm-body><p class="form-note">Loading…</p></div>
+    </div>
+  </div>
 
   <!-- Brother profile modal (family tree) -->
   <div class="bmodal" id="brotherModal" aria-hidden="true">

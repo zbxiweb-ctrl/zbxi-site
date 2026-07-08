@@ -15,6 +15,8 @@
   // On subpages (active/alumni/admin), portal links must route back to index.
   var onIndex = /(^|\/)(index\.html)?$/.test(location.pathname);
   var PORTAL = (onIndex ? '' : 'index.html') + '#brothers-portal';
+  // "My Profile" opens the profile popup (index handles the #my-profile hash).
+  var MYPROFILE = (onIndex ? '' : 'index.html') + '#my-profile';
 
   function renderLogin() {
     el.innerHTML = '<a href="' + PORTAL + '" class="btn btn--gold nav__cta">Brother Login</a>';
@@ -36,7 +38,7 @@
           '<b>' + esc(name) + '</b><span>' + esc(user.email || '') + '</span>' +
           (isAdmin ? '<span class="admin-badge">ADMIN</span>' : '') +
         '</div>' +
-        '<a href="' + PORTAL + '" role="menuitem">👤 My Profile</a>' +
+        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem">👤 My Profile</a>' +
         (isAdmin ? '<a href="admin.html" role="menuitem" class="nav__menu-admin">⚙ Admin Console →</a>' : '') +
         '<div class="nav__menu-divider"></div>' +
         '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout">Sign out</button>' +
@@ -54,6 +56,12 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
     // Let the in-page anchors close the menu naturally
     menu.querySelectorAll('a[href^="#"]').forEach(function (a) { a.addEventListener('click', close); });
+
+    // On the homepage, "My Profile" opens the popup directly (no navigation).
+    var mp = document.getElementById('navMyProfile');
+    if (mp && window.ZBXIPortal) mp.addEventListener('click', function (e) {
+      e.preventDefault(); close(); window.ZBXIPortal.open();
+    });
 
     var out = document.getElementById('navSignOut');
     if (out) out.addEventListener('click', function () {

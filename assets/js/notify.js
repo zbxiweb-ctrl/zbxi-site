@@ -24,7 +24,7 @@
       case 'like':        return { ic: '♥', text: '<b>' + esc(p.actor || 'A brother') + '</b> liked your photo', href: 'gallery.html' };
       case 'comment':     return { ic: '💬', text: '<b>' + esc(p.actor || 'A brother') + '</b> commented: “' + esc(p.text || '') + '”', href: 'gallery.html' };
       case 'reply':       return { ic: '↩', text: '<b>' + esc(p.actor || 'A brother') + '</b> replied to “' + esc(p.title || 'your thread') + '”', href: 'board.html' + (p.thread_id ? '#thread=' + p.thread_id : '') };
-      case 'approved':    return { ic: '✓', text: 'Your profile was <b>approved</b> — welcome to the brotherhood!', href: (onIndex ? '' : 'index.html') + '#brothers-portal' };
+      case 'approved':    return { ic: '🎉', text: 'You\'re <b>approved</b> — tap for your member orientation', href: 'welcome.html' };
       case 'new_pending': return { ic: '⏳', text: '<b>' + esc(p.name || 'A brother') + '</b> is awaiting verification', href: 'admin.html' };
       default:            return { ic: '•', text: esc(n.kind), href: '#' };
     }

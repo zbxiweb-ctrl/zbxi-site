@@ -55,6 +55,16 @@
     return ALL.filter(function (r) { return !r.big_id || !byId[r.big_id]; });
   }
 
+  // Family lines with descendants first (alphabetical), childless roots
+  // (e.g. standalone admin/self-created profiles) sink to the end.
+  function sortedRoots() {
+    return roots().slice().sort(function (a, z) {
+      var af = (descCount[a.id] || 0) > 0 ? 0 : 1;
+      var zf = (descCount[z.id] || 0) > 0 ? 0 : 1;
+      return af - zf || a.full_name.localeCompare(z.full_name);
+    });
+  }
+
   function visibleRows() {
     var out = [];
     function walk(n, show) {
@@ -91,7 +101,63 @@
     return { byId: vById, roots: roots, rows: rows, width: Math.max(leaf * (NODE_W + GAP_X), NODE_W), height: (maxDepth + 1) * (NODE_H + GAP_Y) };
   }
 
+  // "All families" with nothing expanded: a mobile-friendly VERTICAL menu of
+  // family-line cards instead of a wide horizontal row. Tapping ▸ opens the line.
+  var FAM_W = 250;
+  function renderFamilyMenu() {
+    var rs = sortedRoots();
+    var GAP = 16;
+    var height = rs.length * (NODE_H + GAP);
+    canvas.style.width = FAM_W + 'px';
+    canvas.style.height = height + 'px';
+    var html = '';
+    rs.forEach(function (r, i) {
+      var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
+      var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
+      var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
+      var n = descCount[r.id] || 0;
+      html += '<button class="tree-node tree-node--family' + reg + '" data-id="' + r.id + '" style="left:0;top:' + (i * (NODE_H + GAP)) + 'px;width:' + FAM_W + 'px;height:' + NODE_H + 'px">' +
+        '<span class="tree-node__av">' + av + '</span>' +
+        '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + (r.pledge_class || '') + '</small></span>' +
+        (n ? '<span class="tree-toggle" data-line="' + r.id + '" title="Open this family line">▸ ' + n + '</span>' : '') +
+      '</button>';
+    });
+    canvas.innerHTML = html;
+    currentLayout = { width: FAM_W, height: height, rows: rs, byId: byId };
+    // wire: chevron opens the line; card body opens the profile
+    canvas.querySelectorAll('.tree-toggle').forEach(function (t) {
+      t.addEventListener('click', function (e) {
+        e.stopPropagation();
+        selectBranch(t.dataset.line);
+      });
+    });
+    canvas.querySelectorAll('.tree-node').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        if (e.target.closest('.tree-toggle')) return;
+        openProfile(byId[btn.dataset.id]);
+      });
+    });
+    // no auto-fit scaling: show the menu at full size, centered
+    scale = 1;
+    tx = Math.max(12, (viewport.clientWidth - FAM_W) / 2);
+    ty = 16;
+    apply();
+  }
+
+  function selectBranch(id) {
+    branchRoot = id || null;
+    expanded = {};
+    if (id) expandSubtree(id);
+    syncFamilyChips();
+    render();
+    if (branchRoot) fitToView(currentLayout);
+  }
+
   function render() {
+    if (!PLACEHOLDER_MODE && !branchRoot && !Object.keys(expanded).length && roots().length > 1) {
+      renderFamilyMenu();
+      return;
+    }
     var rows = visibleRows();
     var L = buildLayout(rows);
     currentLayout = L;
@@ -181,10 +247,7 @@
     ALL.forEach(function (r) { if (r._kids.length) expanded[r.id] = true; });
     render(); fitToView(currentLayout);
   });
-  if (ca) ca.addEventListener('click', function () {
-    expanded = {}; branchRoot = null; syncFamilyChips();
-    render(); fitToView(currentLayout);
-  });
+  if (ca) ca.addEventListener('click', function () { selectBranch(null); });
 
   /* ---------- family (branch) selector: one line at a time ---------- */
   function expandSubtree(id) {
@@ -211,7 +274,7 @@
   function renderFamilyBar() {
     var bar = document.getElementById('treeFamilies');
     if (!bar) return;
-    var rs = roots().slice().sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+    var rs = sortedRoots();
     if (PLACEHOLDER_MODE || rs.length < 2) { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
     bar.innerHTML = '<button class="fam-chip on">All families</button>' +
@@ -220,14 +283,73 @@
           lineLabel(r) + ' <i>' + (1 + (descCount[r.id] || 0)) + '</i></button>';
       }).join('');
     bar.querySelectorAll('.fam-chip').forEach(function (c) {
-      c.addEventListener('click', function () {
-        var id = c.dataset.root || null;
-        branchRoot = id;
-        expanded = {};
-        if (id) expandSubtree(id); // one line, fully open
-        syncFamilyChips();
-        render(); fitToView(currentLayout);
+      c.addEventListener('click', function () { selectBranch(c.dataset.root || null); });
+    });
+  }
+
+  /* ---------- find a brother: search box + jump-to-node ---------- */
+  function rootOf(id) {
+    var n = byId[id], guard = 0;
+    while (n && n.big_id && byId[n.big_id] && guard++ < 100) n = byId[n.big_id];
+    return n;
+  }
+
+  function focusBrother(id) {
+    var b = byId[id];
+    if (!b) return;
+    var root = rootOf(id);
+    selectBranch(root ? root.id : null);
+    // center + pulse the node (after render/fit)
+    var el = canvas.querySelector('.tree-node[data-id="' + id + '"]');
+    if (el && currentLayout && currentLayout.byId[id]) {
+      var n = currentLayout.byId[id];
+      var vw = viewport.clientWidth, vh = viewport.clientHeight;
+      tx = vw / 2 - (n._x + NODE_W / 2) * scale;
+      ty = Math.min(24, vh / 2 - (n._y + NODE_H / 2) * scale);
+      apply();
+    }
+    highlightPath(id);
+    if (el) {
+      el.classList.add('tree-node--pulse');
+      setTimeout(function () { el.classList.remove('tree-node--pulse'); }, 2400);
+    }
+  }
+
+  function highlightPath(id) {
+    canvas.querySelectorAll('.tree-node--path').forEach(function (n) { n.classList.remove('tree-node--path'); });
+    var n = byId[id], guard = 0;
+    while (n && guard++ < 100) {
+      var el = canvas.querySelector('.tree-node[data-id="' + n.id + '"]');
+      if (el) el.classList.add('tree-node--path');
+      n = n.big_id ? byId[n.big_id] : null;
+    }
+  }
+
+  function wireSearch() {
+    var input = document.getElementById('treeSearchInput');
+    var results = document.getElementById('treeSearchResults');
+    if (!input || !results) return;
+    if (PLACEHOLDER_MODE) { input.parentElement.style.display = 'none'; return; }
+    input.parentElement.style.display = '';
+    input.oninput = function () {
+      var q = input.value.trim().toLowerCase();
+      if (q.length < 2) { results.innerHTML = ''; results.style.display = 'none'; return; }
+      var hits = ALL.filter(function (b) { return b.full_name.toLowerCase().indexOf(q) !== -1; }).slice(0, 8);
+      if (!hits.length) { results.innerHTML = '<span class="tree-search__none">No brother found</span>'; results.style.display = 'block'; return; }
+      results.innerHTML = hits.map(function (b) {
+        return '<button data-jumpto="' + b.id + '"><b>' + esc(b.full_name) + '</b><span>' + esc(b.pledge_class || '') + '</span></button>';
+      }).join('');
+      results.style.display = 'block';
+      results.querySelectorAll('[data-jumpto]').forEach(function (r) {
+        r.onclick = function () {
+          results.style.display = 'none';
+          input.value = '';
+          focusBrother(r.dataset.jumpto);
+        };
       });
+    };
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.tree-search')) results.style.display = 'none';
     });
   }
 
@@ -273,15 +395,35 @@
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
   function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + esc(v) + '</b></div>' : ''; }
 
+  function jumpLink(b) {
+    return '<a href="#" class="bm-jump" data-jump="' + b.id + '">' + esc(b.full_name) + '</a>';
+  }
+
   function openProfile(r) {
     if (!r || !window.BrotherCard) return;
-    var big = r.big_id && byId[r.big_id] ? byId[r.big_id].full_name : '—';
-    var littles = r._kids.map(function (k) { return k.full_name; }).join(', ') || '—';
-    var lineage = row('Big', big) + row('Littles', littles);
+    var big = r.big_id && byId[r.big_id] ? jumpLink(byId[r.big_id]) : '—';
+    var littles = r._kids.map(jumpLink).join(', ') || '—';
+    var lineage = '<div class="bm__row"><span>Big</span><b>' + big + '</b></div>' +
+                  '<div class="bm__row"><span>Littles</span><b>' + littles + '</b></div>';
+    highlightPath(r.id);
     window.BrotherCard.open(r, {
       lineage: lineage,
       portal: '#brothers-portal',
       placeholderData: PLACEHOLDER_MODE ? r : null
+    });
+  }
+
+  // Lineage names inside the modal navigate the tree to that brother.
+  var _bm = document.getElementById('brotherModal');
+  if (_bm) {
+    _bm.addEventListener('click', function (e) {
+      var a = e.target.closest('[data-jump]');
+      if (!a) return;
+      e.preventDefault();
+      _bm.classList.remove('open'); _bm.setAttribute('aria-hidden', 'true');
+      focusBrother(a.dataset.jump);
+      var next = byId[a.dataset.jump];
+      if (next) setTimeout(function () { openProfile(next); }, 350);
     });
   }
 
@@ -296,8 +438,9 @@
     var legend = document.getElementById('treeLegend');
     if (legend) legend.style.display = placeholder ? 'none' : 'flex';
     renderFamilyBar();
+    wireSearch();
     render();
-    fitToView(currentLayout);
+    if (placeholder) fitToView(currentLayout); // live mode starts on the family menu (self-positions)
     hydrate();
   }
 
@@ -312,5 +455,10 @@
     }
   }
   load();
-  window.addEventListener('resize', function () { if (currentLayout) fitToView(currentLayout); });
+  window.addEventListener('resize', function () {
+    if (!currentLayout) return;
+    // family-menu mode positions itself; classic layouts re-fit
+    if (!PLACEHOLDER_MODE && !branchRoot && !Object.keys(expanded).length) render();
+    else fitToView(currentLayout);
+  });
 })();

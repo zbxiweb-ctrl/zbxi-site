@@ -46,15 +46,24 @@
   }
 
   /* ---------------- console ---------------- */
-  var state = { tab: 'pending', data: { pending: [], verified: [], rejected: [] }, verifiedById: {}, q: '', events: [] };
-  var BRO_TABS = ['pending', 'verified', 'rejected'];
-  var TABS = [
-    { id: 'pending',  label: 'Pending'  },
-    { id: 'verified', label: 'Approved' },
-    { id: 'rejected', label: 'Rejected' },
-    { id: 'events',   label: 'Events'   },
-    { id: 'stats',    label: 'Stats'    },
-    { id: 'guide',    label: '📖 Guide' }
+  // "Approved" = verified AND has a linked account (user_id). "Unclaimed" =
+  // verified roster names nobody has claimed yet. state.data.verified keeps
+  // the combined set (feeds big-brother dropdowns + the tree editor).
+  var state = { tab: 'pending', data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, q: '', events: [], treeLine: null };
+  var BRO_TABS = ['pending', 'approved', 'unclaimed', 'rejected'];
+  var TAB_GROUPS = [
+    { label: 'Brothers', tabs: [
+      { id: 'pending',   label: 'Pending'   },
+      { id: 'approved',  label: 'Approved'  },
+      { id: 'unclaimed', label: '📋 Unclaimed' },
+      { id: 'rejected',  label: 'Rejected'  }
+    ]},
+    { label: 'Site', tabs: [
+      { id: 'tree',   label: '🌳 Tree'  },
+      { id: 'events', label: 'Events'   },
+      { id: 'stats',  label: 'Stats'    },
+      { id: 'guide',  label: '📖 Guide' }
+    ]}
   ];
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
@@ -81,10 +90,15 @@
   function renderConsole() {
     root.innerHTML =
       '<div class="admin-head"><h2>Brotherhood Admin</h2><button class="btn btn--ghost" id="so">Sign out</button></div>' +
-      '<div class="admin-tabs" id="tabs">' +
-        TABS.map(function (t) {
-          var count = BRO_TABS.indexOf(t.id) !== -1 ? ' <span class="tab-count" data-count="' + t.id + '">…</span>' : '';
-          return '<button data-tab="' + t.id + '" class="' + (state.tab === t.id ? 'on' : '') + '">' + t.label + count + '</button>';
+      '<div id="tabs">' +
+        TAB_GROUPS.map(function (g) {
+          return '<div class="admin-tabgroup"><span class="admin-tabgroup__label">' + g.label + '</span>' +
+            '<div class="admin-tabs">' +
+            g.tabs.map(function (t) {
+              var count = BRO_TABS.indexOf(t.id) !== -1 ? ' <span class="tab-count" data-count="' + t.id + '">…</span>' : '';
+              return '<button data-tab="' + t.id + '" class="' + (state.tab === t.id ? 'on' : '') + '">' + t.label + count + '</button>';
+            }).join('') +
+            '</div></div>';
         }).join('') +
       '</div>' +
       '<input class="admin-search" id="adminSearch" type="search" placeholder="Search by name, major, pledge class…" value="' + esc(state.q) + '">' +
@@ -112,6 +126,9 @@
         state.data.pending  = (res[0].data || []);
         state.data.verified = (res[1].data || []);
         state.data.rejected = (res[2].data || []);
+        // Split the verified set: real approved accounts vs unclaimed roster names.
+        state.data.approved  = state.data.verified.filter(function (b) { return b.user_id; });
+        state.data.unclaimed = state.data.verified.filter(function (b) { return !b.user_id; });
         state.verifiedById = {};
         state.data.verified.forEach(function (b) { state.verifiedById[b.id] = b; });
         BRO_TABS.forEach(function (t) {
@@ -130,6 +147,7 @@
     var q = document.getElementById('q');
     var srchEl = document.getElementById('adminSearch');
     if (srchEl) srchEl.style.display = BRO_TABS.indexOf(state.tab) !== -1 ? '' : 'none';
+    if (state.tab === 'tree') return renderTreeTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
@@ -139,18 +157,21 @@
         return (b.full_name + ' ' + (b.major || '') + ' ' + (b.pledge_class || '')).toLowerCase().indexOf(state.q) !== -1;
       });
     }
-    // Roster additions live on the Approved tab (new rows land there).
-    var addBar = state.tab === 'verified'
+    // Roster additions live on the Unclaimed tab (new rows are unclaimed names).
+    var addBar = state.tab === 'unclaimed'
       ? '<div class="admin-addbar"><button class="btn btn--gold" id="addOne">+ Add brother</button>' +
         '<button class="btn btn--ghost" id="addClass">+ Add pledge class</button></div>'
       : '';
+    var intro = '';
+    if (state.tab === 'approved' && !state.q) intro = '<p class="admin-hint">Brothers with a linked email account, approved by you. Everyone else from the chapter records lives in <b>📋 Unclaimed</b>.</p>';
+    if (state.tab === 'unclaimed' && !state.q) intro = '<p class="admin-hint">Roster names from the chapter records — in the tree and rosters, but no account linked yet. When a brother signs up and claims his name, he moves to <b>Pending</b> for your approval.</p>';
 
     if (!rows.length) {
-      q.innerHTML = addBar + '<p class="admin-empty">' + (state.q ? 'No matches.' : (state.tab === 'pending' ? '🎉 No pending profiles. All caught up.' : 'Nothing here yet.')) + '</p>';
+      q.innerHTML = addBar + intro + '<p class="admin-empty">' + (state.q ? 'No matches.' : (state.tab === 'pending' ? '🎉 No pending profiles. All caught up.' : 'Nothing here yet.')) + '</p>';
       wireAddBar(q);
       return;
     }
-    q.innerHTML = addBar + rows.map(function (b) {
+    q.innerHTML = addBar + intro + rows.map(function (b) {
       var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null), (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null)].filter(Boolean).map(esc).join(' · ');
       return '<div class="admin-row" data-id="' + b.id + '">' +
         '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
@@ -175,7 +196,8 @@
 
   function actionsFor(tab) {
     if (tab === 'pending') return btn('approve', 'Approve', 'gold') + btn('reject', 'Reject', 'ghost') + btn('edit', 'Edit', 'ghost');
-    if (tab === 'verified') return btn('revoke', 'Revoke', 'ghost') + btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
+    if (tab === 'approved') return btn('revoke', 'Revoke', 'ghost') + btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
+    if (tab === 'unclaimed') return btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
     return btn('restore', 'Restore', 'gold') + btn('delete', 'Delete', 'danger'); // rejected
   }
   function btn(action, label, kind) {
@@ -423,6 +445,199 @@
     };
   }
 
+  /* ---------------- family tree editor tab ---------------- */
+  function treeKids() {
+    var kids = {};
+    state.data.verified.forEach(function (b) {
+      if (b.big_id) (kids[b.big_id] = kids[b.big_id] || []).push(b);
+    });
+    Object.keys(kids).forEach(function (k) {
+      kids[k].sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+    });
+    return kids;
+  }
+  function treeRoots() {
+    var byId = state.verifiedById;
+    var kids = treeKids();
+    function descCount(b) {
+      var n = 0;
+      (kids[b.id] || []).forEach(function (k) { n += 1 + descCount(k); });
+      return n;
+    }
+    return state.data.verified
+      .filter(function (b) { return !b.big_id || !byId[b.big_id]; })
+      .map(function (b) { b._desc = descCount(b); return b; })
+      .sort(function (a, z) {
+        var af = a._desc > 0 ? 0 : 1, zf = z._desc > 0 ? 0 : 1;
+        return af - zf || a.full_name.localeCompare(z.full_name);
+      });
+  }
+
+  function renderTreeTab(q) {
+    var roots = treeRoots();
+    var kids = treeKids();
+    if (!roots.length) { q.innerHTML = '<p class="admin-empty">No brothers in the tree yet.</p>'; return; }
+    if (!state.treeLine || !state.verifiedById[state.treeLine]) state.treeLine = roots[0].id;
+
+    var chips = roots.map(function (r) {
+      var last = r.full_name.trim().split(/\s+/).pop();
+      return '<button class="fam-chip' + (state.treeLine === r.id ? ' on' : '') + '" data-line="' + r.id + '">' +
+        esc(last) + ' line <i>' + (1 + r._desc) + '</i></button>';
+    }).join('');
+
+    var hint = localStorage.getItem('zbxi_treeed_hint') ? '' :
+      '<div class="admin-hint admin-hint--tip" id="treeHint">👋 <b>First time here?</b> Pick a family line below, then use the buttons on each brother to fix names, move people, or add littles. Nothing here needs code — and every change shows on the public tree instantly. ' +
+      '<a href="#" id="treeHintHelp">Full instructions</a> · <a href="#" id="treeHintX">Got it, hide this</a></div>';
+
+    function rowHtml(b, depth) {
+      var k = kids[b.id] || [];
+      var html = '<div class="treeed-row" style="margin-left:' + (depth * 22) + 'px" data-id="' + b.id + '">' +
+        '<span class="treeed-row__connector">' + (depth ? '└' : '🌳') + '</span>' +
+        '<span class="treeed-row__name"><b>' + esc(b.full_name) + '</b><small>' + esc(b.pledge_class || '') +
+          (k.length ? ' · ' + k.length + ' little' + (k.length > 1 ? 's' : '') : '') +
+          (b.user_id ? ' · <i class="treeed-reg">● registered</i>' : '') + '</small></span>' +
+        '<span class="treeed-row__act">' +
+          '<button data-rn title="Fix this brother\'s name">Rename</button>' +
+          '<button data-mv title="Move him under a different big">Change big</button>' +
+          '<button data-al title="Add a new little under him">+ Little</button>' +
+          '<button data-rm class="danger" title="Remove him from the tree">Remove</button>' +
+        '</span></div>';
+      k.forEach(function (c) { html += rowHtml(c, depth + 1); });
+      return html;
+    }
+
+    var line = state.verifiedById[state.treeLine];
+    q.innerHTML =
+      '<div class="treeed-head"><p class="admin-hint" style="margin:0">Pick a family line, then edit any brother in place.</p>' +
+      '<button class="btn btn--ghost" id="treeHelp">❓ How do I use this?</button></div>' +
+      hint +
+      '<div class="fam-bar" style="justify-content:flex-start;margin:0 0 1.2rem">' + chips + '</div>' +
+      '<div class="treeed-list">' + rowHtml(line, 0) + '</div>';
+
+    q.querySelectorAll('[data-line]').forEach(function (c) {
+      c.onclick = function () { state.treeLine = c.dataset.line; renderTreeTab(q); };
+    });
+    document.getElementById('treeHelp').onclick = openTreeHelp;
+    var hx = document.getElementById('treeHintX');
+    if (hx) hx.onclick = function (e) { e.preventDefault(); localStorage.setItem('zbxi_treeed_hint', '1'); renderTreeTab(q); };
+    var hh = document.getElementById('treeHintHelp');
+    if (hh) hh.onclick = function (e) { e.preventDefault(); openTreeHelp(); };
+
+    q.querySelectorAll('.treeed-row').forEach(function (el) {
+      var b = state.verifiedById[el.dataset.id];
+      each(el, '[data-rn]', function () { openTreeRename(b); });
+      each(el, '[data-mv]', function () { openTreeMove(b); });
+      each(el, '[data-al]', function () { openTreeAddLittle(b); });
+      each(el, '[data-rm]', function () { openTreeRemove(b, (kids[b.id] || []).length); });
+    });
+  }
+
+  function treeModal(title, bodyHtml) {
+    var wrap = document.createElement('div');
+    wrap.className = 'admin-modal open';
+    wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<h3>' + title + '</h3>' + bodyHtml + '<p class="form-status" data-status></p></div>';
+    document.body.appendChild(wrap);
+    wrap.close = function () { wrap.remove(); };
+    wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) wrap.close(); });
+    return wrap;
+  }
+  function treeDone(wrap) {
+    return function (r) {
+      var st = wrap.querySelector('[data-status]');
+      if (r && r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+      wrap.close();
+      loadAll(); // renderList() will re-render the tree tab
+    };
+  }
+
+  function openTreeRename(b) {
+    var wrap = treeModal('Rename ' + esc(b.full_name),
+      '<p class="form-note">Fixes a typo or updates the name everywhere on the site (tree, rosters, profiles).</p>' +
+      fld('Full name', 'full_name', b.full_name) +
+      '<button class="btn btn--navy" data-save style="width:100%">Save name</button>');
+    wrap.querySelector('[data-save]').onclick = function () {
+      var name = wrap.querySelector('[data-f="full_name"]').value.trim();
+      if (!name) return;
+      var fields = { full_name: name };
+      if (!b.user_id) fields.roster_name = name; // keep the claimable name in sync
+      Z.updateBrother(b.id, fields).then(treeDone(wrap));
+    };
+  }
+
+  function openTreeMove(b) {
+    var wrap = treeModal('Who is ' + esc(b.full_name) + '\'s big?',
+      '<p class="form-note">Type to search, pick the big, then save. He moves with all of his littles.</p>' +
+      '<div class="field"><label>Search</label><input data-search placeholder="Start typing a name…"></div>' +
+      '<div class="field"><label>New big</label><select data-f="big_id" size="6" style="height:auto">' + '</select></div>' +
+      '<p class="form-note" data-preview></p>' +
+      '<button class="btn btn--navy" data-save style="width:100%">Move him</button>');
+    var sel = wrap.querySelector('[data-f="big_id"]');
+    var preview = wrap.querySelector('[data-preview]');
+    function fill(qstr) {
+      var opts = state.data.verified
+        .filter(function (v) { return v.id !== b.id && (!qstr || v.full_name.toLowerCase().indexOf(qstr) !== -1); })
+        .sort(function (x, y) { return x.full_name.localeCompare(y.full_name); })
+        .slice(0, 200);
+      sel.innerHTML = '<option value="">— no big (top of a line) —</option>' + opts.map(function (v) {
+        return '<option value="' + v.id + '"' + (b.big_id === v.id ? ' selected' : '') + '>' + esc(v.full_name) + ' (' + esc(v.pledge_class || '') + ')</option>';
+      }).join('');
+    }
+    fill('');
+    wrap.querySelector('[data-search]').oninput = function (e) { fill(e.target.value.trim().toLowerCase()); };
+    sel.onchange = function () {
+      var pick = state.verifiedById[sel.value];
+      preview.textContent = pick ? esc(b.full_name) + ' will move under ' + pick.full_name + ' — his own littles come with him.' : '';
+    };
+    wrap.querySelector('[data-save]').onclick = function () {
+      Z.updateBrother(b.id, { big_id: sel.value || null }).then(treeDone(wrap));
+    };
+  }
+
+  function openTreeAddLittle(b) {
+    var wrap = treeModal('Add a little under ' + esc(b.full_name),
+      '<div class="form-row">' + fld('Full name *', 'full_name', '') + fld('Pledge class *', 'pledge_class', '') + '</div>' +
+      fld('Grad year (controls Active/Alumni)', 'grad_year', '', 'number') +
+      '<button class="btn btn--navy" data-save style="width:100%">Add little</button>');
+    wrap.querySelector('[data-save]').onclick = function () {
+      var get = function (k) { return wrap.querySelector('[data-f="' + k + '"]').value.trim(); };
+      var st = wrap.querySelector('[data-status]');
+      if (!get('full_name') || !get('pledge_class')) { st.className = 'form-status err'; st.textContent = 'Name and pledge class are required.'; return; }
+      Z.addBrothers({
+        full_name: get('full_name'), pledge_class: get('pledge_class'),
+        grad_year: get('grad_year') ? parseInt(get('grad_year'), 10) : null,
+        big_id: b.id, roster_name: get('full_name'), status: 'verified', user_id: null
+      }).then(treeDone(wrap));
+    };
+  }
+
+  function openTreeRemove(b, littleCount) {
+    var wrap = treeModal('Remove ' + esc(b.full_name) + '?',
+      '<p class="form-note">This takes him off the tree and rosters entirely.' +
+      (littleCount ? ' He has <b>' + littleCount + ' little' + (littleCount > 1 ? 's' : '') + '</b>.' : '') + '</p>' +
+      (littleCount ? '<div class="field"><label class="pref-box"><input type="checkbox" data-f="reassign" checked> Give his littles to his big (recommended — keeps the line connected)</label></div>' : '') +
+      '<button class="btn btn--danger" data-save style="width:100%">Yes, remove him</button>');
+    wrap.querySelector('[data-save]').onclick = function () {
+      var reassignEl = wrap.querySelector('[data-f="reassign"]');
+      var doDelete = function () { Z.deleteBrother(b.id).then(treeDone(wrap)); };
+      if (reassignEl && reassignEl.checked) {
+        var kids = treeKids()[b.id] || [];
+        Promise.all(kids.map(function (k) { return Z.updateBrother(k.id, { big_id: b.big_id || null }); }))
+          .then(doDelete);
+      } else doDelete();
+    };
+  }
+
+  function openTreeHelp() {
+    treeModal('🌳 How to edit the family tree', '<div class="treeed-help">' +
+      '<p><b>1 · Pick a family line.</b> The buttons at the top are the founding-father lines. Click one to see everyone in it, indented big → little.</p>' +
+      '<p><b>2 · Fix a name.</b> Click <b>Rename</b> on the brother, type the correction, save. It updates everywhere on the site instantly.</p>' +
+      '<p><b>3 · Move someone.</b> Click <b>Change big</b>, search for the correct big, save. He moves with all of his littles — nothing gets lost.</p>' +
+      '<p><b>4 · Add a brother.</b> Find his big and click <b>+ Little</b>. (Adding a whole pledge class at once? Use the 📋 Unclaimed tab → “+ Add pledge class”.)</p>' +
+      '<p><b>5 · Remove someone.</b> Click <b>Remove</b>. If he has littles, keep the box checked and they reconnect to his big automatically.</p>' +
+      '<p style="color:var(--muted)">Every change is live on the public Family Tree the moment you save. You can\'t break anything that can\'t be fixed with the same buttons.</p></div>');
+  }
+
   /* ---------------- guide tab ---------------- */
   function renderGuideTab(q) {
     function sec(title, body) {
@@ -435,21 +650,22 @@
         '<li>Check the name/pledge class look right (edit if needed).</li>' +
         '<li>Click <b>Approve</b>. He\'s instantly live on the roster, family tree, gallery and board.</li></ol>' +
         '<p>Not a real brother? Click <b>Reject</b> — they never appear publicly.</p>') +
+      sec('🗂️ What the tabs mean', '<ul>' +
+        '<li><b>Pending</b> — brothers who signed up (or claimed a name) and are waiting for your approval.</li>' +
+        '<li><b>Approved</b> — brothers with a real account, approved by you. These are your active members.</li>' +
+        '<li><b>📋 Unclaimed</b> — every roster name from the chapter records that nobody has claimed yet. They show on the public tree/rosters, just without an account behind them.</li>' +
+        '<li><b>Rejected</b> — declined signups; restorable anytime.</li></ul>') +
       sec('➕ Add one brother to the roster / family tree', '<ol>' +
-        '<li>Go to the <b>Approved</b> tab → click <b>+ Add brother</b>.</li>' +
+        '<li>Go to the <b>📋 Unclaimed</b> tab → click <b>+ Add brother</b>. (Or use the <b>🌳 Tree</b> tab → “+ Little” on his big.)</li>' +
         '<li>Enter his name, pledge class, grad year, and pick his big.</li>' +
         '<li>He appears in the tree immediately as “unclaimed” — if he later signs up, he claims his own name.</li></ol>') +
       sec('🎓 Add a whole new pledge class (each semester)', '<ol>' +
-        '<li><b>Approved</b> tab → <b>+ Add pledge class</b>.</li>' +
+        '<li><b>📋 Unclaimed</b> tab → <b>+ Add pledge class</b>.</li>' +
         '<li>Type the class name (e.g. “Gamma Sigma · Fall \'26”), paste the names one per line.</li>' +
         '<li>On step 2, pick each new brother\'s big → <b>Add brothers</b>. Done — tree and rosters update instantly.</li></ol>') +
       sec('🔁 Someone shows on the wrong page (Active vs Alumni)', '<p>The site decides automatically from the <b>grad year</b>: future grad year = Active page, past = Alumni page. The green/gray chip next to each name here shows the current result.</p>' +
         '<ol><li>Find the brother (search box) → <b>Edit</b>.</li><li>Fix the <b>Grad year</b> → Save. The chip and the public pages flip immediately.</li></ol>') +
-      sec('🌳 Fix the family tree (wrong big, typo in a name)', '<ol>' +
-        '<li>Find the brother → <b>Edit</b>.</li>' +
-        '<li>Change the <b>Big brother</b> dropdown (moves his whole branch) or fix the name.</li>' +
-        '<li>Save — the tree updates instantly.</li></ol>' +
-        '<p>Remove someone entirely with <b>Delete</b> (his littles stay, but lose their big link — reassign them after).</p>') +
+      sec('🌳 Fix the family tree (wrong big, typo, add/remove someone)', '<p>Use the dedicated <b>🌳 Tree</b> tab — it shows each family line as an indented list with plain buttons on every brother: <b>Rename</b>, <b>Change big</b>, <b>+ Little</b>, <b>Remove</b>. There\'s a “❓ How do I use this?” button inside with step-by-step instructions. Every save is live on the public tree instantly.</p>') +
       sec('👑 Assign e-board titles', '<p>Edit the brother → set <b>Role</b> (President, Vice-President, Treasurer or Secretary — spelled exactly) and <b>Role term</b> (e.g. “Fall 2026”). He appears in the E-Board section of the Active or Alumni page.</p>') +
       sec('📅 Post events', '<p><b>Events</b> tab → <b>+ New event</b>. Public events show to everyone on the homepage; uncheck “visible to the public” for brothers-only events.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, or board thread (delete links appear for you on each item).</p>') +
