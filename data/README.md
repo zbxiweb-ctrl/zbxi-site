@@ -28,6 +28,6 @@ Source of the family tree. Transcribed from the 10 family-line docs (one per fou
    twins (both Robert Liddell's littles), it's a one-line fix.
 6. **Calderon's two littles** — the doc labeled both branches "First Little"; treated as two
    separate littles (Elijah Hall + Konstantinos Klentos).
-7. **Spelling kept as-in-doc**, e.g. "Johnathon Conway" (Pickard line).
+7. **Spelling kept as-in-doc**, e.g. "Johnathan Conway" (Pickard line).
 
 To fix any of these: edit `roster.txt`, re-run `build-import.mjs`, re-run the SQL.

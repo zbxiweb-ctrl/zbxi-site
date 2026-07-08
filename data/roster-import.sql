@@ -216,7 +216,7 @@ insert into public.brothers (id, full_name, pledge_class, big_id, status, user_i
   ('d157c9c3-65d8-4b3b-b9ac-19a6cb6d1b52', 'Adham Abohussein', 'Beta Psi · Spring ''16', '634bd4fb-96e6-47e1-83d1-998fffa45508', 'verified', null),
   ('f5143324-564e-4138-b77a-8abe642a642d', 'Bryan Somar', 'Gamma Beta · Spring ''17', 'd157c9c3-65d8-4b3b-b9ac-19a6cb6d1b52', 'verified', null),
   ('e5e2a818-1ead-443d-ab51-bc81adcef043', 'Jordan Gannett', 'Gamma Delta · Spring ''18', 'f5143324-564e-4138-b77a-8abe642a642d', 'verified', null),
-  ('12b5abb1-fc9b-4693-a6ad-75d9435f4dc7', 'Johnathon Conway', 'Gamma Theta · Spring ''20', 'e5e2a818-1ead-443d-ab51-bc81adcef043', 'verified', null),
+  ('12b5abb1-fc9b-4693-a6ad-75d9435f4dc7', 'Johnathan Conway', 'Gamma Theta · Spring ''20', 'e5e2a818-1ead-443d-ab51-bc81adcef043', 'verified', null),
   ('95ba81d0-932a-47e4-8988-a415d7b409c9', 'Zander Purcell', 'Gamma Mu · Spring ''23', '12b5abb1-fc9b-4693-a6ad-75d9435f4dc7', 'verified', null),
   ('39d4c32a-44af-472e-aac9-69e760200d21', 'Brayan Ortiz', 'Gamma Pi · Spring ''25', '95ba81d0-932a-47e4-8988-a415d7b409c9', 'verified', null),
   ('2ae9be7b-19dc-475d-b6c0-a43543488ee7', 'Leonard Slack', 'Kappa · Spring ''98', '06ef2d98-80be-47b8-83e0-5ba50f26a822', 'verified', null),

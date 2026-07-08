@@ -4,7 +4,13 @@
 --
 --  1) New profile columns (occupation, city, phone, contact prefs, skills,
 --     structured e-board title term) + roster_name (immutable tree name).
---  2) One-off fix: restores the "Johnathon Conway" roster name.
+--  2) One-off fix: unlinks + renames the "Johnathan Conway" roster row.
+--
+-- NOTE: every statement here is idempotent — if the script errors partway
+-- (e.g. a storage permission issue), fix the cause and simply RE-RUN THE
+-- WHOLE FILE. If the storage section fails with "must be owner"/permission
+-- errors, create the bucket manually instead (Storage -> New bucket ->
+-- name: gallery, Public: OFF) and re-run this file.
 --  3) release_profile(): disconnect an account from its tree row (row returns
 --     to the public tree as claimable, personal details wiped).
 --  4) claim_profile(): now snapshots roster_name at claim time.
@@ -37,10 +43,13 @@ alter table public.brothers add column if not exists role_term     text;   -- e.
 alter table public.brothers add column if not exists roster_name   text;   -- immutable tree name
 
 -- 2) One-off fix + roster_name backfill ---------------------------------------
--- Restore the roster name on the row that was claimed + renamed by the admin
--- account (so the backfill below snapshots the CORRECT name).
+-- The admin account (zbxi.web) mistakenly claimed + renamed the Conway roster
+-- row. Reset it fully: correct name (typo fix: JohnathAn), unlink the account,
+-- and put it back in the public tree as claimable.
 update public.brothers
-   set full_name = 'Johnathon Conway'
+   set full_name = 'Johnathan Conway',
+       user_id   = null,
+       status    = 'verified'
  where user_id = (select id from auth.users where email = 'zbxi.web@gmail.com');
 
 update public.brothers set roster_name = full_name where roster_name is null;
