@@ -38,7 +38,7 @@ async function isAdmin(req: Request) {
   return String(u?.email || "").toLowerCase() === ADMIN_EMAIL;
 }
 
-const body = (name: string | null) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
+const body = (name: string | null, link: string) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
   <tr><td style="background:#0A1F44;padding:26px 28px;text-align:center">
@@ -56,7 +56,7 @@ const body = (name: string | null) => `<!doctype html><html><body style="margin:
       leadership — then everything above opens up.
     </p>
     <p style="text-align:center;margin:28px 0 10px">
-      <a href="${SITE}/index.html#brothers-portal" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:13px 28px;border-radius:999px;display:inline-block">Claim your profile →</a>
+      <a href="${link}" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:13px 28px;border-radius:999px;display:inline-block">Claim your profile →</a>
     </p>
     <p style="font:400 12px/1.6 Helvetica,Arial;color:#8a8f9c;text-align:center;margin:14px 0 0">
       Takes two minutes. Your details are visible only to verified brothers — never the public.
@@ -90,6 +90,21 @@ Deno.serve(async (req) => {
 
     const results: any[] = [];
     for (const email of list) {
+      // Upsert FIRST so we have this invite's token to put in the link. The
+      // token lets the portal look up whether the address already has an
+      // account, and land the brother on Log in vs Create account.
+      const up = await fetch(`${SB}/rest/v1/invites?on_conflict=email`, {
+        method: "POST",
+        headers: {
+          apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=representation",
+        },
+        body: JSON.stringify({ email, brother_id }),
+      });
+      if (!up.ok) { results.push({ email, ok: false, error: (await up.text()).slice(0, 140) }); continue; }
+      const row = (await up.json())[0];
+      const link = `${SITE}/?invite=${row.token}#brothers-portal`;
+
       let error: string | null = null;
       if (!RESEND) {
         error = "RESEND_API_KEY not set";
@@ -97,16 +112,16 @@ Deno.serve(async (req) => {
         const r = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: FROM, to: email, subject: "Your place in the ΖΒΞ family tree is waiting", html: body(name) }),
+          body: JSON.stringify({ from: FROM, to: email, subject: "Your place in the ΖΒΞ family tree is waiting", html: body(name, link) }),
         });
         if (!r.ok) error = (await r.text()).slice(0, 140);
       }
 
-      // Upsert the invite record either way, so the admin sees what happened.
-      await fetch(`${SB}/rest/v1/invites?on_conflict=email`, {
-        method: "POST",
-        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
-        body: JSON.stringify({ email, brother_id, sent_at: error ? null : new Date().toISOString(), error }),
+      // Stamp the outcome so the admin sees exactly what happened.
+      await fetch(`${SB}/rest/v1/invites?id=eq.${row.id}`, {
+        method: "PATCH",
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ sent_at: error ? null : new Date().toISOString(), error }),
       });
       results.push({ email, ok: !error, error });
     }

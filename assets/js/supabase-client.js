@@ -369,6 +369,13 @@
         });
       }).then(function (r) { return r.json(); });
     },
+    // Token-gated lookup used by the invite link: does this invited email
+    // already have an account? Decides Log in vs Create account.
+    inviteStatus: function (token) {
+      return client.rpc('invite_status', { t: token })
+        .then(function (r) { return (r.error || !r.data) ? null : r.data; })
+        .catch(function () { return null; });
+    },
     invitesList: function () {
       return client.from('invites').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });

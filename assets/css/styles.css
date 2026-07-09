@@ -1389,3 +1389,9 @@ body.tree-lock { overflow: hidden; }
 /* Phase C — invite status chip */
 .schip--warn { background: #fdecea; color: #b03a2e; border-color: #e6b0aa; }
 .acct-block textarea { width: 100%; min-height: 110px; }
+
+/* invite-link greeting on the portal auth card */
+.invite-banner { background: linear-gradient(180deg,#fdf6e0,#f7ecd0); border: 1.5px solid var(--gold); border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; }
+.invite-banner b { display: block; color: var(--navy); font-size: .95rem; }
+.invite-banner span { display: block; color: var(--muted); font-size: .84rem; line-height: 1.5; margin-top: .2rem; }
+.invite-banner span b { display: inline; color: var(--navy); }

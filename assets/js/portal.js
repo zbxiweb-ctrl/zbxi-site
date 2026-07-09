@@ -25,7 +25,27 @@
     return;
   }
 
-  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false };
+  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false,
+                invite: null };  // { email, has_account } from an invite link
+
+  // Invite links look like  /?invite=<token>#brothers-portal
+  // Resolve the token before the first auth render so we can land the brother
+  // straight on "Create account" (no profile yet) or "Log in" (already has one).
+  function inviteToken() {
+    var m = location.search.match(/[?&]invite=([0-9a-f-]{36})/i);
+    return m ? m[1] : null;
+  }
+  function resolveInvite() {
+    var t = inviteToken();
+    if (!t || !Z.inviteStatus) return Promise.resolve(null);
+    return Z.inviteStatus(t).then(function (r) {
+      if (r && r.ok) {
+        state.invite = { email: r.email, has_account: !!r.has_account };
+        state.mode = r.has_account ? 'signin' : 'signup';
+      }
+      return state.invite;
+    });
+  }
 
   /* ---------------- popup plumbing ---------------- */
   function openModal() {
@@ -65,7 +85,8 @@
         state.loaded = true; state.profile = null;
         closeModal();
         renderPerks(false);
-        return renderAuth();
+        // An invite link decides whether we show Log in or Create account.
+        return resolveInvite().then(function () { renderAuth(); });
       }
       return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
         state.profile = res[0]; state.verified = res[1] || [];
@@ -129,18 +150,30 @@
   function renderAuth() {
     target = card;
     var signup = state.mode === 'signup';
-    h('<div class="portal-tabs">' +
+    var inv = state.invite;
+    // Invited brothers get a warm greeting and a pre-filled, locked-in email.
+    var banner = inv
+      ? '<div class="invite-banner">' +
+          (inv.has_account
+            ? '<b>👋 Welcome back, brother.</b><span>You already have an account for <b>' + esc(inv.email) + '</b> — just log in.</span>'
+            : '<b>🎉 Your invitation is ready.</b><span>Create your account for <b>' + esc(inv.email) + '</b>, then claim your name on the family tree.</span>') +
+        '</div>'
+      : '';
+    var emailVal = inv ? ' value="' + esc(inv.email) + '"' : '';
+
+    h(banner +
+      '<div class="portal-tabs">' +
         '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin">Log in</button>' +
         '<button class="' + (signup ? 'on' : '') + '" data-tab="signup">Sign up</button>' +
       '</div>' +
       '<form id="authForm" novalidate>' +
-        '<div class="field"><label>Email</label><input type="email" name="email" required></div>' +
-        '<div class="field"><label>Password</label><input type="password" name="password" minlength="8" required placeholder="8+ characters"></div>' +
+        '<div class="field"><label>Email</label><input type="email" name="email" required' + emailVal + '></div>' +
+        '<div class="field"><label>Password</label><input type="password" name="password" minlength="8" required placeholder="8+ characters"' + (inv ? ' autofocus' : '') + '></div>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (signup ? 'Create account' : 'Log in') + '</button>' +
         '<p class="form-status" id="authStatus" role="status"></p>' +
       '</form>' +
       (signup
-        ? '<p class="form-note">Only established brothers should sign up. New profiles are reviewed by chapter leadership before going public.</p>'
+        ? '<p class="form-note">Only established brothers should sign up. New profiles are reviewed by chapter leadership once — after that you can edit your profile freely.</p>'
         : '<p class="form-note center"><a href="#" id="forgotPw">Forgot your password?</a></p>'));
 
     card.querySelectorAll('[data-tab]').forEach(function (b) {
@@ -167,7 +200,19 @@
         }
         refresh();
       }).catch(function (err) {
-        st.className = 'form-status err'; st.textContent = err.message || 'Something went wrong.';
+        var msg = (err && err.message) || 'Something went wrong.';
+        // Signing up with an address that already exists: send them to log in
+        // rather than leaving them stuck on an error.
+        if (signup && /already registered|already exists|user already/i.test(msg)) {
+          state.mode = 'signin';
+          if (state.invite) state.invite.has_account = true;
+          renderAuth();
+          var st2 = card.querySelector('#authStatus');
+          st2.className = 'form-status';
+          st2.textContent = 'You already have an account for that email — log in below.';
+          return;
+        }
+        st.className = 'form-status err'; st.textContent = msg;
         f.querySelector('button').disabled = false;
       });
     };
@@ -366,7 +411,7 @@
         '<span><b>' + pct + '% complete</b> · next: add ' + missing.slice(0, 2).map(function (c) { return c[1]; }).join(' and ') + '</span></div>';
 
     host.innerHTML =
-      (pr.status === 'verified' ? '<p class="portal-live">● You\'re live on the site. Edits re-enter review.</p>' : '') +
+      (pr.status === 'verified' ? '<p class="portal-live">● You\'re live on the site. Your edits publish immediately.</p>' : '') +
       meter +
       '<form id="profForm" novalidate>' +
         '<fieldset class="pf-group"><legend>The basics</legend>' +
@@ -465,14 +510,19 @@
           quote: f.quote.value.trim() || null,
           bio: f.bio.value.trim() || null,
           skills: f.skills.value.trim() || null,
-          photo_url: url,
-          status: 'pending' // any create/edit re-enters review
+          photo_url: url
+          // `status` is never sent from the browser: the guard_status trigger
+          // (upgrade12.sql) pins it — new rows start pending, and an approved
+          // brother's edits publish immediately without re-review.
         };
         if (pr.id) row.id = pr.id;
         return Z.upsertProfile(row);
       }).then(function (r) {
         if (r.error) throw r.error;
-        st.className = 'form-status ok'; st.textContent = '✓ Submitted — pending verification.';
+        st.className = 'form-status ok';
+        st.textContent = pr.status === 'verified'
+          ? '✓ Saved — your profile is updated across the site.'
+          : '✓ Submitted — pending verification by chapter leadership.';
         state.wantModal = true;
         setTimeout(refresh, 900);
       }).catch(function (err) {

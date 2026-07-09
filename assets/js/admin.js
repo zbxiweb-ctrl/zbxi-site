@@ -1129,6 +1129,7 @@
         '<li>Open the <b>Pending</b> tab (the number shows how many are waiting — the 🔔 bell also alerts you).</li>' +
         '<li>Check the name/pledge class look right (edit if needed).</li>' +
         '<li>Click <b>Approve</b>. He\'s instantly live on the roster, family tree, gallery and board.</li></ol>' +
+        '<p><b>You only approve a brother once.</b> After that he can edit his own profile — photo, city, job, bio — and it publishes immediately without coming back to you. Brothers cannot approve themselves; the database enforces that, not the website.</p>' +
         '<p>Not a real brother? Click <b>Reject</b> — they never appear publicly.</p>') +
       sec('🔒 Who can see what (site privacy)', '<ul>' +
         '<li><b>The public</b> sees the homepage, events, and a demo family tree with fake names — no real brother names anywhere.</li>' +
@@ -1168,7 +1169,8 @@
       sec('✉️ Invite brothers (the most valuable thing you can do)', '<p>Most brothers on the tree have <b>no account</b> — so they never see the gallery, the board, the directory, or the digest. The <b>✉️ Invite</b> tab fixes that:</p><ol>' +
         '<li>Paste up to 25 email addresses, one per line.</li>' +
         '<li>Press <b>Send invitations</b>. Each brother gets a personal email saying his name is already on the tree, with a button to claim it.</li>' +
-        '<li>When he signs up he lands in your <b>Pending</b> tab — approve him as usual. The invite list marks him <b>● Joined</b>.</li></ol>' +
+        '<li>The link is smart: if he already has an account it opens <b>Log in</b>; if not, it opens <b>Create account</b> with his email filled in.</li>' +
+        '<li>When he signs up he lands in your <b>Pending</b> tab — approve him once. The invite list marks him <b>● Joined</b>.</li></ol>' +
         '<p>Only invite brothers you know. This is a personal invitation, not a mailing list.</p>') +
       sec('📬 The monthly digest', '<p>Once a month every brother <i>with an account</i> gets one email: upcoming events, new job posts, new brothers, gallery activity, and pledge-class anniversaries. It sends itself automatically — you don\'t have to do anything.</p><ul>' +
         '<li><b>👁 Preview it</b> — see exactly what this month\'s email looks like. Sends nothing.</li>' +
