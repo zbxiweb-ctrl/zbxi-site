@@ -64,6 +64,7 @@
       { id: 'committees', label: '👥 Committees' },
       { id: 'events',     label: 'Events'   },
       { id: 'awards',     label: '🏅 Awards' },
+      { id: 'invite',     label: '✉️ Invite' },
       { id: 'suggest',    label: '💡 Suggestions <span class="tab-count" data-count="suggest" style="display:none"></span>' },
       { id: 'stats',      label: 'Stats'    },
       { id: 'guide',      label: '📖 Guide' }
@@ -162,6 +163,7 @@
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
+    if (state.tab === 'invite') return renderInviteTab(q);
     if (state.tab === 'suggest') return renderSuggestTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
@@ -468,6 +470,101 @@
         close(); renderList();
       });
     };
+  }
+
+  /* ---------------- invite + digest tab ----------------
+     The engine of alumni engagement: invite known brothers by email so they
+     claim their roster name, then the monthly digest keeps them coming back. */
+  function renderInviteTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading…</p>';
+    Z.invitesList().then(function (rows) {
+      var sent = rows.filter(function (r) { return r.sent_at; }).length;
+      var joined = rows.filter(function (r) { return r.accepted_at; }).length;
+
+      var invited = {};
+      rows.forEach(function (r) { invited[String(r.email).toLowerCase()] = r; });
+
+      var html =
+        '<div class="acct-block"><h4>✉️ Invite brothers to claim their profile</h4>' +
+        '<p class="form-note" style="margin-top:0">Most of the ' + state.data.verified.length + ' brothers on the tree have no account yet — so they never see the gallery, board, or directory. ' +
+        'Paste their emails (one per line, up to 25) and each gets a personal invite with a link to claim his name. This is the single best thing you can do for the site.</p>' +
+        '<div class="field"><label>Email addresses</label><textarea id="invEmails" rows="5" placeholder="john.smith@gmail.com&#10;mike.jones@yahoo.com"></textarea></div>' +
+        '<button class="btn btn--gold" id="invSend">Send invitations</button>' +
+        '<p class="form-status" id="invStatus"></p></div>' +
+
+        '<div class="acct-block"><h4>📬 Monthly digest</h4>' +
+        '<p class="form-note" style="margin-top:0">A once-a-month email to brothers <b>with accounts</b> — upcoming events, new job posts, new brothers, gallery activity, and pledge-class anniversaries. ' +
+        'Every email has a one-click unsubscribe. Always send yourself a test first.</p>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
+          '<button class="btn btn--ghost" id="digPreview">👁 Preview it</button>' +
+          '<button class="btn btn--navy" id="digTest">✉️ Send a test to me</button>' +
+          '<button class="btn btn--gold" id="digSend">📬 Send to all brothers</button>' +
+        '</div>' +
+        '<p class="form-status" id="digStatus"></p></div>' +
+
+        '<h3 class="stat-h">Invitations (' + sent + ' sent · ' + joined + ' joined)</h3>' +
+        (rows.length
+          ? rows.map(function (r) {
+              var status = r.accepted_at ? '<span class="schip schip--active">● Joined</span>'
+                         : r.sent_at ? '<span class="schip">Sent</span>'
+                         : '<span class="schip schip--warn">Failed</span>';
+              var when = new Date(r.sent_at || r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              return '<div class="admin-row"><div class="admin-row__ph">✉️</div>' +
+                '<div class="admin-row__info"><b>' + esc(r.email) + ' ' + status + '</b>' +
+                '<span>' + esc(when) + (r.error ? ' · ⚠ ' + esc(r.error) : '') + '</span></div></div>';
+            }).join('')
+          : '<p class="admin-empty">No invitations sent yet.</p>');
+
+      q.innerHTML = html;
+
+      document.getElementById('invSend').onclick = function () {
+        var btn = this, st = document.getElementById('invStatus');
+        var emails = document.getElementById('invEmails').value.split(/[\s,;]+/).map(function (e) { return e.trim(); }).filter(Boolean);
+        if (!emails.length) { st.className = 'form-status err'; st.textContent = 'Paste at least one email address.'; return; }
+        if (emails.length > 25) { st.className = 'form-status err'; st.textContent = 'Send at most 25 at a time.'; return; }
+        var dupes = emails.filter(function (e) { var i = invited[e.toLowerCase()]; return i && i.sent_at; });
+        if (dupes.length && !confirm('Already invited: ' + dupes.join(', ') + '\n\nSend again anyway?')) return;
+        btn.disabled = true; btn.textContent = 'Sending…';
+        st.className = 'form-status'; st.textContent = '';
+        Z.inviteBrothers(emails, null).then(function (r) {
+          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; }
+          else {
+            var failed = (r.results || []).filter(function (x) { return !x.ok; });
+            st.className = failed.length ? 'form-status err' : 'form-status ok';
+            st.textContent = '✓ Sent ' + r.sent + ' invitation' + (r.sent === 1 ? '' : 's') +
+              (failed.length ? ' · ' + failed.length + ' failed: ' + failed[0].error : '');
+            setTimeout(function () { renderList(); }, 1200);
+          }
+        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
+          .finally(function () { btn.disabled = false; btn.textContent = 'Send invitations'; });
+      };
+
+      document.getElementById('digPreview').onclick = function () {
+        var st = document.getElementById('digStatus');
+        st.className = 'form-status'; st.textContent = 'Rendering…';
+        Z.digestPreview().then(function (html) {
+          var w = window.open('', '_blank');
+          if (w) { w.document.write(html); w.document.close(); st.textContent = ''; }
+          else { st.className = 'form-status err'; st.textContent = 'Allow pop-ups to see the preview.'; }
+        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); });
+      };
+
+      function runDigest(test, btn) {
+        var st = document.getElementById('digStatus');
+        if (!test && !confirm('Send the digest to EVERY brother with an account?\n\nSend yourself a test first if you haven\'t.')) return;
+        btn.disabled = true; var label = btn.textContent; btn.textContent = 'Sending…';
+        st.className = 'form-status'; st.textContent = '';
+        Z.digestSend(test).then(function (r) {
+          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
+          if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
+          st.className = 'form-status ok';
+          st.textContent = '✓ Digest sent to ' + r.sent + ' ' + (test ? 'inbox (you)' : 'brother' + (r.sent === 1 ? '' : 's'));
+        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
+          .finally(function () { btn.disabled = false; btn.textContent = label; });
+      }
+      document.getElementById('digTest').onclick = function () { runDigest(true, this); };
+      document.getElementById('digSend').onclick = function () { runDigest(false, this); };
+    }).catch(function (e) { q.innerHTML = '<p class="form-status err">' + esc(String(e)) + '</p>'; });
   }
 
   /* ---------------- roster additions ---------------- */
@@ -1068,6 +1165,16 @@
         '<li><b>Right on the calendar</b> (easiest): sign in on the homepage, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
         '<li><b>Here in the console</b>: <b>Events</b> tab → <b>+ New event</b> (same fields, plus the announcement banner editor).</li></ul>' +
         '<p>Tick <b>All-day</b> for things without a start time. If you type a location, it becomes a map link automatically. Brothers RSVP with one tap so you know who\'s coming.</p>') +
+      sec('✉️ Invite brothers (the most valuable thing you can do)', '<p>Most brothers on the tree have <b>no account</b> — so they never see the gallery, the board, the directory, or the digest. The <b>✉️ Invite</b> tab fixes that:</p><ol>' +
+        '<li>Paste up to 25 email addresses, one per line.</li>' +
+        '<li>Press <b>Send invitations</b>. Each brother gets a personal email saying his name is already on the tree, with a button to claim it.</li>' +
+        '<li>When he signs up he lands in your <b>Pending</b> tab — approve him as usual. The invite list marks him <b>● Joined</b>.</li></ol>' +
+        '<p>Only invite brothers you know. This is a personal invitation, not a mailing list.</p>') +
+      sec('📬 The monthly digest', '<p>Once a month every brother <i>with an account</i> gets one email: upcoming events, new job posts, new brothers, gallery activity, and pledge-class anniversaries. It sends itself automatically — you don\'t have to do anything.</p><ul>' +
+        '<li><b>👁 Preview it</b> — see exactly what this month\'s email looks like. Sends nothing.</li>' +
+        '<li><b>✉️ Send a test to me</b> — mails it only to you. Always do this first.</li>' +
+        '<li><b>📬 Send to all brothers</b> — sends it now, ahead of schedule. Rarely needed.</li></ul>' +
+        '<p>Every email has a one-click unsubscribe, and brothers can toggle it themselves under <b>My Profile → Account</b>. If nothing happened in the chapter that month, the email says so gracefully rather than arriving empty.</p>') +
       sec('🏅 Update the Greek Excellence awards', '<p>The gold medallions on the homepage come from the <b>🏅 Awards</b> tab. When Geneseo announces next year\'s Greek awards: <b>+ Add award</b> → type the year (e.g. “2025–26”), pick the pillar, give it its title. The homepage switches to the newest year automatically and keeps older years as an archive you can flip through.</p>') +
       sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, board thread, or reply (delete links appear for you on each item). Brothers can attach photos to threads and react 👍 ❤️ 😂 to replies; deleting a thread or reply removes its photo and reactions with it.</p>') +

@@ -487,6 +487,11 @@
     var host = mbody.querySelector('#portalTabBody');
     var inTree = !!pr.roster_name;
     host.innerHTML =
+      '<div class="acct-block"><h4>📬 Email preferences</h4>' +
+        '<label class="pref-box"><input type="checkbox" id="digestOpt"' + (pr.email_opt_out ? '' : ' checked') + '> ' +
+        'Send me the monthly brotherhood digest</label>' +
+        '<p class="form-note" style="margin:.5rem 0 0">Once a month: upcoming events, new job posts on the board, new brothers, and gallery activity. Nothing else, ever.</p>' +
+        '<p class="form-status" id="digestStatus" role="status"></p></div>' +
       '<div class="acct-block"><h4>Change password</h4>' +
         '<form id="pwForm" novalidate>' +
           '<div class="form-row">' +
@@ -504,6 +509,20 @@
             '<button class="btn btn--ghost-danger" id="releaseBtn" type="button">Delete my profile</button>') +
         '<p class="form-status" id="releaseStatus" role="status"></p>' +
       '</div>';
+
+    var digestBox = host.querySelector('#digestOpt');
+    if (digestBox) digestBox.onchange = function () {
+      var st = host.querySelector('#digestStatus');
+      st.className = 'form-status'; st.textContent = 'Saving…';
+      Z.setEmailOptOut(state.user.id, !digestBox.checked).then(function (r) {
+        if (r.error) throw r.error;
+        st.className = 'form-status ok';
+        st.textContent = digestBox.checked ? '✓ You\'ll get the monthly digest.' : '✓ Unsubscribed from the digest.';
+      }).catch(function (err) {
+        st.className = 'form-status err'; st.textContent = err.message || 'Could not save.';
+        digestBox.checked = !digestBox.checked;
+      });
+    };
 
     host.querySelector('#pwForm').onsubmit = function (e) {
       e.preventDefault();

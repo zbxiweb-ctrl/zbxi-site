@@ -338,6 +338,45 @@
         .then(function (r) { if (r.error) throw r.error; return r.data; });
     },
 
+    /* ---- email: digest + invites (Edge Functions; see supabase/functions/) ---- */
+    _fn: function (slug) { return (window.ZBXI_CONFIG.SUPABASE_URL) + '/functions/v1/' + slug; },
+    _token: function () {
+      return client.auth.getSession().then(function (r) {
+        return (r.data && r.data.session && r.data.session.access_token) || null;
+      });
+    },
+    // Renders the digest without sending it (admin only).
+    digestPreview: function () {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-digest') + '?dry=1', { headers: { Authorization: 'Bearer ' + t } });
+      }).then(function (r) { return r.text(); });
+    },
+    // test=true -> sends only to the admin's own inbox.
+    digestSend: function (test) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-digest') + (test ? '?test=1' : ''), { method: 'POST', headers: { Authorization: 'Bearer ' + t } });
+      }).then(function (r) { return r.json(); });
+    },
+    inviteBrothers: function (emails, brotherId) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-invite'), {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails: emails, brother_id: brotherId || null })
+        });
+      }).then(function (r) { return r.json(); });
+    },
+    invitesList: function () {
+      return client.from('invites').select('*').order('created_at', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    setEmailOptOut: function (userId, optOut) {
+      return client.from('brothers').update({ email_opt_out: optOut }).eq('user_id', userId);
+    },
+
     /* ---- notifications ---- */
     notifList: function () {
       return client.from('notifications').select('*')

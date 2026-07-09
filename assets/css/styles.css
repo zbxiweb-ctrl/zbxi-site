@@ -1385,3 +1385,7 @@ body.tree-lock { overflow: hidden; }
 .class-chip i { font-style: normal; background: var(--navy); color: var(--gold-bright); border-radius: 999px; font-size: .68rem; font-weight: 700; padding: .05rem .45rem; }
 
 @media (max-width: 620px) { .mentor-bar .btn { width: 100%; } }
+
+/* Phase C — invite status chip */
+.schip--warn { background: #fdecea; color: #b03a2e; border-color: #e6b0aa; }
+.acct-block textarea { width: 100%; min-height: 110px; }
