@@ -31,6 +31,7 @@
         <a href="active.html">Active</a>
         <a href="alumni.html" class="on">Alumni</a>
         <a href="index.html#family-tree">Family Tree</a>
+        <a href="index.html#events">Events</a>
         <a href="gallery.html">Gallery</a>
         <a href="board.html">Board</a>
         <a href="index.html#contact">Contact</a>
@@ -59,13 +60,20 @@
           <div id="alumniMap" class="alumni-map"></div>
           <p class="form-note" style="margin:.5rem 0 3rem">Pins come from the “current city” on brother profiles — update yours to appear on the map.</p>
         </div>
+        <div id="discoverRail" style="display:none;margin-bottom:3rem"></div>
+
         <div id="mentorFinder" style="display:none">
           <p class="eyebrow">🎓 Find a Mentor</p>
           <p class="lede" style="margin-bottom:1rem">Search alumni by skill, field, or profession. <button type="button" class="net-help" id="netHelpBtn">❓ How networking works</button></p>
-          <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
+          <div class="mentor-bar">
+            <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
+            <button type="button" class="btn btn--gold" id="mentorReqBtn" style="display:none">🎓 Request a mentor</button>
+          </div>
           <div class="mentor-chips" id="mentorChips"></div>
           <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
         </div>
+
+        <div id="classIndex" style="display:none;margin-bottom:3rem"></div>
         <p class="eyebrow">Alumni Executive Board</p>
         <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
 
@@ -88,8 +96,7 @@
       <img class="crest-badge" src="assets/img/crest-main.jpg" alt="Zeta Beta Xi crest" />
       <p class="motto">Brothers of Zeta Beta Xi</p>
       <nav class="footer__nav">
-        <a href="index.html#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a>
-        <a href="index.html#family-tree">Family Tree</a><a href="gallery.html">Gallery</a><a href="board.html">Board</a><a href="index.html#brothers-portal">Brother Login</a><a href="index.html#contact">Contact</a>
+        <a href="index.html#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a><a href="index.html#family-tree">Family Tree</a><a href="index.html#events">Events</a><a href="gallery.html">Gallery</a><a href="board.html">Board</a><a href="index.html#brothers-portal">Brother Login</a><a href="index.html#contact">Contact</a>
       </nav>
       <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
     </div>

@@ -1358,3 +1358,30 @@ body.tree-lock { overflow: hidden; }
 /* "How networking works" trigger */
 .net-help { background: none; border: 0; color: var(--gold-deep); font-weight: 600; font-size: .84rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0; }
 .net-help:hover { color: var(--navy); }
+
+/* ============================================================================
+   Networking Phase B — discovery rails, mentor request, class index
+   ============================================================================ */
+/* discovery rails: brothers in your field / near you */
+.disc-rail { margin-bottom: 1.6rem; }
+.disc-rail h4 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .7rem; color: var(--navy); font-family: var(--display); font-size: 1.1rem; }
+.disc-rail h4 i { font-style: normal; background: var(--gold); color: var(--navy-deep); border-radius: 999px; font-size: .68rem; font-weight: 800; padding: .1rem .5rem; }
+.disc-scroll { display: flex; gap: .9rem; overflow-x: auto; padding-bottom: .6rem; scroll-snap-type: x proximity; }
+.disc-scroll .bro-card { flex: 0 0 240px; scroll-snap-align: start; }
+.disc-none { color: var(--muted); font-size: .88rem; margin: 0; }
+.disc-empty { background: var(--paper); border: 1.5px dashed var(--gold); border-radius: 12px; padding: 1rem 1.2rem; color: var(--muted); font-size: .92rem; }
+.disc-empty b { color: var(--navy); }
+.disc-empty a { color: var(--gold-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+/* mentor finder bar: search + request button */
+.mentor-bar { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+.mentor-bar .admin-search { flex: 1; min-width: 240px; margin: 0; }
+.mentor-bar .btn { flex: none; font-size: .88rem; padding: .6rem 1.2rem; white-space: nowrap; }
+
+/* reunion / pledge-class index */
+.class-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+.class-chip { display: inline-flex; align-items: center; gap: .4rem; background: var(--white); border: 1.5px solid var(--navy-2); color: var(--navy); border-radius: 999px; padding: .45rem 1rem; font-size: .86rem; font-weight: 600; transition: all .15s; }
+.class-chip:hover { border-color: var(--gold); background: #fdf6e5; transform: translateY(-1px); }
+.class-chip i { font-style: normal; background: var(--navy); color: var(--gold-bright); border-radius: 999px; font-size: .68rem; font-weight: 700; padding: .05rem .45rem; }
+
+@media (max-width: 620px) { .mentor-bar .btn { width: 100%; } }

@@ -332,6 +332,11 @@
       return client.rpc('connect_request', { target: targetUserId })
         .then(function (r) { if (r.error) throw r.error; return r.data; });
     },
+    // Notifies up to 5 alumni who flagged "open to mentoring" in that field.
+    mentorRequest: function (field, note) {
+      return client.rpc('mentor_request', { field: field, note: note || null })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
 
     /* ---- notifications ---- */
     notifList: function () {
