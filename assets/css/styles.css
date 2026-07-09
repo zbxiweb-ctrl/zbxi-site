@@ -160,7 +160,13 @@ p { margin: 0 0 1em; }
 .hero__crest-col { display: flex; justify-content: center; }
 .hero__crest-img {
   width: 100%; max-width: 460px; height: auto;
-  filter: drop-shadow(0 18px 46px rgba(0,0,0,.55));
+  /* blue-crest.jpg is white line-art on a navy field: `screen` drops its navy
+     background into the navy hero so only the crest shows; the radial mask
+     feathers the edges so no rectangle seam is visible. */
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(closest-side, #000 74%, transparent 100%);
+          mask-image: radial-gradient(closest-side, #000 74%, transparent 100%);
+  filter: drop-shadow(0 18px 46px rgba(0,0,0,.35));
   animation: heroCrestIn 1s cubic-bezier(.2,.7,.2,1) both;
 }
 @keyframes heroCrestIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
@@ -1258,28 +1264,6 @@ body.tree-lock { overflow: hidden; }
 .brand .crest-badge { transition: box-shadow .25s; }
 .brand:hover .crest-badge { box-shadow: 0 0 0 3px rgba(200,162,75,.35), 0 0 18px rgba(232,199,102,.5); }
 
-/* announcement banner: navy band with gold hairlines instead of the flat gold strip */
-.site-banner {
-  background: linear-gradient(90deg, #10294f, #183a6e 55%, #10294f);
-  border-top: 1px solid rgba(200,162,75,.55); border-bottom: 1px solid rgba(200,162,75,.55);
-  animation: bannerIn .45s ease both;
-}
-@keyframes bannerIn { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
-.site-banner__inner { gap: .8rem; padding: .5rem 0; }
-.site-banner__ic {
-  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold)); font-size: .9rem;
-}
-.site-banner__msg { flex: 1; color: var(--cream) !important; font-weight: 600 !important; font-size: .9rem !important; }
-.site-banner__go {
-  flex: none; color: var(--navy-deep) !important; background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  border-radius: 999px; padding: .3rem .95rem; font-size: .8rem !important; font-weight: 700 !important;
-  text-decoration: none !important; white-space: nowrap;
-}
-.site-banner__go:hover { filter: brightness(1.07); }
-.site-banner__x { background: rgba(255,255,255,.12); color: var(--cream); }
-.site-banner__x:hover { background: rgba(255,255,255,.25); }
-
 /* account dropdown: navy identity header + roomy icon rows */
 .nav__chip .nav__avatar { box-shadow: 0 0 0 2px rgba(200,162,75,.55); }
 .nav__caret { transition: transform .2s; }
@@ -1321,3 +1305,35 @@ body.tree-lock { overflow: hidden; }
   border-radius: 999px; padding: .12rem .5rem; margin-left: .3rem;
 }
 .nav__menu-divider { margin: .4rem .9rem; }
+
+/* ============================================================================
+   Crest system — featured "Our Arms" showcase + faint section watermarks
+   ============================================================================ */
+.has-watermark { position: relative; overflow: hidden; }
+.sect-watermark {
+  position: absolute; top: 50%; right: -6%; transform: translateY(-50%);
+  width: min(520px, 46%); height: auto; z-index: 0; pointer-events: none;
+  user-select: none;
+}
+.sect-watermark--dark { opacity: .05; }                 /* black-on-white line art on cream */
+.sect-watermark--light { opacity: .07; mix-blend-mode: screen; } /* white-on-navy line art on navy */
+.has-watermark > .wrap { position: relative; z-index: 1; }
+@media (max-width: 760px) { .sect-watermark { display: none; } }
+
+/* Featured crest (purp-crest) — framed plate on the light About section */
+.crest-feature { margin: 3rem auto 0; max-width: 340px; text-align: center; }
+.crest-feature__plate {
+  background: var(--paper); border: 1px solid rgba(200,162,75,.5);
+  border-radius: 18px; padding: 1.1rem; box-shadow: var(--shadow);
+  position: relative;
+}
+.crest-feature__plate::after {
+  content: ''; position: absolute; inset: 6px; border: 1px solid rgba(200,162,75,.28);
+  border-radius: 12px; pointer-events: none;
+}
+.crest-feature__plate img { width: 100%; height: auto; display: block; border-radius: 8px; }
+.crest-feature figcaption {
+  margin-top: 1rem; color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 42ch;
+  margin-inline: auto;
+}
+.crest-feature figcaption em { color: var(--gold-deep); font-style: italic; }
