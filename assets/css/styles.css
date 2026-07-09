@@ -159,16 +159,12 @@ p { margin: 0 0 1em; }
 }
 .hero__crest-col { display: flex; justify-content: center; }
 .hero__crest-img {
-  width: 100%; max-width: 460px; height: auto;
-  /* blue-crest.jpg is white line-art on a navy field: `screen` drops its navy
-     background into the navy hero so only the crest shows; the radial mask
-     feathers the edges so no rectangle seam is visible. */
-  mix-blend-mode: screen;
-  -webkit-mask-image: radial-gradient(closest-side, #000 74%, transparent 100%);
-          mask-image: radial-gradient(closest-side, #000 74%, transparent 100%);
-  filter: drop-shadow(0 18px 46px rgba(0,0,0,.35));
+  width: 100%; max-width: 460px; height: auto; display: block;
+  border-radius: 10px;
   animation: heroCrestIn 1s cubic-bezier(.2,.7,.2,1) both;
 }
+/* When the crest sits on a plate, the plate carries the shadow + animation. */
+.hero__plate .hero__crest-img { max-width: 100%; animation: none; }
 @keyframes heroCrestIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
 .hero__text { text-align: left; }
 .hero__kicker { font-size: .82rem; letter-spacing: .32em; text-transform: uppercase; color: var(--gold-bright); font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,.6); margin: 0 0 .4rem; }
@@ -1320,20 +1316,16 @@ body.tree-lock { overflow: hidden; }
 .has-watermark > .wrap { position: relative; z-index: 1; }
 @media (max-width: 760px) { .sect-watermark { display: none; } }
 
-/* Featured crest (purp-crest) — framed plate on the light About section */
-.crest-feature { margin: 3rem auto 0; max-width: 340px; text-align: center; }
-.crest-feature__plate {
+/* Hero crest v2 — framed plate (v2 has a white background, so display it as an
+   intentional crest card against the navy hero rather than a bare white block) */
+.hero__plate {
+  position: relative; width: 100%; max-width: 380px; margin-inline: auto; padding: 1rem;
   background: var(--paper); border: 1px solid rgba(200,162,75,.5);
-  border-radius: 18px; padding: 1.1rem; box-shadow: var(--shadow);
-  position: relative;
+  border-radius: 20px; box-shadow: var(--shadow);
+  animation: heroCrestIn 1s cubic-bezier(.2,.7,.2,1) both;
 }
-.crest-feature__plate::after {
-  content: ''; position: absolute; inset: 6px; border: 1px solid rgba(200,162,75,.28);
-  border-radius: 12px; pointer-events: none;
+.hero__plate::after {
+  content: ''; position: absolute; inset: 7px; border: 1px solid rgba(200,162,75,.28);
+  border-radius: 14px; pointer-events: none;
 }
-.crest-feature__plate img { width: 100%; height: auto; display: block; border-radius: 8px; }
-.crest-feature figcaption {
-  margin-top: 1rem; color: var(--muted); font-size: .92rem; line-height: 1.6; max-width: 42ch;
-  margin-inline: auto;
-}
-.crest-feature figcaption em { color: var(--gold-deep); font-style: italic; }
+@media (max-width: 820px) { .hero__plate { max-width: 300px; } }
