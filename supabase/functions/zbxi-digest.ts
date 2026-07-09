@@ -18,7 +18,10 @@ async function db(path: string, init: RequestInit = {}) {
     headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json", ...(init.headers || {}) },
   });
   if (!r.ok) throw new Error(`${path}: ${await r.text()}`);
-  return r.status === 204 ? null : await r.json();
+  // PostgREST answers inserts with 201 + an EMPTY body unless asked otherwise,
+  // so never hand an empty string to JSON.parse.
+  const body = await r.text();
+  return body ? JSON.parse(body) : null;
 }
 
 async function isAdmin(req: Request) {
