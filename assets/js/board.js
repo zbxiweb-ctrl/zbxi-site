@@ -89,7 +89,7 @@
 
   function emptyState(label) {
     return '<div class="board-empty">' +
-      '<img src="assets/img/crest-cut.png" alt="" />' +
+      '<img src="assets/img/crest-mark.png" alt="" />' +
       '<p><b>Nothing in ' + label + ' yet.</b><br>Be the brother who starts the first thread.</p></div>';
   }
 

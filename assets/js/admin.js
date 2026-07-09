@@ -94,7 +94,7 @@
   function renderConsole() {
     root.innerHTML =
       '<div class="admin-head">' +
-        '<div class="admin-head__id"><img class="crest-badge" src="assets/img/crest.jpg" alt="" />' +
+        '<div class="admin-head__id"><img class="crest-badge" src="assets/img/crest-sm.png" alt="" />' +
           '<div><h2>Brotherhood Admin</h2><span class="admin-head__sub">The webmaster console — everything is buttons, never code.</span></div></div>' +
         '<button class="btn btn--ghost" id="so">Sign out</button></div>' +
       '<div id="tabs">' +

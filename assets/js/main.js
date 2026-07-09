@@ -463,15 +463,20 @@
       { key: 'scholarship', icon: '🎓', title: 'Scholarship & Academics', blurb: 'Supports active brothers with books, fees and academic awards.' },
       { key: 'philanthropy', icon: '🤝', title: 'Philanthropy Drives', blurb: 'Fuels our service work in the Geneseo community and beyond.' }
     ];
-    giveEl.innerHTML = CAMPAIGNS.map(function (c) {
-      var url = LINKS[c.key];
-      return '<div class="give-tile">' +
-        '<span class="give-tile__ic">' + c.icon + '</span>' +
-        '<h4>' + c.title + '</h4><p>' + c.blurb + '</p>' +
-        (url ? '<a class="btn btn--gold" href="' + esc(url) + '" target="_blank" rel="noopener">Give now</a>'
-             : '<span class="give-tile__soon">Online giving coming soon</span>') +
-      '</div>';
-    }).join('');
+    // Only advertise giving once a real link exists — a wall of "coming soon"
+    // buttons advertises a gap. Tiles without a link are simply not shown.
+    var live = CAMPAIGNS.filter(function (c) { return LINKS[c.key]; });
+    if (!live.length) {
+      giveEl.style.display = 'none';
+    } else {
+      giveEl.innerHTML = live.map(function (c) {
+        return '<div class="give-tile">' +
+          '<span class="give-tile__ic">' + c.icon + '</span>' +
+          '<h4>' + c.title + '</h4><p>' + c.blurb + '</p>' +
+          '<a class="btn btn--gold" href="' + esc(LINKS[c.key]) + '" target="_blank" rel="noopener">Give now</a>' +
+        '</div>';
+      }).join('');
+    }
   }
 
   /* ---- Forms (Formspree). Graceful AJAX submit + inline status. ---- */
