@@ -46,10 +46,13 @@
     var av = b.photo_url
       ? '<img src="' + esc(b.photo_url) + '" alt="">'
       : esc(initials(b.full_name));
-    var extra = [b.city, b.occupation].filter(Boolean).join(' · ');
+    var extra = [b.city, b.occupation, b.company].filter(Boolean).join(' · ');
+    var OT_IC = { mentor: '🎓', hire: '💼', connect: '🤝' };
+    var ot = (b.open_to || []).filter(function (k) { return OT_IC[k]; })
+      .map(function (k) { return '<i class="bro-card__ot" title="Open to ' + (k === 'mentor' ? 'mentoring' : k === 'hire' ? 'hiring & referrals' : 'connecting') + '">' + OT_IC[k] + '</i>'; }).join('');
     return '<button class="bro-card' + (reg ? ' bro-card--live' : '') + '" data-id="' + b.id + '">' +
       '<span class="bro-card__av">' + av + (reg ? '<i class="bro-card__dot"></i>' : '') + '</span>' +
-      '<span class="bro-card__meta"><b>' + esc(b.full_name) + '</b>' +
+      '<span class="bro-card__meta"><b>' + esc(b.full_name) + (ot ? ' <span class="bro-card__ots">' + ot + '</span>' : '') + '</b>' +
         '<small>' + esc(b.pledge_class || '') + (b.grad_year ? " · Class of " + esc(b.grad_year) : '') + '</small>' +
         (extra ? '<small class="bro-card__extra">' + esc(extra) + '</small>' : '') +
         (reg ? '<em class="bro-card__tag">● on the site</em>' : '<em class="bro-card__tag bro-card__tag--off">unclaimed</em>') +
@@ -197,6 +200,7 @@
           if (!d) return;
           b.photo_url = d.photo_url; b.city = d.city; b.occupation = d.occupation;
           b.role_term = d.role_term; b.skills = d.skills; b.major = d.major;
+          b.company = d.company; b.industry = d.industry; b.open_to = d.open_to;
         });
         APPROVED = true;
         render(RAW);
@@ -216,11 +220,19 @@
     var input = document.getElementById('mentorSearch');
     var chipsEl = document.getElementById('mentorChips');
     if (!sec || !grid || !input) return;
-    var pool = LIST.filter(function (b) { return b.skills || b.occupation; });
+    var pool = LIST.filter(function (b) { return b.skills || b.occupation || b.industry; });
     if (!pool.length) return; // stays hidden until profiles carry skills/occupations
     sec.style.display = '';
 
-    var chips = uniqueSorted(pool.map(function (b) { return b.occupation; })).slice(0, 6);
+    // Brothers who flagged "open to mentoring" float to the front of the pool.
+    pool.sort(function (a, z) {
+      var am = (a.open_to || []).indexOf('mentor') !== -1 ? 0 : 1;
+      var zm = (z.open_to || []).indexOf('mentor') !== -1 ? 0 : 1;
+      return am - zm;
+    });
+
+    var chips = uniqueSorted(pool.map(function (b) { return b.industry; }).concat(
+      pool.map(function (b) { return b.occupation; }))).slice(0, 6);
     if (chipsEl) {
       chipsEl.innerHTML = chips.map(function (c) { return '<button class="fam-chip" data-mc="' + esc(c) + '">' + esc(c) + '</button>'; }).join('');
       chipsEl.querySelectorAll('[data-mc]').forEach(function (c) {
@@ -231,7 +243,8 @@
     function show(q) {
       var hits = q
         ? pool.filter(function (b) {
-            return ((b.skills || '') + ' ' + (b.occupation || '') + ' ' + (b.major || '')).toLowerCase().indexOf(q) !== -1;
+            return ((b.skills || '') + ' ' + (b.occupation || '') + ' ' + (b.major || '') + ' ' +
+                    (b.industry || '') + ' ' + (b.company || '')).toLowerCase().indexOf(q) !== -1;
           })
         : pool;
       grid.innerHTML = hits.length ? hits.map(card).join('')
@@ -240,6 +253,32 @@
     }
     input.addEventListener('input', function () { show(input.value.trim().toLowerCase()); });
     show('');
+    wireNetHelp();
+  }
+
+  /* ---- "How networking works" — plain-English member brief ---- */
+  function wireNetHelp() {
+    var btn = document.getElementById('netHelpBtn');
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.onclick = function () {
+      var m = document.getElementById('netHelpModal');
+      if (!m) { m = document.createElement('div'); m.id = 'netHelpModal'; m.className = 'pmodal'; document.body.appendChild(m); }
+      m.innerHTML = '<div class="pmodal__card card-form">' +
+        '<button class="pmodal__close" data-nh aria-label="Close">✕</button>' +
+        '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">How networking works</h3>' +
+        '<div class="cal-helpbody">' +
+        '<p><b>1 · Fill in your profile.</b> Click your name in the top-right → My Profile. Your industry, city, company, and LinkedIn are what make you findable — the meter at the top shows what\'s missing.</p>' +
+        '<p><b>2 · Raise your hand.</b> Tick the "I\'m open to…" boxes: 🎓 mentoring actives, 💼 hiring &amp; referrals, 🤝 connecting. They show as badges next to your name so brothers know it\'s welcome to reach out.</p>' +
+        '<p><b>3 · Find brothers.</b> Search here by field ("finance", "law school", "engineer") or browse the directory filters. Brothers open to mentoring appear first.</p>' +
+        '<p><b>4 · Press Connect.</b> On any brother\'s card, the 🤝 Connect button drops your name and email into his notifications — he just replies to your email. No inbox to check, nothing complicated.</p>' +
+        '<p><b>Privacy:</b> all of this is brothers-only. The public sees none of it, and your contact details only show what you chose under "Reach me via".</p>' +
+        '</div></div>';
+      m.classList.add('open');
+      m.setAttribute('aria-hidden', 'false');
+      m.querySelector('[data-nh]').onclick = function () { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); };
+      m.addEventListener('click', function (x) { if (x.target === m) { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); } });
+    };
   }
 
   /* ---- load ---- */

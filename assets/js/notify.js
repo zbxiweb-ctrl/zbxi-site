@@ -28,6 +28,7 @@
       case 'new_pending': return { ic: '⏳', text: '<b>' + esc(p.name || 'A brother') + '</b> is awaiting verification', href: 'admin.html' };
       case 'suggestion':  return { ic: '💡', text: '<b>' + esc(p.actor || 'A brother') + '</b> dropped a suggestion: “' + esc(p.text || '') + '”', href: 'admin.html' };
       case 'suggestion_reply': return { ic: '💡', text: 'The webmaster replied to your suggestion: “' + esc(p.text || '') + '”', href: 'board.html' };
+      case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect — tap to email him back (' + esc(p.email || '') + ')', href: p.email ? 'mailto:' + esc(p.email) : '#' };
       default:            return { ic: '•', text: esc(n.kind), href: '#' };
     }
   }

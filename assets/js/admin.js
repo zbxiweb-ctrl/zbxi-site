@@ -1057,6 +1057,11 @@
       sec('👥 Committees & private spaces', '<p><b>👥 Committees</b> tab: create a committee (e.g. Rush Committee), add brothers with accounts. Each committee gets a private space on the Board that only its members and you can see. Current officers are auto-kept in the “E-Board Officers” committee.</p>') +
       sec('🗳️ Post a poll', '<p>On the <b>Board</b> page (signed in as admin) → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>') +
       sec('💡 Answer suggestions', '<p>Brothers drop ideas in the Suggestion box on the Board page. They land in your <b>💡 Suggestions</b> tab (badge = new ones). Write a response — the brother gets a 🔔 — or archive it.</p>') +
+      sec('🤝 Networking & Connect (runs itself)', '<p>Brothers fill in industry, company, and LinkedIn on their profiles, and can raise "I\'m open to…" badges (🎓 mentoring · 💼 hiring · 🤝 connecting). On any brother\'s card, the <b>Connect</b> button drops the requester\'s name + email into the other brother\'s 🔔 so he can reply directly by email.</p><ul>' +
+        '<li><b>Nothing for you to moderate</b> — there\'s no inbox or chat, just intro requests.</li>' +
+        '<li>Built-in anti-spam: one request per brother per recipient per week.</li>' +
+        '<li>All of it is members-only; the public never sees contact details.</li>' +
+        '<li>Members have their own “❓ How networking works” guide on the Alumni page.</li></ul>') +
       sec('📅 Run the chapter calendar', '<p>The calendar is <b>members-only</b> — the public sees a sign-in card instead. Two ways to add events:</p><ul>' +
         '<li><b>Right on the calendar</b> (easiest): sign in on the homepage, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
         '<li><b>Here in the console</b>: <b>Events</b> tab → <b>+ New event</b> (same fields, plus the announcement banner editor).</li></ul>' +

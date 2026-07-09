@@ -339,8 +339,35 @@
         (prefs.indexOf(key) !== -1 ? ' checked' : '') + '> ' + label + '</label>';
     }
 
+    // Networking: industry picklist (fixed values so "brothers in your field"
+    // matching works) + "open to" flags that power Connect/mentoring.
+    var INDUSTRIES = ['Finance & Banking', 'Technology & Software', 'Healthcare & Medicine',
+      'Law & Government', 'Engineering', 'Education', 'Marketing & Media',
+      'Sales & Business Dev', 'Real Estate & Construction', 'Science & Research',
+      'Arts & Entertainment', 'Military & Public Service', 'Student', 'Other'];
+    var indOpts = ['<option value="">— pick your field —</option>'].concat(
+      INDUSTRIES.map(function (i) { return '<option' + (pr.industry === i ? ' selected' : '') + '>' + i + '</option>'; })
+    ).join('');
+    var openTo = pr.open_to || [];
+    function openBox(key, label) {
+      return '<label class="pref-box"><input type="checkbox" name="open_' + key + '"' +
+        (openTo.indexOf(key) !== -1 ? ' checked' : '') + '> ' + label + '</label>';
+    }
+
+    // Profile completion meter — an empty profile is invisible to the network.
+    var CHECKS = [['photo_url', 'a photo'], ['grad_year', 'grad year'], ['city', 'current city'],
+      ['occupation', 'occupation'], ['industry', 'industry'], ['linkedin', 'LinkedIn'],
+      ['skills', 'skills'], ['bio', 'a short bio']];
+    var missing = CHECKS.filter(function (c) { return !pr[c[0]]; });
+    var pct = Math.round(100 * (CHECKS.length - missing.length) / CHECKS.length);
+    var meter = pct >= 100
+      ? '<div class="pmeter pmeter--done">🏅 <b>Profile complete</b> — brothers can find and reach you.</div>'
+      : '<div class="pmeter"><div class="pmeter__bar"><i style="width:' + pct + '%"></i></div>' +
+        '<span><b>' + pct + '% complete</b> · next: add ' + missing.slice(0, 2).map(function (c) { return c[1]; }).join(' and ') + '</span></div>';
+
     host.innerHTML =
       (pr.status === 'verified' ? '<p class="portal-live">● You\'re live on the site. Edits re-enter review.</p>' : '') +
+      meter +
       '<form id="profForm" novalidate>' +
         '<fieldset class="pf-group"><legend>The basics</legend>' +
           '<div class="form-row">' +
@@ -375,6 +402,15 @@
           '<div class="field"><label>Reach me via</label><div class="pref-row">' +
             prefBox('email', 'Email') + prefBox('phone', 'Phone') + prefBox('linkedin', 'LinkedIn') +
           '</div><p class="form-note" style="margin:.4rem 0 0">Contact details are visible to verified brothers only.</p></div>' +
+        '</fieldset>' +
+        '<fieldset class="pf-group"><legend>Networking</legend>' +
+          '<div class="form-row">' +
+            fld('Company / organization', 'company', pr.company, 'text', false, 'e.g. Deloitte') +
+            '<div class="field"><label>Industry</label><select name="industry">' + indOpts + '</select></div>' +
+          '</div>' +
+          '<div class="field"><label>I\'m open to…</label><div class="pref-row">' +
+            openBox('mentor', '🎓 Mentoring actives') + openBox('hire', '💼 Hiring & referrals') + openBox('connect', '🤝 Connecting') +
+          '</div><p class="form-note" style="margin:.4rem 0 0">These show as badges on your profile so brothers know they can reach out.</p></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Your story</legend>' +
           '<div class="field"><label>Short quote</label><input name="quote" value="' + esc(pr.quote) + '" maxlength="140"></div>' +
@@ -422,6 +458,9 @@
           phone: f.phone.value.trim() || null,
           email: f.email.value.trim() || null,
           linkedin: f.linkedin.value.trim() || null,
+          company: f.company.value.trim() || null,
+          industry: f.industry.value || null,
+          open_to: ['mentor', 'hire', 'connect'].filter(function (k) { return f['open_' + k].checked; }),
           contact_prefs: chosen.length ? chosen.join(',') : null,
           quote: f.quote.value.trim() || null,
           bio: f.bio.value.trim() || null,

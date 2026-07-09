@@ -17,6 +17,14 @@
     return b.role + (b.role_term ? ' · ' + b.role_term : '');
   }
 
+  // "Open to" badges — the networking flags brothers set on their profile.
+  var OPEN_LABEL = { mentor: '🎓 Open to mentoring', hire: '💼 Hiring & referrals', connect: '🤝 Open to connecting' };
+  function openChips(d) {
+    var chips = (d.open_to || []).filter(function (k) { return OPEN_LABEL[k]; })
+      .map(function (k) { return '<span class="ot-chip">' + OPEN_LABEL[k] + '</span>'; }).join('');
+    return chips ? '<div class="ot-chips">' + chips + '</div>' : '';
+  }
+
   // The detail body for an APPROVED viewer, given the full brothers row.
   function detailHtml(d) {
     var prefs = String(d.contact_prefs || '').split(',');
@@ -28,10 +36,13 @@
     if ((prefs.indexOf('linkedin') !== -1 || !d.contact_prefs) && d.linkedin)
       contact += '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(d.linkedin) + '" target="_blank" rel="noopener">profile ↗</a></b></div>';
 
-    return row('Title', titleOf(d)) +
+    return openChips(d) +
+      row('Title', titleOf(d)) +
       row('Major', d.major) +
       row('Class of', d.grad_year) +
       row('Occupation', d.occupation) +
+      row('Company', d.company) +
+      row('Industry', d.industry) +
       row('Currently in', d.city) +
       row('Hometown', d.hometown) +
       row('Skills & interests', d.skills) +
@@ -91,6 +102,28 @@
         if (titleOf(d)) dBits.push(esc(titleOf(d)));
         m.querySelector('[data-f=sub]').innerHTML = dBits.join(' · ');
         if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
+
+        // Connect: any registered brother except yourself. Sends an intro
+        // request (his 🔔 gets your name + email so he can simply reply).
+        if (d.user_id && window.ZBXI.connectRequest) {
+          window.ZBXI.getUser().then(function (me) {
+            if (!me || me.id === d.user_id) return;
+            var bar = document.createElement('div');
+            bar.className = 'bm__connect';
+            bar.innerHTML = '<button type="button" class="btn btn--gold bm__connect-btn">🤝 Connect</button>' +
+              '<span>Sends your name &amp; email to his notifications so he can reply directly.</span>';
+            body.appendChild(bar);
+            var cbtn = bar.querySelector('button');
+            cbtn.onclick = function () {
+              cbtn.disabled = true; cbtn.textContent = 'Sending…';
+              window.ZBXI.connectRequest(d.user_id).then(function (res) {
+                cbtn.textContent = res === 'already' ? '✓ Already requested this week' : '✓ Request sent';
+              }).catch(function () {
+                cbtn.disabled = false; cbtn.textContent = '🤝 Connect';
+              });
+            };
+          });
+        }
       }).catch(function () { body.innerHTML = lineage + '<p class="bm__loading">Could not load details.</p>'; });
     });
   }

@@ -327,6 +327,12 @@
     awardUpdate: function (id, row) { return client.from('awards').update(row).eq('id', id); },
     awardDelete: function (id) { return client.from('awards').delete().eq('id', id); },
 
+    /* ---- networking: intro request (SECURITY DEFINER RPC; see upgrade9.sql) ---- */
+    connectRequest: function (targetUserId) {
+      return client.rpc('connect_request', { target: targetUserId })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
+
     /* ---- notifications ---- */
     notifList: function () {
       return client.from('notifications').select('*')
