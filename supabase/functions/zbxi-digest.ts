@@ -9,7 +9,20 @@ const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND = Deno.env.get("RESEND_API_KEY") || "";
 const FROM = Deno.env.get("DIGEST_FROM") || "Zeta Beta Xi <onboarding@resend.dev>";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
-const ADMIN_EMAIL = "zbxi.web@gmail.com";
+// Admin identity comes from the DB's single source of truth, public.admin_email()
+// (see upgrade14.sql), cached per cold start. No hard-coded email here.
+let _adminEmail: string | null = null;
+async function adminEmail(): Promise<string> {
+  if (_adminEmail) return _adminEmail;
+  const r = await fetch(`${SB}/rest/v1/rpc/admin_email`, {
+    method: "POST",
+    headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!r.ok) throw new Error("admin_email lookup failed");
+  _adminEmail = String(await r.json()).toLowerCase();
+  return _adminEmail;
+}
 const SITE = "https://zetabetaxi.com";
 
 async function db(path: string, init: RequestInit = {}) {
@@ -30,7 +43,7 @@ async function isAdmin(req: Request) {
   const r = await fetch(`${SB}/auth/v1/user`, { headers: { apikey: SRK, Authorization: auth } });
   if (!r.ok) return false;
   const u = await r.json();
-  return String(u?.email || "").toLowerCase() === ADMIN_EMAIL;
+  return String(u?.email || "").toLowerCase() === await adminEmail();
 }
 
 const esc = (s: unknown) =>
@@ -169,8 +182,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const ADM = await adminEmail();
     const authMap = await authEmails();
-    const adminUserId = Object.keys(authMap).find((id) => authMap[id].toLowerCase() === ADMIN_EMAIL) || null;
+    const adminUserId = Object.keys(authMap).find((id) => authMap[id].toLowerCase() === ADM) || null;
     const { html, counts, empty } = await build(adminUserId);
     const unsubBase = `${SB}/functions/v1/zbxi-unsubscribe?t=`;
 
@@ -184,7 +198,7 @@ Deno.serve(async (req) => {
       .map((b) => ({ email: b.email || authMap[b.user_id], token: b.unsubscribe_token }))
       .filter((x) => !!x.email);
 
-    if (test) list = list.filter((x) => x.email.toLowerCase() === ADMIN_EMAIL);
+    if (test) list = list.filter((x) => x.email.toLowerCase() === ADM);
     if (!list.length) return new Response(JSON.stringify({ sent: 0, note: "no recipients" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
     const subject = `ΖΒΞ — ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })} brotherhood digest`;

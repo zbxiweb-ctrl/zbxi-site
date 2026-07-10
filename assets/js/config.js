@@ -7,7 +7,12 @@
 window.ZBXI_CONFIG = {
   SUPABASE_URL:      'https://wqhhomzbeeveuaskirfl.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_BWpWxARZc4e4zATsDfMrMQ_w88RcFbJ',
-  ADMIN_EMAIL:       'zbxi.web@gmail.com',   // the email that can approve brothers
+  // COSMETIC ONLY — controls the ADMIN badge / console link in the browser.
+  // It grants NO access: real admin power is enforced by the database's
+  // admin_email() function (supabase/upgrade14.sql). To change the admin for
+  // real, update admin_email() in the database (one SQL statement); update this
+  // line too so the browser UI matches.
+  ADMIN_EMAIL:       'zbxi.web@gmail.com',
 
   // Giving campaigns: paste the chapter's Stripe Payment Link / PayPal / Venmo
   // URLs here when ready — the "Give now" buttons appear automatically.

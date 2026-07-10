@@ -6,7 +6,20 @@ const SB = Deno.env.get("SUPABASE_URL")!;
 const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND = Deno.env.get("RESEND_API_KEY") || "";
 const FROM = Deno.env.get("DIGEST_FROM") || "Zeta Beta Xi <onboarding@resend.dev>";
-const ADMIN_EMAIL = "zbxi.web@gmail.com";
+// Admin identity comes from the DB's single source of truth, public.admin_email()
+// (see upgrade14.sql), cached per cold start. No hard-coded email here.
+let _adminEmail: string | null = null;
+async function adminEmail(): Promise<string> {
+  if (_adminEmail) return _adminEmail;
+  const r = await fetch(`${SB}/rest/v1/rpc/admin_email`, {
+    method: "POST",
+    headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!r.ok) throw new Error("admin_email lookup failed");
+  _adminEmail = String(await r.json()).toLowerCase();
+  return _adminEmail;
+}
 const SITE = "https://zetabetaxi.com";
 
 const CORS = {
@@ -35,7 +48,7 @@ async function isAdmin(req: Request) {
   const r = await fetch(`${SB}/auth/v1/user`, { headers: { apikey: SRK, Authorization: auth } });
   if (!r.ok) return false;
   const u = await r.json();
-  return String(u?.email || "").toLowerCase() === ADMIN_EMAIL;
+  return String(u?.email || "").toLowerCase() === await adminEmail();
 }
 
 const body = (name: string | null, link: string) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
