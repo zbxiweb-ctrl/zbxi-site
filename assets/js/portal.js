@@ -66,8 +66,28 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
   }
   // Header menu + other pages open the popup via this hook (or #my-profile hash).
-  window.ZBXIPortal = { open: function () { state.wantModal = true; openModal(); } };
+  //   open()            -> profile popup (signed-in flows)
+  //   showAuth('signin'|'signup') -> jump to the inline auth card in the chosen
+  //     mode; used by the header "Log in / Sign up" dropdown. If already signed
+  //     in, falls back to opening the profile popup.
+  window.ZBXIPortal = {
+    open: function () { state.wantModal = true; openModal(); },
+    showAuth: function (mode) {
+      if (state.user) { state.wantModal = true; openModal(); return; }
+      if (mode === 'signin' || mode === 'signup') state.mode = mode;
+      if (state.loaded) renderAuth();
+      var sec = document.getElementById('brothers-portal');
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // move focus to the email field for a keyboard-friendly hand-off
+      setTimeout(function () { var e = card.querySelector('input[name="email"]'); if (e) e.focus({ preventScroll: true }); }, 350);
+    }
+  };
   if (location.hash === '#my-profile') state.wantModal = true;
+  // Subpages route here as  index.html?auth=signup#brothers-portal
+  function authParam() {
+    var m = location.search.match(/[?&]auth=(signin|signup)\b/);
+    return m ? m[1] : null;
+  }
 
   // Password-recovery links land back here with a recovery session.
   Z.onAuth(function (event) {
@@ -85,8 +105,12 @@
         state.loaded = true; state.profile = null;
         closeModal();
         renderPerks(false);
-        // An invite link decides whether we show Log in or Create account.
-        return resolveInvite().then(function () { renderAuth(); });
+        // An invite link decides whether we show Log in or Create account;
+        // otherwise a ?auth= param (from the header dropdown on a subpage) does.
+        return resolveInvite().then(function () {
+          if (!state.invite) { var ap = authParam(); if (ap) state.mode = ap; }
+          renderAuth();
+        });
       }
       return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
         state.profile = res[0]; state.verified = res[1] || [];

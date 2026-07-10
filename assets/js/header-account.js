@@ -19,7 +19,42 @@
   var MYPROFILE = (onIndex ? '' : 'index.html') + '#my-profile';
 
   function renderLogin() {
-    el.innerHTML = '<a href="' + PORTAL + '" class="btn btn--gold nav__cta">Brother Login</a>';
+    // Gold CTA that opens a small dropdown: Log in / Create account. On the
+    // homepage each choice jumps the inline auth card straight to that mode; on
+    // subpages it routes to index.html?auth=…#brothers-portal (portal.js reads it).
+    var SIGNIN = (onIndex ? '' : 'index.html?auth=signin') + '#brothers-portal';
+    var SIGNUP = (onIndex ? '' : 'index.html?auth=signup') + '#brothers-portal';
+    el.innerHTML =
+      '<button class="btn btn--gold nav__cta nav__login-btn" id="navLoginBtn" aria-haspopup="true" aria-expanded="false">' +
+        'Log In / Sign Up <span class="nav__caret">▾</span>' +
+      '</button>' +
+      '<div class="nav__menu nav__menu--login" id="navLoginMenu" role="menu">' +
+        '<a href="' + SIGNIN + '" id="navDoLogin" role="menuitem"><i>🔑</i> Log in<span>Already have an account</span></a>' +
+        '<a href="' + SIGNUP + '" id="navDoSignup" role="menuitem"><i>✍️</i> Create account<span>New brother sign-up</span></a>' +
+      '</div>';
+
+    var btn = document.getElementById('navLoginBtn');
+    var menu = document.getElementById('navLoginMenu');
+    function close() { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    function open() { menu.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      menu.classList.contains('open') ? close() : open();
+    });
+    document.addEventListener('click', function (e) { if (!el.contains(e.target)) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+    // On the homepage, open the inline auth card directly (no navigation).
+    if (onIndex && window.ZBXIPortal) {
+      var wire = function (id, mode) {
+        var a = document.getElementById(id);
+        if (a) a.addEventListener('click', function (e) { e.preventDefault(); close(); window.ZBXIPortal.showAuth(mode); });
+      };
+      wire('navDoLogin', 'signin');
+      wire('navDoSignup', 'signup');
+    } else {
+      menu.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', close); });
+    }
   }
 
   function renderChip(user, profile) {

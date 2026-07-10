@@ -137,6 +137,15 @@ p { margin: 0 0 1em; }
 .nav__menu-divider { height: 1px; background: rgba(255,255,255,.08); margin: .4rem 0; }
 .nav__menu-signout:hover { background: rgba(180,52,43,.18) !important; color: #ff9c93 !important; }
 
+/* Log in / Sign up CTA + its dropdown */
+.nav__login-btn { display: inline-flex; align-items: center; gap: .4rem; }
+.nav__login-btn .nav__caret { color: var(--navy-deep); font-size: .62rem; transition: transform .2s; }
+.nav__login-btn[aria-expanded="true"] .nav__caret { transform: rotate(180deg); }
+.nav__menu--login a { display: block; padding: .6rem .7rem; line-height: 1.25; }
+.nav__menu--login a i { font-style: normal; margin-right: .5rem; }
+.nav__menu--login a span { display: block; margin-top: .1rem; margin-left: 1.6rem; color: var(--on-dark); font-size: .72rem; opacity: .8; }
+.nav__menu--login a:hover span { color: var(--gold-bright); opacity: 1; }
+
 /* ---------- Hero ---------- */
 .hero {
   position: relative; min-height: 100svh; display: flex; align-items: center;
@@ -1509,6 +1518,8 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea { color: var(--text); border-color: var(--hairline); background: var(--surface-2); }
 :root[data-theme="dark"] .nav__links a { color: var(--on-dark); }
+:root[data-theme="dark"] .nav__menu { background: #0d0d0d; border-color: rgba(200,162,75,.4); }
+:root[data-theme="dark"] .nav__menu a, :root[data-theme="dark"] .nav__menu button { color: var(--on-dark); }
 :root[data-theme="dark"] .nav__menu-head { background: linear-gradient(135deg, #1f1f1f, #050505 70%); }
 :root[data-theme="dark"] .tree-viewport,
 :root[data-theme="dark"] .tree-shell--full .tree-viewport {
