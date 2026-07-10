@@ -361,8 +361,6 @@
   }
 
   /* ---- profile form ---- */
-  var TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
-
   function renderForm(pr, showBack) {
     pr = pr || {};
     var host = mbody.querySelector('#portalTabBody') || mbody;
@@ -370,13 +368,6 @@
       state.verified.filter(function (b) { return b.id !== pr.id; })
         .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); })
         .map(function (b) { return '<option value="' + b.id + '"' + (pr.big_id === b.id ? ' selected' : '') + '>' + esc(b.full_name) + ' (' + esc(b.pledge_class || '') + ')</option>'; })
-    ).join('');
-    var titleOpts = ['<option value="">— no title —</option>'].concat(
-      TITLES.map(function (t) { return '<option value="' + t + '"' + (pr.role === t ? ' selected' : '') + '>' + t + '</option>'; })
-    ).join('');
-    var SCOPES = [['active', 'Active E-Board (current)'], ['alumni', 'Alumni E-Board (current)'], ['previous', 'Previous officer']];
-    var scopeOpts = ['<option value="">— which board? —</option>'].concat(
-      SCOPES.map(function (s) { return '<option value="' + s[0] + '"' + (pr.role_scope === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; })
     ).join('');
     var prefs = String(pr.contact_prefs || '').split(',');
     function prefBox(key, label) {
@@ -423,12 +414,10 @@
             fld('Grad year', 'grad_year', pr.grad_year, 'number') +
             fld('Major', 'major', pr.major) +
           '</div>' +
-          '<div class="form-row">' +
-            '<div class="field"><label>Chapter title (if held)</label><select name="role">' + titleOpts + '</select></div>' +
-            fld('Title term', 'role_term', pr.role_term, 'text', false, 'e.g. Fall 2019') +
-          '</div>' +
-          '<div class="field"><label>Which board is the title on?</label><select name="role_scope">' + scopeOpts + '</select>' +
-            '<p class="form-note" style="margin:.35rem 0 0">Current officers pick Active or Alumni E-Board; past officers pick Previous.</p></div>' +
+          (pr.role
+            ? '<div class="field"><label>Chapter title</label><input value="' + esc(pr.role + (pr.role_term ? ' · ' + pr.role_term : '')) + '" disabled />' +
+              '<p class="form-note" style="margin:.35rem 0 0">Executive-board titles are set by the webmaster. Reach out via the contact form if this needs updating.</p></div>'
+            : '') +
           '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Where you are now</legend>' +
@@ -493,9 +482,9 @@
           pledge_class: f.pledge_class.value.trim(),
           grad_year: f.grad_year.value ? parseInt(f.grad_year.value, 10) : null,
           major: f.major.value.trim() || null,
-          role: f.role.value || null,
-          role_term: f.role_term.value.trim() || null,
-          role_scope: f.role.value ? (f.role_scope.value || 'previous') : null,
+          // role / role_scope are intentionally NOT sent — chapter titles are
+          // admin-assigned (E-Board console) and the DB guard would ignore them
+          // from a brother anyway. See upgrade13.sql.
           big_id: f.big_id.value || null,
           city: f.city.value.trim() || null,
           occupation: f.occupation.value.trim() || null,
