@@ -119,6 +119,20 @@
     });
   }
 
+  /* ---- No menu flash when the hamburger breakpoint flips ----
+     Below 1023px .nav__links becomes position:fixed + translateY(-140%). Since
+     transform is transitioned, a resize across the breakpoint animated the menu
+     from the desktop row up out of view — flashing its contents for ~300ms.
+     The transition is disabled by default and only armed once things settle. */
+  var root = document.documentElement, navT;
+  function armNav() { root.classList.add('nav-anim'); }
+  setTimeout(armNav, 120);                       // never animate on first paint
+  window.addEventListener('resize', function () {
+    root.classList.remove('nav-anim');           // no animation while dragging the window
+    clearTimeout(navT);
+    navT = setTimeout(armNav, 200);
+  });
+
   /* ---- scrolled nav state: hairline + deeper shadow once the page moves ---- */
   var nav = document.querySelector('.nav');
   if (nav) {
