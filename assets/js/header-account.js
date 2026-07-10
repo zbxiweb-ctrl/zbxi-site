@@ -128,14 +128,25 @@
     });
   }
 
+  /* Homepage hero CTAs react to auth state: once signed in, the gold button
+     reads "Logged In" and the "Interested in Rushing?" ghost button hides
+     (rushing is for prospects, not brothers). Elements only exist on index. */
+  function heroCtas(signedIn) {
+    var login = document.getElementById('heroLoginCta');
+    var rush = document.getElementById('heroRushCta');
+    if (login) login.innerHTML = signedIn ? '✓ Logged In' : 'Log In / Sign Up';
+    if (rush) rush.style.display = signedIn ? 'none' : '';
+  }
+
   function render() {
-    if (!Z || !Z.configured) { renderLogin(); return; }
+    if (!Z || !Z.configured) { renderLogin(); heroCtas(false); return; }
     Z.getUser().then(function (user) {
-      if (!user) { renderLogin(); return; }
+      if (!user) { renderLogin(); heroCtas(false); return; }
+      heroCtas(true);
       // Best-effort profile name; fall back to email if it fails.
       Z.myProfile(user.id).then(function (p) { renderChip(user, p); })
         .catch(function () { renderChip(user, null); });
-    }).catch(function () { renderLogin(); });
+    }).catch(function () { renderLogin(); heroCtas(false); });
   }
 
   render();
