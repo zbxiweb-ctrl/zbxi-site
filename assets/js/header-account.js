@@ -133,6 +133,34 @@
     navT = setTimeout(armNav, 200);
   });
 
+  /* ---- dark-mode toggle (injected into the nav; works on every page) ----
+     The theme is set pre-paint by an inline <head> script (no flash); this just
+     flips it and remembers the choice. Defaults to the OS preference. */
+  (function themeToggle() {
+    var rootEl = document.documentElement;
+    var bar = document.querySelector('.nav__inner');
+    if (!bar || document.getElementById('themeToggle')) return;
+    var btn = document.createElement('button');
+    btn.id = 'themeToggle';
+    btn.type = 'button';
+    btn.className = 'theme-toggle';
+    function sync() {
+      var dark = rootEl.dataset.theme === 'dark';
+      btn.textContent = dark ? '☀️' : '🌙';
+      btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+      btn.title = btn.getAttribute('aria-label');
+    }
+    sync();
+    btn.addEventListener('click', function () {
+      var next = rootEl.dataset.theme === 'dark' ? 'light' : 'dark';
+      rootEl.dataset.theme = next;
+      try { localStorage.setItem('zbxi-theme', next); } catch (e) {}
+      sync();
+    });
+    var acct = document.getElementById('navAccount');
+    bar.insertBefore(btn, acct || bar.querySelector('.nav__toggle'));
+  })();
+
   /* ---- scrolled nav state: hairline + deeper shadow once the page moves ---- */
   var nav = document.querySelector('.nav');
   if (nav) {
