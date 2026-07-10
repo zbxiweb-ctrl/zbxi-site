@@ -101,29 +101,51 @@
     return { byId: vById, roots: roots, rows: rows, width: Math.max(leaf * (NODE_W + GAP_X), NODE_W), height: (maxDepth + 1) * (NODE_H + GAP_Y) };
   }
 
-  // "All families" with nothing expanded: a mobile-friendly VERTICAL menu of
-  // family-line cards instead of a wide horizontal row. Tapping ▸ opens the line.
+  // "All families" with nothing expanded: a grid of family-line cards instead of
+  // the full tree. Founding lines lay out two-across; childless roots (e.g. the
+  // admin's standalone profile) sit centered on their own row underneath.
+  // Collapses to a single column when the viewport is too narrow for two.
   var FAM_W = 250;
+  function famCard(r, left, top) {
+    var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
+    var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
+    var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
+    var n = descCount[r.id] || 0;
+    return '<button class="tree-node tree-node--family' + reg + '" data-id="' + r.id +
+      '" style="left:' + left + 'px;top:' + top + 'px;width:' + FAM_W + 'px;height:' + NODE_H + 'px">' +
+      '<span class="tree-node__av">' + av + '</span>' +
+      '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + (r.pledge_class || '') + '</small></span>' +
+      (n ? '<span class="tree-toggle" data-line="' + r.id + '" title="Open this family line">▸ ' + n + '</span>' : '') +
+    '</button>';
+  }
+
   function renderFamilyMenu() {
     var rs = sortedRoots();
+    var lines = rs.filter(function (r) { return (descCount[r.id] || 0) > 0; });
+    var solo  = rs.filter(function (r) { return (descCount[r.id] || 0) === 0; });
     var GAP = 16;
-    var height = rs.length * (NODE_H + GAP);
-    canvas.style.width = FAM_W + 'px';
-    canvas.style.height = height + 'px';
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+
+    var cols = (vw < 2 * FAM_W + GAP + 40) ? 1 : 2;
+    var rows = Math.ceil(lines.length / cols);
+    var gridW = cols * FAM_W + (cols - 1) * GAP;
+    var rowH = NODE_H + GAP;
+
     var html = '';
-    rs.forEach(function (r, i) {
-      var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
-      var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
-      var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
-      var n = descCount[r.id] || 0;
-      html += '<button class="tree-node tree-node--family' + reg + '" data-id="' + r.id + '" style="left:0;top:' + (i * (NODE_H + GAP)) + 'px;width:' + FAM_W + 'px;height:' + NODE_H + 'px">' +
-        '<span class="tree-node__av">' + av + '</span>' +
-        '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + (r.pledge_class || '') + '</small></span>' +
-        (n ? '<span class="tree-toggle" data-line="' + r.id + '" title="Open this family line">▸ ' + n + '</span>' : '') +
-      '</button>';
+    lines.forEach(function (r, i) {
+      html += famCard(r, (i % cols) * (FAM_W + GAP), Math.floor(i / cols) * rowH);
     });
+    // childless roots: centered under the grid, evenly spaced
+    solo.forEach(function (r, i) {
+      html += famCard(r, (gridW - FAM_W) / 2, (rows + i) * rowH);
+    });
+
+    var height = (rows + solo.length) * rowH - GAP;
+    canvas.style.width = gridW + 'px';
+    canvas.style.height = height + 'px';
     canvas.innerHTML = html;
-    currentLayout = { width: FAM_W, height: height, rows: rs, byId: byId };
+    currentLayout = { width: gridW, height: height, rows: rs, byId: byId };
+
     // wire: chevron opens the line; card body opens the profile
     canvas.querySelectorAll('.tree-toggle').forEach(function (t) {
       t.addEventListener('click', function (e) {
@@ -137,10 +159,11 @@
         openProfile(byId[btn.dataset.id]);
       });
     });
-    // no auto-fit scaling: show the menu at full size, centered
-    scale = 1;
-    tx = Math.max(12, (viewport.clientWidth - FAM_W) / 2);
-    ty = 16;
+
+    // shrink-to-fit so all ten lines are visible without panning
+    scale = Math.max(0.4, Math.min(1, (vh - 40) / height, (vw - 24) / gridW));
+    tx = (vw - gridW * scale) / 2;
+    ty = Math.max(16, (vh - height * scale) / 2);
     apply();
   }
 

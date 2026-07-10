@@ -1395,3 +1395,53 @@ body.tree-lock { overflow: hidden; }
 .invite-banner b { display: block; color: var(--navy); font-size: .95rem; }
 .invite-banner span { display: block; color: var(--muted); font-size: .84rem; line-height: 1.5; margin-top: .2rem; }
 .invite-banner span b { display: inline; color: var(--navy); }
+
+/* ============================================================================
+   v10 — header: legible crest + Greek monogram, and a nav that never overflows
+   ============================================================================ */
+.brand { flex: none; }
+.brand img { height: 52px; }
+.brand__txt { font-size: 1.75rem; letter-spacing: .06em; line-height: 1.05; white-space: nowrap; }
+.brand__txt small { font-size: .58rem; letter-spacing: .2em; margin-top: .22rem; }
+.nav__inner { gap: 1rem; }
+.nav__links a { white-space: nowrap; }
+.nav__account { flex: none; }
+
+/* Tighten the links before handing off to the hamburger. */
+@media (max-width: 1180px) {
+  .nav__links { gap: 1.05rem; }
+  .nav__links a { font-size: .86rem; }
+}
+
+/* The links + bell + account chip stopped fitting on one line far above the old
+   760px hamburger breakpoint — the nav wrapped onto the hero and "Contact" slid
+   under the notification bell. Hand off while there's still room. */
+@media (max-width: 1023px) {
+  .nav__links {
+    position: fixed; inset: 72px 0 auto 0; flex-direction: column; gap: 0;
+    background: rgba(7,22,52,.98); padding: 1rem 0;
+    border-bottom: 1px solid rgba(200,162,75,.3);
+    transform: translateY(-140%); transition: transform .3s; align-items: stretch;
+  }
+  .nav__links.open { transform: translateY(0); }
+  .nav__links a { padding: .9rem 8vw; font-size: 1rem; }
+  .nav__links a::after { display: none; }   /* underline sweep is for the desktop row */
+  .nav__links .nav__cta { margin: .6rem 8vw; text-align: center; }
+  .nav__toggle { display: block; }
+  .nav__account { margin-left: auto; margin-right: .6rem; }
+}
+
+@media (max-width: 620px) {
+  .brand img { height: 44px; }
+  .brand__txt { font-size: 1.45rem; }
+  .brand__txt small { font-size: .52rem; letter-spacing: .16em; }
+}
+
+/* Below the breakpoint .nav__links is position:fixed and leaves the flow, so the
+   bell (a sibling injected before .nav__account) would drift left beside the
+   brand. Push the bell right; the chip then tucks in beside it. */
+@media (max-width: 1023px) {
+  .bell { margin-left: auto; }
+  .bell ~ .nav__account { margin-left: .35rem; }
+  .nav__toggle { margin-left: .4rem; }
+}
