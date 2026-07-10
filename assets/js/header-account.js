@@ -29,8 +29,14 @@
         'Log In / Sign Up <span class="nav__caret">▾</span>' +
       '</button>' +
       '<div class="nav__menu nav__menu--login" id="navLoginMenu" role="menu">' +
-        '<a href="' + SIGNIN + '" id="navDoLogin" role="menuitem"><i>🔑</i> Log in<span>Already have an account</span></a>' +
-        '<a href="' + SIGNUP + '" id="navDoSignup" role="menuitem"><i>✍️</i> Create account<span>New brother sign-up</span></a>' +
+        '<a href="' + SIGNIN + '" id="navDoLogin" role="menuitem">' +
+          '<span class="nav__login-ic">🔑</span>' +
+          '<span class="nav__login-txt"><b>Log in</b><small>Already have an account</small></span>' +
+        '</a>' +
+        '<a href="' + SIGNUP + '" id="navDoSignup" role="menuitem">' +
+          '<span class="nav__login-ic">✍️</span>' +
+          '<span class="nav__login-txt"><b>Create account</b><small>New brother sign-up</small></span>' +
+        '</a>' +
       '</div>';
 
     var btn = document.getElementById('navLoginBtn');

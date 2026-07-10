@@ -141,10 +141,22 @@ p { margin: 0 0 1em; }
 .nav__login-btn { display: inline-flex; align-items: center; gap: .4rem; }
 .nav__login-btn .nav__caret { color: var(--navy-deep); font-size: .62rem; transition: transform .2s; }
 .nav__login-btn[aria-expanded="true"] .nav__caret { transform: rotate(180deg); }
-.nav__menu--login a { display: block; padding: .6rem .7rem; line-height: 1.25; }
-.nav__menu--login a i { font-style: normal; margin-right: .5rem; }
-.nav__menu--login a span { display: block; margin-top: .1rem; margin-left: 1.6rem; color: var(--on-dark); font-size: .72rem; opacity: .8; }
-.nav__menu--login a:hover span { color: var(--gold-bright); opacity: 1; }
+.nav__menu--login { width: 262px; padding: .4rem; }
+.nav__menu--login a {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .55rem .6rem; margin: .12rem 0; border-radius: 11px; line-height: 1.2;
+}
+.nav__login-ic {
+  flex: none; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.05rem;
+  background: rgba(200,162,75,.14); border: 1px solid rgba(200,162,75,.32);
+  transition: background .12s, border-color .12s;
+}
+.nav__login-txt { display: flex; flex-direction: column; min-width: 0; gap: .1rem; }
+.nav__login-txt b { font-family: var(--display); font-weight: 600; font-size: 1rem; color: var(--cream); letter-spacing: .01em; }
+.nav__login-txt small { font-size: .74rem; color: var(--on-dark); opacity: .72; white-space: nowrap; }
+.nav__menu--login a:hover .nav__login-ic { background: rgba(200,162,75,.28); border-color: var(--gold); }
+.nav__menu--login a:hover .nav__login-txt small { opacity: .95; }
 
 /* ---------- Hero ---------- */
 .hero {
