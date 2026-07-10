@@ -162,13 +162,18 @@ p { margin: 0 0 1em; }
    navy, so it vanished once the white background came off. It's painted out of
    the PNG (arc closed with matching beads) and set as real text here instead. */
 .hero__est {
-  margin: -.4rem 0 0; font-family: var(--display); font-weight: 700;
+  /* Same box as the crest image, so the two centres coincide exactly. */
+  display: block; width: 100%; max-width: 460px;
+  margin: -.4rem auto 0; text-align: center;
+  font-family: var(--display); font-weight: 700;
   color: var(--gold-bright); font-size: 1.05rem;
-  letter-spacing: .42em; padding-left: .42em;   /* offset the trailing tracking */
+  /* letter-spacing also trails the LAST glyph, which drags centred text left by
+     half a space; an equal text-indent restores true optical centring. */
+  letter-spacing: .42em; text-indent: .42em;
   text-shadow: 0 2px 12px rgba(0,0,0,.6);
   animation: heroCrestIn 1s cubic-bezier(.2,.7,.2,1) both;
 }
-@media (max-width: 820px) { .hero__est { font-size: .9rem; letter-spacing: .34em; padding-left: .34em; } }
+@media (max-width: 820px) { .hero__est { font-size: .9rem; letter-spacing: .34em; text-indent: .34em; } }
 /* crest-hero.png has its white background cut out, so the crest floats straight
    on the navy hero — no plate, no rectangle. */
 .hero__crest-img {
