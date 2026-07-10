@@ -1477,11 +1477,13 @@ body.tree-lock { overflow: hidden; }
   --on-dark:   #cdd6e6;       /* body text that sits on navy sections */
 }
 :root[data-theme="dark"] {
-  /* surfaces -> true neutral black (no warm/gold undertone) */
-  --bg:        #000000;
-  --bg-2:      #080808;
-  --surface:   #0e0e0e;
-  --surface-2: #161616;
+  /* True neutral black. The page stays essentially dead black; the separation
+     between page and cards comes from lifting the CARDS, not from greying out
+     the background — so the deep-black look survives on OLED. */
+  --bg:        #050505;   /* page — still reads as pure black */
+  --bg-2:      #0b0b0b;   /* alternating band sections */
+  --surface:   #151515;   /* cards: lifted enough to show an edge */
+  --surface-2: #1f1f1f;   /* inputs / nested panels */
   /* text -> gold family (high contrast on black) */
   --heading:   #f3d16b;   /* bright gold headings/titles */
   --text:      #ecdcaa;   /* pale gold body copy — legible */
@@ -1507,11 +1509,40 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea { color: var(--text); border-color: var(--hairline); background: var(--surface-2); }
 :root[data-theme="dark"] .nav__links a { color: var(--on-dark); }
-:root[data-theme="dark"] .nav__menu-head { background: linear-gradient(135deg, #161616, #000000 70%); }
+:root[data-theme="dark"] .nav__menu-head { background: linear-gradient(135deg, #1f1f1f, #050505 70%); }
 :root[data-theme="dark"] .tree-viewport,
 :root[data-theme="dark"] .tree-shell--full .tree-viewport {
-  background: radial-gradient(circle at 50% 0%, #141414, #000000);
+  background: radial-gradient(circle at 50% 0%, #161616, #050505);
 }
+/* Cards get their edge from a box-shadow, which is invisible against black.
+   The lifted --surface does most of the work; a faint hairline finishes it. */
+:root[data-theme="dark"] .value,
+:root[data-theme="dark"] .card-form,
+:root[data-theme="dark"] .event,
+:root[data-theme="dark"] .ev-card,
+:root[data-theme="dark"] .give-tile,
+:root[data-theme="dark"] .thread-row,
+:root[data-theme="dark"] .thread-view,
+:root[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .stat-list,
+:root[data-theme="dark"] .guide-sec,
+:root[data-theme="dark"] .welcome-step,
+:root[data-theme="dark"] .spot-card,
+:root[data-theme="dark"] .poll-card,
+:root[data-theme="dark"] .cal-detail__ev,
+:root[data-theme="dark"] .admin-card,
+:root[data-theme="dark"] .admin-msg,
+:root[data-theme="dark"] .admin-row,
+:root[data-theme="dark"] .treeed-list,
+:root[data-theme="dark"] .bell__menu,
+:root[data-theme="dark"] .gmodal__card { border: 1px solid var(--hairline); }
+
+/* Controls that borrowed navy for their border would vanish on a black card. */
+:root[data-theme="dark"] .fam-chip,
+:root[data-theme="dark"] .board-tabs button,
+:root[data-theme="dark"] .ev-toggle button,
+:root[data-theme="dark"] .ev-rsvp__btn,
+:root[data-theme="dark"] .tree-controls button,
 :root[data-theme="dark"] .tree-node { border-color: rgba(200,162,75,.35); }
 :root[data-theme="dark"] .tree-links path { stroke: var(--gold); opacity: .85; }
 :root[data-theme="dark"] .cal-chip--meeting { background: #2a2410; }
