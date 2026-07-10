@@ -1583,3 +1583,65 @@ body.tree-lock { overflow: hidden; }
 }
 .theme-toggle:hover { background: rgba(200,162,75,.2); transform: translateY(-1px); }
 @media (max-width: 460px) { .theme-toggle { width: 34px; height: 34px; margin-right: .25rem; } }
+
+/* ============================================================================
+   SCROLL ANIMATIONS — reveal-on-scroll, staggered cascades, section-title
+   line-wipe, medal "stamp", hero entrance + parallax, and a scroll-progress
+   bar. All motion is opt-in behind <html class="fx">, which an inline head
+   snippet sets ONLY when the visitor allows motion. No .fx => everything is
+   static and fully visible, so no-JS and reduced-motion users never see a
+   blank or hidden element. GPU-only (transform/opacity) to stay jank-free.
+   ============================================================================ */
+
+/* thin gold progress bar across the top; fills with page scroll */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 300;
+  transform: scaleX(0); transform-origin: 0 50%; pointer-events: none;
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+}
+@supports (animation-timeline: scroll()) {
+  .fx .scroll-progress { animation: sp-grow linear both; animation-timeline: scroll(root); }
+}
+@keyframes sp-grow { to { transform: scaleX(1); } }
+
+/* reveal-on-scroll: hidden until JS adds .in when the element enters view */
+.fx .reveal {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1);
+}
+.fx .reveal--left  { transform: translateX(-42px); }
+.fx .reveal--right { transform: translateX(42px); }
+.fx .reveal.in { opacity: 1; transform: none; }
+
+/* staggered group: direct children cascade in, offset by their --i index */
+.fx .stagger > * {
+  opacity: 0; transform: translateY(22px);
+  transition: opacity .6s cubic-bezier(.2,.7,.2,1), transform .6s cubic-bezier(.2,.7,.2,1);
+  transition-delay: calc(var(--i, 0) * 85ms);
+}
+.fx .stagger.in > * { opacity: 1; transform: none; }
+
+/* section-title rule wipes open once its header is revealed */
+.fx .reveal .rule { transform: scaleX(0); transform-origin: 0 50%; transition: transform .8s cubic-bezier(.2,.7,.2,1) .15s; }
+.fx .reveal.in .rule { transform: scaleX(1); }
+
+/* award medals: the seal "stamps" in with a slight overshoot */
+.fx .medals.in .medal__seal { animation: seal-stamp .6s cubic-bezier(.2,.9,.3,1.25) both; animation-delay: calc(var(--i, 0) * 90ms + .12s); }
+@keyframes seal-stamp { 0% { transform: scale(.5); } 55% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+/* hero: headline / tagline / CTAs rise in on load, staggered */
+.fx .hero__text > * { opacity: 0; animation: hero-rise .9s cubic-bezier(.2,.7,.2,1) both; }
+.fx .hero__kicker { animation-delay: .10s; }
+.fx .hero__text h1 { animation-delay: .24s; }
+.fx .hero__rule { animation-delay: .38s; }
+.fx .hero__tag { animation-delay: .50s; }
+.fx .hero__cta { animation-delay: .62s; }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+/* hero parallax — desktop only, where the browser supports scroll timelines */
+@supports (animation-timeline: view()) {
+  @media (min-width: 900px) {
+    .fx .hero__crest-col { animation: hero-parallax linear both; animation-timeline: scroll(root); animation-range: 0 70vh; }
+    @keyframes hero-parallax { to { transform: translateY(-46px); } }
+  }
+}
