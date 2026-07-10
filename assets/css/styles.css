@@ -1477,21 +1477,21 @@ body.tree-lock { overflow: hidden; }
   --on-dark:   #cdd6e6;       /* body text that sits on navy sections */
 }
 :root[data-theme="dark"] {
-  /* surfaces -> warm black */
-  --bg:        #0a0a0b;
-  --bg-2:      #100d09;
-  --surface:   #17130c;
-  --surface-2: #201a10;
+  /* surfaces -> true neutral black (no warm/gold undertone) */
+  --bg:        #000000;
+  --bg-2:      #080808;
+  --surface:   #0e0e0e;
+  --surface-2: #161616;
   /* text -> gold family (high contrast on black) */
   --heading:   #f3d16b;   /* bright gold headings/titles */
   --text:      #ecdcaa;   /* pale gold body copy — legible */
   --muted:     #b19b64;   /* dim gold for secondary text */
   --on-dark:   #e8d8ab;   /* pale gold on the (now black) navy sections */
   /* the navy chrome family -> black */
-  --navy:      #101011;
-  --navy-2:    #1b160d;
-  --navy-deep: #060606;
-  --chrome:    12, 11, 9;  /* nav bar, modal scrims, overlays -> near-black */
+  --navy:      #0b0b0b;
+  --navy-2:    #131313;
+  --navy-deep: #000000;
+  --chrome:    8, 8, 8;    /* nav bar, modal scrims, overlays -> near-black */
   /* keep gold accents; hairlines + tints go gold */
   --gold:        #C8A24B;
   --gold-bright: #EAC873;
@@ -1507,14 +1507,14 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea { color: var(--text); border-color: var(--hairline); background: var(--surface-2); }
 :root[data-theme="dark"] .nav__links a { color: var(--on-dark); }
-:root[data-theme="dark"] .nav__menu-head { background: linear-gradient(135deg, #1c160c, #060606 70%); }
+:root[data-theme="dark"] .nav__menu-head { background: linear-gradient(135deg, #161616, #000000 70%); }
 :root[data-theme="dark"] .tree-viewport,
 :root[data-theme="dark"] .tree-shell--full .tree-viewport {
-  background: radial-gradient(circle at 50% 0%, #1c1710, #0a0a0b);
+  background: radial-gradient(circle at 50% 0%, #141414, #000000);
 }
 :root[data-theme="dark"] .tree-node { border-color: rgba(200,162,75,.35); }
 :root[data-theme="dark"] .tree-links path { stroke: var(--gold); opacity: .85; }
-:root[data-theme="dark"] .cal-chip--meeting { background: #4a3d1c; }
+:root[data-theme="dark"] .cal-chip--meeting { background: #2a2410; }
 :root[data-theme="dark"] .gmodal, :root[data-theme="dark"] .pmodal,
 :root[data-theme="dark"] .bmodal, :root[data-theme="dark"] .admin-modal { background: rgba(0,0,0,.72); }
 /* a soft gold halo lifts the crest off the black hero */
