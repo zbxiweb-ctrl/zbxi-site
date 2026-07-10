@@ -21,7 +21,7 @@
       '<span>' + (needSignin
         ? 'The gallery is private to verified brothers. Sign in (or create your profile) to get access.'
         : 'Your profile is awaiting verification by chapter leadership. The gallery unlocks once you\'re approved.') + '</span>' +
-      (needSignin ? '<a class="btn btn--gold" href="index.html#brothers-portal">Brother sign in</a>' : '') +
+      (needSignin ? '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a>' : '') +
       '</div>';
   }
 

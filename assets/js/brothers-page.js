@@ -391,7 +391,7 @@
   function lockedRoster() {
     var lock = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
       '<span>The brotherhood roster is private. Brothers sign in to browse names, classes and profiles.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Brother sign in</a></div>';
+      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
     gridEl.innerHTML = lock;
     if (eboardEl) eboardEl.innerHTML = '<p class="page-empty">Members only.</p>';
     if (searchEl) searchEl.style.display = 'none';

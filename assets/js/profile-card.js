@@ -91,7 +91,7 @@
       if (!ok) {
         body.innerHTML = lineage +
           '<div class="bm__locked">🔒 <b>Members only</b><span>Sign in as a verified brother to view the full profile.</span>' +
-          '<a class="btn btn--gold" href="' + portal + '" data-close>Brother sign in</a></div>';
+          '<a class="btn btn--gold" href="' + portal + '" data-close>Log In / Sign Up</a></div>';
         return;
       }
       window.ZBXI.brotherDetail(b.id).then(function (d) {

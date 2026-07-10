@@ -80,7 +80,7 @@
     function lockedCal() {
       calWrap.innerHTML = '<div class="bm__locked" style="max-width:560px;margin:0 auto">🔒 <b>The chapter calendar is members-only</b>' +
         '<span>Meetings, reunions, rush and philanthropy — with RSVPs — open when you sign in as a verified brother.</span>' +
-        '<a class="btn btn--gold" href="#brothers-portal">Brother sign in</a></div>';
+        '<a class="btn btn--gold" href="#brothers-portal">Log In / Sign Up</a></div>';
     }
 
     /* -- RSVPs -- */
@@ -412,7 +412,7 @@
         spotSec.style.display = '';
         spotEl.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🏅 <b>This month\'s featured brother</b>' +
           '<span>Every month we spotlight one brother\'s story — where the brotherhood took him. Sign in to read it.</span>' +
-          '<a class="btn btn--gold" href="#brothers-portal">Brother sign in</a></div>';
+          '<a class="btn btn--gold" href="#brothers-portal">Log In / Sign Up</a></div>';
       }
     });
   }
