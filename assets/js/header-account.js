@@ -1,5 +1,5 @@
 /* Header account indicator. Renders #navAccount based on Supabase auth state:
-   - signed out (or unconfigured): "Brother Login" pill
+   - signed out (or unconfigured): "Log In / Sign Up" dropdown CTA
    - signed in: account chip (avatar + name) with a dropdown
    - signed in as ADMIN_EMAIL: chip gets an ADMIN badge + an Admin Console link
    Re-renders on auth changes so logging in via the portal updates it live. */
