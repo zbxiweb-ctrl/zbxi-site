@@ -98,7 +98,26 @@
   }
 
   render();
-  if (Z && Z.configured) Z.onAuth(function () { render(); });
+
+  /* ---- Keep members-only sections honest across a sign-in/out ----
+     The gated surfaces (family tree, calendar, gallery, board, rosters, class
+     pages) each fetch their data once at page load; they don't listen for auth.
+     So after logging in the header updated but the tree stayed locked until a
+     manual refresh. Rather than teach six modules to re-fetch — and miss one —
+     reload once when the signed-in identity actually changes. This script is
+     loaded on every member-facing page, so the fix covers all of them. */
+  if (Z && Z.configured) {
+    var lastUid, sawFirst = false;
+    Z.onAuth(function (event, session) {
+      render();
+      var uid = (session && session.user && session.user.id) || null;
+      if (!sawFirst) { sawFirst = true; lastUid = uid; return; }  // initial session
+      if (event === 'PASSWORD_RECOVERY') return;                  // portal opens the reset form
+      if (uid === lastUid) return;                                // token refresh / tab focus
+      lastUid = uid;
+      location.reload();
+    });
+  }
 
   /* ---- scrolled nav state: hairline + deeper shadow once the page moves ---- */
   var nav = document.querySelector('.nav');

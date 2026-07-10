@@ -230,8 +230,16 @@
     var h = document.getElementById('treeHintChip');
     if (h) h.classList.add('gone');
   }
+  // The toolbar/close button live INSIDE the viewport. Without this, pressing a
+  // button starts a pan, and the tiniest mouse jitter sets `moved`, which the
+  // click guard below then uses to cancel the click — the buttons looked dead
+  // on desktop (a mouse always drifts a pixel; a finger usually doesn't).
+  function onChrome(e) {
+    return !!(e.target.closest && e.target.closest('.tree-controls, .tree-fullclose, .tree-hintchip'));
+  }
 
   viewport.addEventListener('pointerdown', function (e) {
+    if (onChrome(e)) return;
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     nPointers++;
     moved = false;
@@ -305,12 +313,14 @@
   viewport.addEventListener('pointerup', endPointer);
   viewport.addEventListener('pointercancel', endPointer);
 
-  // a drag/pinch must never fire the card underneath it
+  // a drag/pinch must never fire the card underneath it — but never swallow
+  // clicks on the toolbar sitting on top of the viewport
   viewport.addEventListener('click', function (e) {
-    if (moved) { e.stopPropagation(); e.preventDefault(); }
+    if (moved && !onChrome(e)) { e.stopPropagation(); e.preventDefault(); }
   }, true);
 
   viewport.addEventListener('wheel', function (e) {
+    if (onChrome(e)) return;   // let the toolbar be, don't hijack the wheel
     e.preventDefault();
     hideHint();
     var rect = viewport.getBoundingClientRect();
