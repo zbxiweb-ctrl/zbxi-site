@@ -531,7 +531,7 @@ p { margin: 0 0 1em; }
 .tree-hint { text-align: center; color: var(--muted); font-size: .82rem; margin-top: .9rem; }
 
 /* Brother modal */
-.bmodal { position: fixed; inset: 0; z-index: 210; background: rgba(var(--chrome),.9); display: none; align-items: center; justify-content: center; padding: 5vw; }
+.bmodal { position: fixed; inset: 0; z-index: 1400; background: rgba(var(--chrome),.9); display: none; align-items: center; justify-content: center; padding: 5vw; } /* above the fullscreen tree shell (z-index 1300) so brother cards open on top */
 .bmodal.open { display: flex; }
 .bmodal__card { background: var(--bg); border-radius: 18px; width: min(440px, 94vw); padding: 2rem; position: relative; box-shadow: 0 30px 80px rgba(0,0,0,.5); border-top: 6px solid var(--gold); }
 .bmodal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
@@ -1120,22 +1120,17 @@ input, select, textarea { background: var(--surface-2); }
 .tree-controls__sep { width: 1px; height: 22px; background: rgba(200,162,75,.35); margin: 0 .3rem; }
 
 .tree-hintchip {
-  position: absolute; top: 12px; left: 12px;
+  position: absolute; bottom: 12px; left: 12px; top: auto;
   background: rgba(var(--chrome),.85); color: #e8d9ac; font-size: .8rem;
   padding: .45rem 1.1rem; border-radius: 999px; border: 1px solid rgba(200,162,75,.35);
   pointer-events: none; z-index: 9; white-space: nowrap; max-width: calc(100% - 24px);
   overflow: hidden; text-overflow: ellipsis; transition: opacity .6s;
 }
 .tree-hintchip.gone { opacity: 0; }
-/* On phones the toolbar sits top-right, so drop the hint to the bottom-left
-   edge to keep both off the family cards and clear of each other. */
-@media (max-width: 760px) {
-  .tree-hintchip { top: auto; bottom: 12px; left: 12px; }
-}
 /* Fullscreen: move the Close button to the top-left so the toolbar keeps the
-   top-right corner, and park the hint at the bottom-left. */
+   top-right corner; the hint stays bottom-left. */
 .tree-shell--full .tree-fullclose { left: 14px; right: auto; }
-.tree-shell--full .tree-hintchip { top: auto; bottom: 14px; left: 14px; }
+.tree-shell--full .tree-hintchip { bottom: 14px; left: 14px; }
 
 .tree-fullclose {
   display: none; position: absolute; top: 14px; right: 14px; z-index: 12;
