@@ -47,6 +47,21 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
   background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep));
   background-clip: padding-box;
 }
+
+/* ---- Global file-input styling: turn the generic "Choose File" button into a
+   gold pill site-wide (applies to every current/future <input type=file>) ---- */
+input[type="file"] { font-family: var(--sans); font-size: .88rem; color: var(--muted); cursor: pointer; }
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+  font-family: var(--sans); font-weight: 600; font-size: .85rem; letter-spacing: .01em;
+  color: var(--navy-deep); background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: 0; border-radius: 999px; padding: .5rem 1.15rem; margin-right: .9rem; cursor: pointer;
+  transition: box-shadow .15s, transform .15s, filter .15s;
+}
+input[type="file"]::file-selector-button:hover,
+input[type="file"]::-webkit-file-upload-button:hover {
+  box-shadow: 0 6px 16px rgba(200,162,75,.4); transform: translateY(-1px); filter: brightness(1.04);
+}
 body {
   margin: 0;
   font-family: var(--sans);
