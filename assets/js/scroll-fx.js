@@ -38,7 +38,7 @@
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     });
   }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
-  document.querySelectorAll('.reveal, .stagger').forEach(function (t) { io.observe(t); });
+  document.querySelectorAll('.reveal, .stagger, .sect-watermark').forEach(function (t) { io.observe(t); });
 
   // --- count-up numbers (e.g. Founded 1993, 320+ brothers) ---
   function countUp(el) {
