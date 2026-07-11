@@ -5,20 +5,25 @@
    sign-ins with no profile yet. Uses window.ZBXI (supabase-client.js). */
 (function () {
   'use strict';
+  // The inline portal section (#portalCard) lives only on the homepage. The
+  // profile popup (#profileModal) is on every page. Run whenever EITHER exists:
+  // with just the modal we operate in "modal-only mode" so "My Profile" opens
+  // the popup in place on subpages instead of routing home. The section-only
+  // renderers (auth / member card / forgot) simply no-op when there's no card.
   var card = document.getElementById('portalCard');
-  if (!card) return;
-  var perksEl = document.getElementById('portalPerks');
   var modal = document.getElementById('profileModal');
+  if (!card && !modal) return;
+  var perksEl = document.getElementById('portalPerks');
   var mbody = modal ? modal.querySelector('[data-pm-body]') : null;
   var Z = window.ZBXI;
 
   // Where the current render goes: the section card (auth) or the popup body.
-  var target = card;
+  var target = card || mbody;
   function h(html) { target.innerHTML = html; }
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
 
   if (!Z || !Z.configured) {
-    card.innerHTML = '<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +
+    if (card) card.innerHTML = '<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +
       '<h3>Brother sign-in is coming soon</h3>' +
       '<p>The members area is being set up. Soon you\'ll be able to create your brother profile and join the family tree here.</p>' +
       '<p class="form-note">Are you a prospective member instead? <a href="#contact">Reach out here</a>.</p></div>';
@@ -79,7 +84,7 @@
       var sec = document.getElementById('brothers-portal');
       if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // move focus to the email field for a keyboard-friendly hand-off
-      setTimeout(function () { var e = card.querySelector('input[name="email"]'); if (e) e.focus({ preventScroll: true }); }, 350);
+      setTimeout(function () { var e = card && card.querySelector('input[name="email"]'); if (e) e.focus({ preventScroll: true }); }, 350);
     }
   };
   if (location.hash === '#my-profile') state.wantModal = true;
@@ -127,6 +132,7 @@
         }
       });
     }).catch(function (err) {
+      if (!card) return;               // modal-only pages have no section to show the error in
       target = card;
       h('<div class="portal-msg"><div class="portal-msg__ic">⚠️</div>' +
         '<h3>Something went wrong</h3>' +
@@ -154,6 +160,7 @@
 
   /* ---------------- signed-in section card ---------------- */
   function renderMemberCard() {
+    if (!card) return;               // index-only inline section; modal-only pages skip it
     target = card;
     var pr = state.profile;
     var name = (pr && pr.full_name) || (state.user.email || '').split('@')[0];
@@ -172,6 +179,7 @@
 
   /* ---------------- signed out: sign up / log in / forgot password ---------------- */
   function renderAuth() {
+    if (!card) return;               // auth lives in the inline section (index only)
     target = card;
     var signup = state.mode === 'signup';
     var inv = state.invite;
@@ -243,6 +251,7 @@
   }
 
   function renderForgot() {
+    if (!card) return;
     target = card;
     h('<div class="portal-claim"><h3>Reset your password</h3>' +
       '<p class="form-note">Enter your account email and we\'ll send you a reset link.</p>' +
@@ -626,7 +635,7 @@
   }
   function signOutBtn() { return '<button class="portal-signout" id="signOut" type="button">Sign out</button>'; }
   function wireSignOut() {
-    var b = card.querySelector('#signOut');
+    var b = card && card.querySelector('#signOut');
     if (b) b.onclick = function () { Z.signOut().then(function () { state.profile = null; state.mode = 'signin'; state.tab = 'profile'; state.wantModal = false; refresh(); }); };
   }
 

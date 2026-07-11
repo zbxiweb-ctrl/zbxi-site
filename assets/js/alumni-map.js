@@ -54,10 +54,33 @@
 
     loadLeaflet().then(function () {
       mapEl.innerHTML = '';
-      var map = L.map(mapEl, { scrollWheelZoom: false }).setView([41.5, -76], 5);
+      // scrollWheelZoom (desktop) + touchZoom/dragging (mobile, on by default)
+      var map = L.map(mapEl, { scrollWheelZoom: true }).setView([41.5, -76], 5);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
+
+      // ---- Fullscreen toggle (⛶) as a Leaflet control so clicks don't pan ----
+      var isFull = false;
+      function toggleFull() {
+        isFull = !isFull;
+        mapEl.classList.toggle('alumni-map--full', isFull);
+        var b = mapEl.querySelector('.map-fs-btn');
+        if (b) { b.innerHTML = isFull ? '✕' : '⛶'; b.title = isFull ? 'Exit fullscreen' : 'Fullscreen'; }
+        setTimeout(function () { map.invalidateSize(); }, 60);   // let the layout settle, then refit tiles
+      }
+      var FsControl = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function () {
+          var b = L.DomUtil.create('button', 'map-fs-btn');
+          b.type = 'button'; b.innerHTML = '⛶'; b.title = 'Fullscreen'; b.setAttribute('aria-label', 'Toggle fullscreen');
+          L.DomEvent.disableClickPropagation(b);
+          L.DomEvent.on(b, 'click', function (e) { L.DomEvent.stop(e); toggleFull(); });
+          return b;
+        }
+      });
+      map.addControl(new FsControl());
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isFull) toggleFull(); });
 
       // group brothers per city
       var byCity = {};

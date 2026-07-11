@@ -975,8 +975,19 @@ p { margin: 0 0 1em; }
 .mentor-chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: .8rem 0 1.2rem; }
 
 /* ---------- Alumni map ---------- */
-.alumni-map { height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--bg-2); }
+.alumni-map { position: relative; z-index: 0; isolation: isolate; height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--bg-2); } /* isolate keeps Leaflet's internal z-indexes (controls=1000) from escaping over the nav/modals */
 .alumni-map .leaflet-popup-content a { color: var(--gold-deep); text-decoration: underline; display: inline-block; padding: .1rem 0; }
+/* fullscreen map: fills the viewport, above the nav but below brother cards (1400) */
+.alumni-map--full { position: fixed !important; inset: 0; z-index: 1300; height: 100dvh !important; width: 100vw; border-radius: 0; box-shadow: none; }
+/* fullscreen toggle button (a Leaflet control) */
+.map-fs-btn {
+  width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(200,162,75,.5); background: rgba(var(--chrome),.9);
+  color: var(--gold-bright); font-size: 1.15rem; line-height: 1;
+  box-shadow: 0 6px 16px rgba(var(--chrome),.35); backdrop-filter: blur(6px);
+  display: grid; place-items: center; transition: background .15s, transform .15s;
+}
+.map-fs-btn:hover { background: var(--gold); color: var(--navy-deep); transform: translateY(-1px); }
 @media (max-width: 620px) { .alumni-map { height: 300px; } }
 
 /* ============================================================================
