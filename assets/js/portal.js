@@ -62,7 +62,17 @@
   }
   function closeModal() {
     if (!modal) return;
+    // During password recovery the modal IS the "choose a new password" form.
+    // Don't let Escape, a backdrop click, or the ✕ dismiss it into a live
+    // session before a new password is actually set — that made the reset link
+    // behave like a one-time login. It closes itself once the password is saved.
+    if (state.recovery) return;
     modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+  }
+  // Hide/show the modal's ✕ so recovery can't be dismissed without finishing.
+  function setModalCloseVisible(v) {
+    var x = modal && modal.querySelector('[data-pm-close]');
+    if (x) x.style.display = v ? '' : 'none';
   }
   if (modal) {
     modal.addEventListener('click', function (e) {
@@ -137,7 +147,15 @@
           sessionStorage.setItem('zbxi_onboard_shown', '1');
           state.wantModal = true;
         }
-        if (state.wantModal || (modal && modal.classList.contains('open'))) {
+        // A password-recovery session must land on — and STAY on — the "choose a
+        // new password" form; it must never fall through to the profile. Without
+        // this guard, refresh() painted the profile over the recovery form a beat
+        // after it appeared, so clicking the email link looked like it just logged
+        // you straight in (never letting you set a new password). openModal()
+        // itself renders the recovery form when state.recovery is set.
+        if (state.recovery) {
+          openModal();
+        } else if (state.wantModal || (modal && modal.classList.contains('open'))) {
           openModal(); renderProfileArea();
         }
       });
@@ -290,7 +308,9 @@
 
   function renderNewPassword() {
     target = mbody || card;
+    setModalCloseVisible(false);   // must finish the reset — no dismissing out of it
     h('<div class="portal-claim"><h3>Choose a new password</h3>' +
+      '<p class="form-note">For your security, set a new password to finish signing in. This link won’t work again.</p>' +
       '<form id="newPwForm" novalidate>' +
         '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required placeholder="8+ characters"></div>' +
         '<div class="field"><label>Confirm new password</label><input type="password" name="pw2" minlength="8" required></div>' +
@@ -306,6 +326,7 @@
       Z.updatePassword(f.pw.value).then(function (r) {
         if (r.error) throw r.error;
         state.recovery = false;
+        setModalCloseVisible(true);   // reset done — the modal is dismissable again
         st.className = 'form-status ok'; st.textContent = '✓ Password updated — signing you in…';
         setTimeout(function () { closeModal(); refresh(); }, 800);
       }).catch(function (err) {
@@ -318,6 +339,7 @@
   /* ---------------- popup: profile area ---------------- */
   function renderProfileArea() {
     target = mbody;
+    setModalCloseVisible(true);   // normal profile view is always dismissable
     var pr = state.profile;
     if (pr && pr.status === 'pending') return renderPending(pr);
     if (!pr) return renderChooser(); // no profile yet: claim an existing tree entry or create new
