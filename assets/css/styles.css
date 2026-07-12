@@ -253,6 +253,14 @@ p { margin: 0 0 1em; }
   .hero__text { text-align: center; }
   .hero__rule { margin-left: auto; margin-right: auto; }
   .hero__cta { justify-content: center; }
+  /* Breathing room so the CTA doesn't crowd the cream section below. */
+  .hero { padding-bottom: clamp(2.75rem, 7vh, 4.5rem); }
+  /* Mobile Safari rasterises `filter: drop-shadow()` to the element's BOX rather
+     than to the PNG's alpha, which drew a faint rectangular edge under the crest
+     (invisible on desktop). The crest reads fine on navy unaided — drop the
+     filter on phones in BOTH themes so no box can be painted. */
+  .hero__crest-img,
+  :root[data-theme="dark"] .hero__crest-img { filter: none; }
 }
 
 /* ---------- About / values ---------- */
@@ -1525,6 +1533,35 @@ body.tree-lock { overflow: hidden; }
   .brand img { height: 44px; }
   .brand__txt { font-size: 1.45rem; }
   .brand__txt small { font-size: .52rem; letter-spacing: .16em; }
+}
+
+/* ---- Phone header: make the row actually fit -------------------------------
+   On a ~428px phone the row wanted ~417px of the ~394px available: the brand
+   subtitle ("EST. 1993 · GENESEO", ~140px) and the ADMIN text badge (~55px)
+   overflowed it, shoving the hamburger off the right edge entirely (so the nav
+   links were unreachable) and clipping the account chip. Trim to the essentials
+   — crest + ΖΒΞ, theme, bell, avatar, hamburger — and everything fits with room
+   to spare. Nothing is lost: the subtitle is on the hero, and the dropdown still
+   shows the "★ Admin" role pill. */
+@media (max-width: 620px) {
+  .nav__inner { gap: .35rem; flex-wrap: nowrap; }
+  .brand { gap: .5rem; min-width: 0; flex: none; }
+  .brand img { height: 38px; }
+  .brand__txt { font-size: 1.25rem; }
+  .brand__txt small { display: none; }
+  .theme-toggle { width: 34px; height: 34px; margin-right: .1rem; }
+  .bell { margin-right: .15rem; }
+  .bell__btn { width: 34px; height: 34px; font-size: .95rem; }
+  .bell ~ .nav__account { margin-left: .2rem; }
+  .nav__chip { padding: .22rem .4rem; gap: .35rem; }
+  .nav__chip .admin-badge { display: none; }
+  .nav__toggle { flex: none; padding: 8px 2px; margin-left: .25rem; }
+}
+
+/* Roomier, easier-to-tap mobile menu rows. */
+@media (max-width: 1023px) {
+  .nav__links a { padding: 1rem 8vw; border-bottom: 1px solid rgba(200,162,75,.10); }
+  .nav__links a:last-of-type { border-bottom: 0; }
 }
 
 /* Below the breakpoint .nav__links is position:fixed and leaves the flow, so the
