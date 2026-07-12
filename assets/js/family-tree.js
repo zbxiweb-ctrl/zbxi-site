@@ -126,7 +126,7 @@
     var lines = rs.filter(function (r) { return (descCount[r.id] || 0) > 0; });
     var solo  = rs.filter(function (r) { return (descCount[r.id] || 0) === 0; });
     var GAP = 16;
-    var vw = viewport.clientWidth;
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;   // vh is used by the fit math below
 
     // ALWAYS two columns (a 2×5 matrix for ten lines) — on a phone we shrink the
     // card instead of collapsing to a single tall column.
@@ -168,9 +168,9 @@
     });
 
     // shrink-to-fit so all ten lines are visible without panning
-    scale = Math.max(0.4, Math.min(1, (vh - 40) / height, (vw - 24) / gridW));
+    scale = Math.max(0.4, Math.min(1, (vh - TOP_PAD - 16) / height, (vw - 24) / gridW));
     tx = (vw - gridW * scale) / 2;
-    ty = Math.max(16, (vh - height * scale) / 2);
+    ty = Math.max(TOP_PAD, (vh - height * scale) / 2);   // never tuck the top row under the toolbar
     apply();
   }
 
@@ -270,19 +270,12 @@
   }
 
   function isFull() { return !!(shell && shell.classList.contains('tree-shell--full')); }
-  /* On a phone a SINGLE finger must scroll the page, not pan the tree — the
-     container sits mid-homepage and used to swallow every swipe, so your finger
-     got trapped in it. Two fingers pan/zoom the tree instead (same contract as an
-     embedded map). Fullscreen is a dedicated surface: one finger pans there. */
-  function oneFingerScrollsPage(e) { return e.pointerType === 'touch' && !isFull(); }
-  var touchMode = false;
 
   viewport.addEventListener('pointerdown', function (e) {
     if (onChrome(e)) return;
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     nPointers++;
     moved = false;
-    touchMode = (e.pointerType === 'touch');
     hideHint();
     if (nPointers === 2) {
       // second finger down -> pinch takes over; both pointers are ours now
@@ -297,10 +290,6 @@
       moved = true;
       viewport.classList.add('grabbing');
     } else if (nPointers === 1) {
-      // single finger (not fullscreen): leave it to the browser so the PAGE scrolls.
-      // The pointer is still tracked above, so a second finger can start a pinch.
-      // A plain tap still fires click, so cards still open.
-      if (oneFingerScrollsPage(e)) return;
       if (e.target.closest('.tree-node')) {
         // starting on a card: wait for a 6px move before treating it as a pan,
         // so a plain tap still opens the profile instantly
@@ -346,13 +335,9 @@
     if (pointers[e.pointerId]) { delete pointers[e.pointerId]; nPointers = Math.max(0, nPointers - 1); }
     if (nPointers < 2) pinch = null;
     if (nPointers === 1) {
-      if (touchMode && !isFull()) {
-        drag = null;                       // back to one finger -> the page scrolls again
-      } else {
-        // one finger left after a pinch: continue as a pan from its position
-        var p = pList()[0];
-        drag = { x: p.x - tx, y: p.y - ty };
-      }
+      // one finger left after a pinch: continue as a pan from its position
+      var p = pList()[0];
+      drag = { x: p.x - tx, y: p.y - ty };
     } else if (nPointers === 0) {
       drag = null;
       viewport.classList.remove('grabbing');

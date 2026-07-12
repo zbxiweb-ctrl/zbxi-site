@@ -194,10 +194,11 @@
 
     var sec = document.getElementById('brothers-portal');
     if (sec) sec.style.display = signedIn ? 'none' : '';
-    document.querySelectorAll('a[href$="#brothers-portal"]').forEach(function (a) {
-      if (a.id === 'heroLoginCta') return;          // that one is repurposed above
-      a.style.display = signedIn ? 'none' : '';
-    });
+    // ONLY the nav + footer links — scoping matters: an unscoped selector also hid
+    // the inline "sign in" link inside prose (e.g. the family-tree lock note),
+    // leaving a sentence with a hole in it.
+    document.querySelectorAll('.nav__links a[href$="#brothers-portal"], .footer__nav a[href$="#brothers-portal"]')
+      .forEach(function (a) { a.style.display = signedIn ? 'none' : ''; });
   }
 
   function render() {
