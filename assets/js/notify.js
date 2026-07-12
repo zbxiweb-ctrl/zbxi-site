@@ -73,7 +73,11 @@
     wrap.innerHTML =
       '<button class="bell__btn" aria-label="Notifications">🔔<span class="bell__badge" style="display:none"></span></button>' +
       '<div class="bell__menu"><div class="bell__head">Notifications</div><div class="bell__list"></div></div>';
-    host.parentNode.insertBefore(wrap, host);
+    // Nav order must read: 🔔 bell → 🌙 theme toggle → profile chip. header-account.js
+    // runs first and puts the toggle right before #navAccount, so insert the bell
+    // ahead of the toggle (falling back to the chip when there's no toggle).
+    var tgl = document.getElementById('themeToggle');
+    host.parentNode.insertBefore(wrap, tgl || host);
 
     var btn = wrap.querySelector('.bell__btn');
     var menu = wrap.querySelector('.bell__menu');

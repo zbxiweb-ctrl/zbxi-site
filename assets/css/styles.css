@@ -33,14 +33,16 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 
 /* ---- Global themed scrollbar (applies to the page + every scroll container,
    current and future — modals, the tree viewport, dropdowns, etc.) ---------- */
-* { scrollbar-width: thin; scrollbar-color: var(--gold) transparent; }   /* Firefox */
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-corner { background: transparent; }
+/* A transparent track lets the browser's DEFAULT (white, clunky) channel show
+   through in light mode — so give the track an explicit, subtle tint instead. */
+* { scrollbar-width: thin; scrollbar-color: var(--gold) var(--scroll-track); }   /* Firefox */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-corner { background: var(--scroll-track); }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
   border-radius: 999px;
-  border: 3px solid transparent;        /* transparent inset -> slim floating pill */
+  border: 2px solid transparent;        /* transparent inset -> slim floating pill */
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -168,6 +170,21 @@ p { margin: 0 0 1em; }
 .nav__menu-admin { color: var(--gold-bright) !important; font-weight: 600; }
 .nav__menu-divider { height: 1px; background: rgba(255,255,255,.08); margin: .4rem 0; }
 .nav__menu-signout:hover { background: rgba(180,52,43,.18) !important; color: #ff9c93 !important; }
+
+/* "Brothers Only" — expands in place to the members-only surfaces */
+.nav__sub-toggle {
+  display: flex; align-items: center; gap: .65rem; width: calc(100% - .9rem);
+  margin: 0 .45rem; padding: .6rem .55rem; border: 0; border-radius: 8px; cursor: pointer;
+  background: none; color: var(--gold-bright); font-family: var(--sans); font-size: .9rem; font-weight: 600;
+  text-align: left; transition: background .12s;
+}
+.nav__sub-toggle i { font-style: normal; flex: none; width: 22px; text-align: center; }
+.nav__sub-toggle:hover { background: rgba(200,162,75,.12); }
+.nav__sub-caret { font-style: normal; margin-left: auto; font-size: .7rem; transition: transform .2s; }
+.nav__sub-toggle[aria-expanded="true"] .nav__sub-caret { transform: rotate(180deg); }
+.nav__sub { display: none; margin: .1rem .45rem .2rem; padding-left: .6rem; border-left: 2px solid rgba(200,162,75,.3); }
+.nav__sub.open { display: block; }
+.nav__sub a { font-size: .86rem; padding: .45rem .5rem; }
 
 /* Log in / Sign up CTA + its dropdown */
 .nav__login-btn { display: inline-flex; align-items: center; gap: .4rem; }
@@ -545,10 +562,20 @@ p { margin: 0 0 1em; }
 /* ---------- Family tree ---------- */
 .tree-shell { position: relative; }
 .tree-viewport {
-  position: relative; height: min(70vh, 620px); background:
+  position: relative; height: min(56vh, 480px); background:
     radial-gradient(circle at 50% 0%, #fffdf7, var(--cream-2));
   border: 1px solid rgba(10,31,68,.12); border-radius: var(--radius);
-  overflow: hidden; cursor: grab; touch-action: none; box-shadow: inset 0 2px 20px rgba(10,31,68,.06);
+  overflow: hidden; cursor: grab; box-shadow: inset 0 2px 20px rgba(10,31,68,.06);
+  /* pan-y = the browser keeps vertical page scrolling. This is THE fix for the
+     tree swallowing one-finger swipes mid-homepage; two fingers still reach our
+     pinch handler. Fullscreen switches back to `none` for full gesture control. */
+  touch-action: pan-y;
+}
+.tree-shell--full .tree-viewport { touch-action: none; }
+/* keep the container off the screen edge on phones so a thumb doesn't land in it */
+@media (max-width: 760px) {
+  .tree-shell { margin-inline: 6px; }
+  .tree-viewport { height: min(50vh, 420px); }
 }
 .tree-viewport.grabbing { cursor: grabbing; }
 .tree-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
@@ -573,7 +600,15 @@ p { margin: 0 0 1em; }
 /* Brother modal */
 .bmodal { position: fixed; inset: 0; z-index: 1400; background: rgba(var(--chrome),.9); display: none; align-items: center; justify-content: center; padding: 5vw; } /* above the fullscreen tree shell (z-index 1300) so brother cards open on top */
 .bmodal.open { display: flex; }
-.bmodal__card { background: var(--bg); border-radius: 18px; width: min(440px, 94vw); padding: 2rem; position: relative; box-shadow: 0 30px 80px rgba(0,0,0,.5); border-top: 6px solid var(--gold); }
+/* max-height + overflow are what let a long bio scroll INSIDE the card. Without
+   them the card grew past the viewport on a phone and could not be scrolled. */
+.bmodal__card { background: var(--bg); border-radius: 18px; width: min(440px, 94vw); padding: 2rem; position: relative; box-shadow: 0 30px 80px rgba(0,0,0,.5); border-top: 6px solid var(--gold); max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 640px) {
+  .bmodal { align-items: flex-start; padding: 3vh 3vw; }   /* tall cards start at the top instead of being clipped both ends */
+  .bmodal__card { max-height: 92vh; padding: 1.5rem 1.25rem; }
+}
+/* while any full-screen popup is open, don't let the PAGE scroll behind it */
+body.modal-open { overflow: hidden; }
 .bmodal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
 .bmodal__head { display: flex; gap: 1.1rem; align-items: center; margin-bottom: 1.2rem; }
 .bmodal__avatar { width: 76px; height: 76px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.5rem; overflow: hidden; }
@@ -1599,6 +1634,7 @@ body.tree-lock { overflow: hidden; }
   --tint:      #fdf6e0;
   --chrome:    7, 22, 52;     /* nav / modals / overlays (navy in light) */
   --on-dark:   #cdd6e6;       /* body text that sits on navy sections */
+  --scroll-track: rgba(10, 31, 68, .07);   /* subtle navy channel, not stark white */
 }
 :root[data-theme="dark"] {
   /* True neutral black. The page stays essentially dead black; the separation
@@ -1625,6 +1661,7 @@ body.tree-lock { overflow: hidden; }
   --tint:      rgba(200,162,75,.12);
   --shadow:    0 20px 55px rgba(0,0,0,.75);
   --shadow-sm: 0 8px 22px rgba(0,0,0,.6);
+  --scroll-track: rgba(200,162,75,.10);
 }
 :root[data-theme="dark"] body { background: var(--bg); color: var(--text); }
 

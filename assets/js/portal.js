@@ -76,7 +76,13 @@
   //     mode; used by the header "Log in / Sign up" dropdown. If already signed
   //     in, falls back to opening the profile popup.
   window.ZBXIPortal = {
-    open: function () { state.wantModal = true; openModal(); },
+    // open('profile' | 'account') — the header dropdown opens the popup straight
+    // to the tab the brother picked. No arg = whatever tab he was last on.
+    open: function (tab) {
+      if (tab === 'profile' || tab === 'account') state.tab = tab;
+      state.wantModal = true;
+      openModal();
+    },
     showAuth: function (mode) {
       if (state.user) { state.wantModal = true; openModal(); return; }
       if (mode === 'signin' || mode === 'signup') state.mode = mode;

@@ -71,6 +71,9 @@
     var lineage = opts.lineage || '';
     var portal = opts.portal || '#brothers-portal';
     m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');   // stop the page scrolling behind the card
+    var mc = m.querySelector('.bmodal__card');
+    if (mc) mc.scrollTop = 0;                    // always open a fresh card at its top
 
     if (opts.placeholderData) { // demo mode: show what we have, ungated
       var d = opts.placeholderData;
@@ -130,15 +133,18 @@
 
   // Wire close behavior once per page.
   var modal = document.getElementById('brotherModal');
+  function shut() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');   // give the page its scroll back
+  }
   if (modal && !modal.dataset.wired) {
     modal.dataset.wired = '1';
     modal.addEventListener('click', function (e) {
-      if (e.target === modal || e.target.closest('[data-close]')) {
-        modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
-      }
+      if (e.target === modal || e.target.closest('[data-close]')) shut();
     });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+      if (e.key === 'Escape' && modal.classList.contains('open')) shut();
     });
   }
 

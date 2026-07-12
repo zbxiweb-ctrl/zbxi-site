@@ -14,9 +14,35 @@
 
   // On subpages (active/alumni/admin), portal links must route back to index.
   var onIndex = /(^|\/)(index\.html)?$/.test(location.pathname);
-  var PORTAL = (onIndex ? '' : 'index.html') + '#brothers-portal';
-  // "My Profile" opens the profile popup (index handles the #my-profile hash).
-  var MYPROFILE = (onIndex ? '' : 'index.html') + '#my-profile';
+  var BASE = onIndex ? '' : 'index.html';
+  var PORTAL = BASE + '#brothers-portal';
+  // "Brother Profile" opens the profile popup (index handles the #my-profile hash).
+  var MYPROFILE = BASE + '#my-profile';
+
+  // The members-only surfaces, surfaced from the account dropdown once signed in.
+  var BROTHERS_ONLY = [
+    { ic: '🎓', label: 'Active',      href: 'active.html' },
+    { ic: '🏛', label: 'Alumni',      href: 'alumni.html' },
+    { ic: '🌳', label: 'Family Tree', href: BASE + '#family-tree' },
+    { ic: '📅', label: 'Events',      href: BASE + '#events' },
+    { ic: '🖼', label: 'Gallery',     href: 'gallery.html' },
+    { ic: '💬', label: 'Board',       href: 'board.html' }
+  ];
+
+  /* Reload onto a CLEAN url after a sign-in/out: no #hash and no ?auth=/?invite=
+     login-flow leftovers. Without this the browser restores the old scroll spot
+     (or jumps to #brothers-portal) and the brother lands mid-page instead of at
+     the top of the site he just signed into. */
+  function reloadClean() {
+    try {
+      var u = new URL(location.href);
+      u.hash = '';
+      u.searchParams.delete('auth');
+      u.searchParams.delete('invite');
+      if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+      location.replace(u.toString());
+    } catch (e) { location.reload(); }
+  }
 
   function renderLogin() {
     // Gold CTA that opens a small dropdown: Log in / Create account. On the
@@ -85,10 +111,18 @@
             (isAdmin ? '<span class="role-pill role-pill--admin">★ Admin</span>' : '<span class="role-pill">Brother of ΖΒΞ</span>') +
           '</div>' +
         '</div>' +
-        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> My Profile</a>' +
-        '<a href="gallery.html" role="menuitem"><i>🖼</i> Gallery</a>' +
-        '<a href="board.html" role="menuitem"><i>💬</i> Board</a>' +
-        (isAdmin ? '<a href="admin.html" role="menuitem" class="nav__menu-admin"><i>⚙</i> Admin Console <span class="nav__menu-badge" id="navPendingBadge" style="display:none"></span><em>→</em></a>' : '') +
+        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> Brother Profile</a>' +
+        '<a href="' + MYPROFILE + '" id="navAccount2" role="menuitem"><i>⚙</i> Account</a>' +
+        '<div class="nav__menu-divider"></div>' +
+        '<button type="button" class="nav__sub-toggle" id="navBrothersOnly" aria-expanded="false">' +
+          '<i>🔒</i> Brothers Only <em class="nav__sub-caret">▾</em>' +
+        '</button>' +
+        '<div class="nav__sub" id="navBrothersSub">' +
+          BROTHERS_ONLY.map(function (m) {
+            return '<a href="' + m.href + '" role="menuitem"><i>' + m.ic + '</i> ' + m.label + '</a>';
+          }).join('') +
+        '</div>' +
+        (isAdmin ? '<div class="nav__menu-divider"></div><a href="admin.html" role="menuitem" class="nav__menu-admin"><i>⚙</i> Admin Console <span class="nav__menu-badge" id="navPendingBadge" style="display:none"></span><em>→</em></a>' : '') +
         '<div class="nav__menu-divider"></div>' +
         '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout"><i>↦</i> Sign out</button>' +
       '</div>';
@@ -115,38 +149,66 @@
     // Let the in-page anchors close the menu naturally
     menu.querySelectorAll('a[href^="#"]').forEach(function (a) { a.addEventListener('click', close); });
 
-    // On the homepage, "My Profile" opens the popup directly (no navigation).
-    var mp = document.getElementById('navMyProfile');
-    if (mp && window.ZBXIPortal) mp.addEventListener('click', function (e) {
-      e.preventDefault(); close(); window.ZBXIPortal.open();
+    // "Brother Profile" / "Account" open the popup in place on ANY page, straight
+    // to the right tab. (portal.js runs site-wide in modal-only mode.)
+    [['navMyProfile', 'profile'], ['navAccount2', 'account']].forEach(function (pair) {
+      var a = document.getElementById(pair[0]);
+      if (a && window.ZBXIPortal) a.addEventListener('click', function (e) {
+        e.preventDefault(); close(); window.ZBXIPortal.open(pair[1]);
+      });
+    });
+
+    // "Brothers Only" expands in place rather than navigating anywhere.
+    var sub = document.getElementById('navBrothersSub');
+    var subBtn = document.getElementById('navBrothersOnly');
+    if (sub && subBtn) subBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var openNow = sub.classList.toggle('open');
+      subBtn.setAttribute('aria-expanded', openNow ? 'true' : 'false');
     });
 
     var out = document.getElementById('navSignOut');
     if (out) out.addEventListener('click', function () {
       out.textContent = 'Signing out…';
-      Z.signOut().then(function () { location.reload(); }).catch(function () { location.reload(); });
+      Z.signOut().then(reloadClean).catch(reloadClean);
     });
   }
 
-  /* Homepage hero CTAs react to auth state: once signed in, the gold button
-     reads "Logged In" and the "Interested in Rushing?" ghost button hides
-     (rushing is for prospects, not brothers). Elements only exist on index. */
-  function heroCtas(signedIn) {
+  /* Signed-in chrome:
+     - hero: gold button becomes "Logged In" (opens the profile popup) and the
+       "Interested in Rushing?" CTA hides (rushing is for prospects).
+     - the whole #brothers-portal section is the SIGN-IN card. Once you're in, it
+       is dead weight — its welcome banner and member-perks grid now live in the
+       account dropdown ("Brothers Only"). Hide it, plus every nav/footer link
+       pointing at it, so nothing scrolls to a hidden section. */
+  function signedInChrome(signedIn) {
     var login = document.getElementById('heroLoginCta');
     var rush = document.getElementById('heroRushCta');
-    if (login) login.innerHTML = signedIn ? '✓ Logged In' : 'Log In / Sign Up';
+    if (login) {
+      login.innerHTML = signedIn ? '✓ Logged In' : 'Log In / Sign Up';
+      login.onclick = (signedIn && window.ZBXIPortal)
+        ? function (e) { e.preventDefault(); window.ZBXIPortal.open('profile'); }
+        : null;
+    }
     if (rush) rush.style.display = signedIn ? 'none' : '';
+
+    var sec = document.getElementById('brothers-portal');
+    if (sec) sec.style.display = signedIn ? 'none' : '';
+    document.querySelectorAll('a[href$="#brothers-portal"]').forEach(function (a) {
+      if (a.id === 'heroLoginCta') return;          // that one is repurposed above
+      a.style.display = signedIn ? 'none' : '';
+    });
   }
 
   function render() {
-    if (!Z || !Z.configured) { renderLogin(); heroCtas(false); return; }
+    if (!Z || !Z.configured) { renderLogin(); signedInChrome(false); return; }
     Z.getUser().then(function (user) {
-      if (!user) { renderLogin(); heroCtas(false); return; }
-      heroCtas(true);
+      if (!user) { renderLogin(); signedInChrome(false); return; }
+      signedInChrome(true);
       // Best-effort profile name; fall back to email if it fails.
       Z.myProfile(user.id).then(function (p) { renderChip(user, p); })
         .catch(function () { renderChip(user, null); });
-    }).catch(function () { renderLogin(); heroCtas(false); });
+    }).catch(function () { renderLogin(); signedInChrome(false); });
   }
 
   render();
@@ -167,7 +229,7 @@
       if (event === 'PASSWORD_RECOVERY') return;                  // portal opens the reset form
       if (uid === lastUid) return;                                // token refresh / tab focus
       lastUid = uid;
-      location.reload();
+      reloadClean();   // lands at the TOP of a clean url, not mid-page on the login card
     });
   }
 

@@ -105,7 +105,9 @@
   // the full tree. Founding lines lay out two-across; childless roots (e.g. the
   // admin's standalone profile) sit centered on their own row underneath.
   // Collapses to a single column when the viewport is too narrow for two.
-  var FAM_W = 250;
+  var FAM_W = 250;              // family-line card width; shrunk on phones so 2 columns always fit
+  var TOP_PAD = 58;             // clears the top-right toolbar
+  var BOTTOM_PAD = 46;          // clears the bottom-left hint chip
   function famCard(r, left, top) {
     var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
     var av = r.photo_url ? '<img src="' + esc(r.photo_url) + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
@@ -124,9 +126,13 @@
     var lines = rs.filter(function (r) { return (descCount[r.id] || 0) > 0; });
     var solo  = rs.filter(function (r) { return (descCount[r.id] || 0) === 0; });
     var GAP = 16;
-    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    var vw = viewport.clientWidth;
 
-    var cols = (vw < 2 * FAM_W + GAP + 40) ? 1 : 2;
+    // ALWAYS two columns (a 2×5 matrix for ten lines) — on a phone we shrink the
+    // card instead of collapsing to a single tall column.
+    var cols = 2;
+    FAM_W = Math.max(132, Math.min(250, Math.floor((vw - GAP - 28) / cols)));
+
     var rows = Math.ceil(lines.length / cols);
     var gridW = cols * FAM_W + (cols - 1) * GAP;
     var rowH = NODE_H + GAP;
@@ -140,7 +146,8 @@
       html += famCard(r, (gridW - FAM_W) / 2, (rows + i) * rowH);
     });
 
-    var height = (rows + solo.length) * rowH - GAP;
+    // extra room at the bottom so the last row never hides under the hint chip
+    var height = (rows + solo.length) * rowH - GAP + BOTTOM_PAD;
     canvas.style.width = gridW + 'px';
     canvas.style.height = height + 'px';
     canvas.innerHTML = html;
@@ -236,10 +243,11 @@
   }
   function fitToView(L) {
     var vw = viewport.clientWidth, vh = viewport.clientHeight;
-    scale = Math.min(1, Math.min(vw / (L.width + 60), vh / (L.height + 40)) || 1);
+    // reserve the toolbar strip so the fitted content never lands under it
+    scale = Math.min(1, Math.min(vw / (L.width + 60), (vh - TOP_PAD) / (L.height + 24)) || 1);
     scale = Math.max(MIN_S, scale);
     tx = (vw - L.width * scale) / 2;
-    ty = 24;
+    ty = TOP_PAD;
     applySmooth();
   }
 
@@ -261,11 +269,20 @@
     return !!(e.target.closest && e.target.closest('.tree-controls, .tree-fullclose, .tree-hintchip'));
   }
 
+  function isFull() { return !!(shell && shell.classList.contains('tree-shell--full')); }
+  /* On a phone a SINGLE finger must scroll the page, not pan the tree — the
+     container sits mid-homepage and used to swallow every swipe, so your finger
+     got trapped in it. Two fingers pan/zoom the tree instead (same contract as an
+     embedded map). Fullscreen is a dedicated surface: one finger pans there. */
+  function oneFingerScrollsPage(e) { return e.pointerType === 'touch' && !isFull(); }
+  var touchMode = false;
+
   viewport.addEventListener('pointerdown', function (e) {
     if (onChrome(e)) return;
     pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     nPointers++;
     moved = false;
+    touchMode = (e.pointerType === 'touch');
     hideHint();
     if (nPointers === 2) {
       // second finger down -> pinch takes over; both pointers are ours now
@@ -280,6 +297,10 @@
       moved = true;
       viewport.classList.add('grabbing');
     } else if (nPointers === 1) {
+      // single finger (not fullscreen): leave it to the browser so the PAGE scrolls.
+      // The pointer is still tracked above, so a second finger can start a pinch.
+      // A plain tap still fires click, so cards still open.
+      if (oneFingerScrollsPage(e)) return;
       if (e.target.closest('.tree-node')) {
         // starting on a card: wait for a 6px move before treating it as a pan,
         // so a plain tap still opens the profile instantly
@@ -325,9 +346,13 @@
     if (pointers[e.pointerId]) { delete pointers[e.pointerId]; nPointers = Math.max(0, nPointers - 1); }
     if (nPointers < 2) pinch = null;
     if (nPointers === 1) {
-      // one finger left after a pinch: continue as a pan from its position
-      var p = pList()[0];
-      drag = { x: p.x - tx, y: p.y - ty };
+      if (touchMode && !isFull()) {
+        drag = null;                       // back to one finger -> the page scrolls again
+      } else {
+        // one finger left after a pinch: continue as a pan from its position
+        var p = pList()[0];
+        drag = { x: p.x - tx, y: p.y - ty };
+      }
     } else if (nPointers === 0) {
       drag = null;
       viewport.classList.remove('grabbing');
@@ -344,6 +369,11 @@
 
   viewport.addEventListener('wheel', function (e) {
     if (onChrome(e)) return;   // let the toolbar be, don't hijack the wheel
+    /* Do NOT steal the page's scroll. The tree sits in the middle of the homepage,
+       and swallowing the wheel meant the page froze the moment the cursor drifted
+       over it. Zoom is opt-in: Ctrl/⌘ + wheel (the standard embedded-map contract).
+       Fullscreen is a dedicated surface, so there the wheel zooms freely. */
+    if (!isFull() && !e.ctrlKey && !e.metaKey) return;   // no preventDefault -> page scrolls
     e.preventDefault();
     hideHint();
     var rect = viewport.getBoundingClientRect();
