@@ -340,14 +340,15 @@
         // hand the brother the normal login form so he signs in fresh with the
         // password he just set — exactly the flow he asked for.
         sessionStorage.setItem('zbxi_just_reset', '1');   // survives the sign-out reload
-        setTimeout(function () {
-          Z.signOut().then(function () {
-            state.recovery = false; state.mode = 'signin'; state.justReset = true;
-            state.user = null; state.profile = null; state.wantModal = false;
-            closeModal();
-            refresh();
-          });
-        }, 900);
+        var afterReset = function () {
+          state.recovery = false; state.mode = 'signin'; state.justReset = true;
+          state.user = null; state.profile = null; state.wantModal = false;
+          closeModal();
+          refresh();
+        };
+        // A failed sign-out just leaves them signed in with their NEW password
+        // (a safe state) — either way, don't leave them stuck on the form.
+        setTimeout(function () { Z.signOut().then(afterReset).catch(afterReset); }, 900);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not update password.';
         f.querySelector('button').disabled = false;
