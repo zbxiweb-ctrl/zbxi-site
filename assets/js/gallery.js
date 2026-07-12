@@ -27,7 +27,10 @@
 
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
-  var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false;
+  // canMod = may delete anyone's post/comment: the admin, OR a President whose
+  // seat has gallery.moderate switched on. The DB enforces it either way (the
+  // gallery delete policies check officer_can); this only shows the button.
+  var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false;
 
   function likeCount(pid) { return likes.filter(function (l) { return l.post_id === pid; }).length; }
   function iLike(pid) { return me && likes.some(function (l) { return l.post_id === pid && l.user_id === me.id; }); }
@@ -123,7 +126,7 @@
     g('caption').textContent = p.caption || '';
     g('date').textContent = when(p.created_at);
     var del = g('delete');
-    del.style.display = (me && (p.author_user === me.id || isAdmin)) ? '' : 'none';
+    del.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
     del.onclick = function () {
       if (!confirm('Delete this post?')) return;
       Z.galleryDeletePost(p.id, p.author_user === me.id ? p.image_path : null).then(function () {
@@ -164,7 +167,7 @@
     Z.galleryComments(p.id).then(function (cs) {
       if (!cs.length) { box.innerHTML = '<p class="form-note">No comments yet.</p>'; return; }
       box.innerHTML = cs.map(function (c) {
-        var mine = me && (c.author_user === me.id || isAdmin);
+        var mine = me && (c.author_user === me.id || canMod);
         return '<div class="gcomment">' + chip(c.author_user) +
           '<p>' + esc(c.body) + '</p>' +
           '<small>' + when(c.created_at) + (mine ? ' · <a href="#" data-delc="' + c.id + '">delete</a>' : '') + '</small></div>';
@@ -199,10 +202,14 @@
     me = u;
     if (!u) { locked('Members only', true); return; }
     isAdmin = Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail;
+    canMod = isAdmin;
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
-      loadAll().catch(function () {
-        root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
+      (Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false)).then(function (can) {
+        canMod = isAdmin || can;
+        loadAll().catch(function () {
+          root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
+        });
       });
     });
   });

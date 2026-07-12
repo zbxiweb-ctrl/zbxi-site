@@ -136,6 +136,25 @@
       }).catch(function () {});
     }
 
+    // Officers: a current President whose seat has >=1 enabled grant gets an
+    // Officer Console link (mirrors the Admin link). The server-side RLS is the
+    // real gate; this just surfaces the shortcut.
+    if (!isAdmin && Z.myOfficerSeat && Z.officerGrantsList) {
+      Promise.all([Z.myOfficerSeat(), Z.officerGrantsList()]).then(function (res) {
+        var seat = res[0], grants = res[1] || [];
+        if (!seat || !grants.some(function (g) { return g.seat === seat && g.enabled; })) return;
+        var signout = document.getElementById('navSignOut');
+        if (!signout || !signout.parentNode) return;
+        var a = document.createElement('a');
+        a.href = 'officer.html'; a.setAttribute('role', 'menuitem'); a.className = 'nav__menu-admin';
+        a.innerHTML = '<i>🛡</i> Officer Console <em>→</em>';
+        var div = document.createElement('div');
+        div.className = 'nav__menu-divider';
+        signout.parentNode.insertBefore(a, signout);
+        signout.parentNode.insertBefore(div, signout);
+      }).catch(function () {});
+    }
+
     var btn = document.getElementById('navChipBtn');
     var menu = document.getElementById('navMenu');
     function close() { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
