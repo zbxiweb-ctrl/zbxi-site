@@ -722,7 +722,8 @@ body.modal-open { overflow: hidden; }
 
 /* ---------- Admin page ---------- */
 .admin-body { background: var(--navy-deep); color: var(--cream); min-height: 100vh; }
-.admin-topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem clamp(1rem,5vw,3rem); border-bottom: 1px solid rgba(200,162,75,.3); }
+.admin-topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem clamp(1rem,5vw,3rem); border-bottom: 1px solid rgba(200,162,75,.3);
+  position: sticky; top: 0; z-index: 50; background: var(--navy-deep); }
 .admin-topbar .brand img { height: 40px; }
 .admin-back { color: var(--gold-bright); font-size: .9rem; }
 .admin-wrap { width: min(1180px, 96vw); margin: 2.5rem auto; }
@@ -734,12 +735,25 @@ body.modal-open { overflow: hidden; }
    ============================================================================ */
 .admin-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
 
+/* The rail is capped to the viewport and scrolls its own nav list. Without the
+   cap, a rail taller than the screen cannot be pinned by `sticky` at all — it
+   just scrolls with the page, so the bottom sections were only reachable by
+   dragging the whole page down. Crest + Sign out stay put; only the list moves. */
 .admin-side {
   position: sticky; top: 90px;
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 110px);
   background: var(--navy); border: 1px solid rgba(200,162,75,.32);
   border-radius: var(--radius); padding: 1rem .75rem 1.1rem;
   box-shadow: var(--shadow-sm);
 }
+.admin-side__nav {
+  flex: 1 1 auto; min-height: 0;      /* min-height:0 — a flex child refuses to shrink below its content without it */
+  overflow-y: auto;
+  overscroll-behavior: contain;       /* finishing the rail must not lurch the page */
+  padding-right: .3rem;               /* breathing room for the scrollbar */
+}
+.admin-side__id, .admin-side__out, .admin-side__burger { flex: none; }
 .admin-side__id { display: flex; align-items: center; gap: .6rem; padding: 0 .3rem .8rem; border-bottom: 1px solid rgba(200,162,75,.22); margin-bottom: .8rem; }
 .admin-side__id .crest-badge { width: 40px; height: auto; flex: none; }
 .admin-side__id b { display: block; font-family: var(--display); color: var(--gold-bright); font-size: 1.15rem; letter-spacing: .04em; }
@@ -770,7 +784,10 @@ body.modal-open { overflow: hidden; }
 
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; gap: 1rem; }
-  .admin-side { position: static; padding-bottom: .6rem; }
+  /* Drawer, not a rail — let it expand to its full height instead of trapping a
+     second scrollbar inside a panel that is already at the top of the page. */
+  .admin-side { position: static; padding-bottom: .6rem; max-height: none; display: block; }
+  .admin-side__nav { overflow-y: visible; padding-right: 0; }
   .admin-side__burger {
     display: block; width: 100%; margin-top: .2rem; padding: .6rem;
     border: 1px solid rgba(200,162,75,.4); border-radius: 10px; cursor: pointer;
