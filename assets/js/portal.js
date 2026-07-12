@@ -20,7 +20,7 @@
   // Where the current render goes: the section card (auth) or the popup body.
   var target = card || mbody;
   function h(html) { target.innerHTML = html; }
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
 
   if (!Z || !Z.configured) {
     if (card) card.innerHTML = '<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +

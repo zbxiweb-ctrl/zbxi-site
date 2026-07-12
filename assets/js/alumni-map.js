@@ -8,6 +8,10 @@
   var mapEl = document.getElementById('alumniMap');
   if (!sec || !mapEl) return;
 
+  // Escape user-controlled data before it goes into popup HTML (brother names,
+  // city labels). Matches the esc() helper every other file in this site uses.
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+
   var GEO_KEY = 'zbxi_geo_v1';
   var started = false;
 
@@ -97,8 +101,8 @@
       function pin(key, pt) {
         var g = byCity[key];
         var m = L.marker([pt.lat, pt.lon]).addTo(map);
-        m.bindPopup('<b>' + g.label + '</b><br>' + g.brothers.map(function (b) {
-          return '<a href="#" data-mapbro="' + b.id + '">' + b.full_name + '</a>';
+        m.bindPopup('<b>' + esc(g.label) + '</b><br>' + g.brothers.map(function (b) {
+          return '<a href="#" data-mapbro="' + esc(b.id) + '">' + esc(b.full_name) + '</a>';
         }).join('<br>'));
         bounds.push([pt.lat, pt.lon]);
         if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });

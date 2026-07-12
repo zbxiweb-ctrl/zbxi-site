@@ -7,7 +7,7 @@
   if (!grid) return;
   var Z = window.ZBXI;
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
 
   var cls = new URLSearchParams(location.search).get('c') || '';
   var titleEl = document.getElementById('classTitle');

@@ -8,7 +8,7 @@
   if (!root) return;
   var Z = window.ZBXI;
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
   function when(ts) {
     var d = new Date(ts), diff = (Date.now() - d.getTime()) / 1000;
     if (diff < 3600) return Math.max(1, Math.round(diff / 60)) + 'm ago';

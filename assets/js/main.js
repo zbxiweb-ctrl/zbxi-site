@@ -30,7 +30,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setNav(false); });
   }
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
 
   /* ---- Gallery teaser: latest posts for approved brothers, CTA otherwise ---- */
   var teaser = document.getElementById('galleryTeaser');
@@ -222,7 +222,7 @@
           var d = new Date(e.starts_at);
           return '<article class="unx" data-goto="' + e.starts_at + '">' +
             '<div class="unx__date"><b>' + d.getDate() + '</b><span>' + d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div>' +
-            '<div class="unx__body"><span class="unx__cat unx__cat--' + e.category + '">' + (CAT_LABEL[e.category] || e.category) + '</span>' +
+            '<div class="unx__body"><span class="unx__cat unx__cat--' + esc(e.category) + '">' + (CAT_LABEL[e.category] || esc(e.category)) + '</span>' +
             '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' + rsvpBar(e) + '</div></article>';
         }).join('');
       }

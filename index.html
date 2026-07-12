@@ -290,6 +290,8 @@
             <div class="field"><label for="c-email">Email *</label><input id="c-email" type="email" name="email" required /></div>
             <div class="field"><label for="c-msg">Message *</label><textarea id="c-msg" name="message" required></textarea></div>
             <input type="hidden" name="_subject" value="ΖΒΞ Website Contact" />
+            <!-- Honeypot: hidden from humans; bots fill it and Formspree silently drops the submission. -->
+            <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
             <button class="btn btn--navy" type="submit" style="width:100%">Send Message</button>
             <p class="form-status" id="contactStatus" role="status"></p>
           </form>
@@ -345,7 +347,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.2" integrity="sha384-sgcvElP/LlNRtORGYFLO/9K/bENcpJK19HgvqslWXog6d8f/Va4TpltGiBlGntCM" crossorigin="anonymous"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/supabase-client.js"></script>
   <script src="assets/js/main.js"></script>

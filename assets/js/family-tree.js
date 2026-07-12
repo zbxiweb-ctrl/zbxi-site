@@ -108,13 +108,13 @@
   var FAM_W = 250;
   function famCard(r, left, top) {
     var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
-    var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
+    var av = r.photo_url ? '<img src="' + esc(r.photo_url) + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
     var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
     var n = descCount[r.id] || 0;
     return '<button class="tree-node tree-node--family' + reg + '" data-id="' + r.id +
       '" style="left:' + left + 'px;top:' + top + 'px;width:' + FAM_W + 'px;height:' + NODE_H + 'px">' +
       '<span class="tree-node__av">' + av + '</span>' +
-      '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + (r.pledge_class || '') + '</small></span>' +
+      '<span class="tree-node__meta"><b>' + esc(r.full_name) + '</b><small>' + esc(r.pledge_class || '') + '</small></span>' +
       (n ? '<span class="tree-toggle" data-line="' + r.id + '" title="Open this family line">▸ ' + n + '</span>' : '') +
     '</button>';
   }
@@ -202,7 +202,7 @@
     var html = '';
     rows.forEach(function (r) {
       var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
-      var av = r.photo_url ? '<img src="' + r.photo_url + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
+      var av = r.photo_url ? '<img src="' + esc(r.photo_url) + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
       var reg = (!PLACEHOLDER_MODE && r.registered) ? ' tree-node--reg' : '';
       if (branchRoot && r.id === branchRoot) reg += ' tree-node--rootsel';
       var kidsN = descCount[r.id] || 0;
@@ -216,7 +216,7 @@
       if (HYDRATED && r.grad_year) sub += (sub ? ' · ' : '') + "'" + String(r.grad_year).slice(-2);
       html += '<button class="tree-node' + reg + '" data-id="' + r.id + '" style="left:' + r._x + 'px;top:' + r._y + 'px;width:' + NODE_W + 'px;height:' + NODE_H + 'px">' +
         '<span class="tree-node__av">' + av + '</span>' +
-        '<span class="tree-node__meta"><b>' + r.full_name + '</b><small>' + sub + '</small></span>' +
+        '<span class="tree-node__meta"><b>' + esc(r.full_name) + '</b><small>' + esc(sub) + '</small></span>' +
         chev +
       '</button>';
     });
@@ -535,7 +535,7 @@
   }
 
   /* ---------- profile modal (shared renderer; details gated to approved) ---------- */
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"]/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]; }); }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
   function row(k, v) { return v ? '<div class="bm__row"><span>' + k + '</span><b>' + esc(v) + '</b></div>' : ''; }
 
   function jumpLink(b) {

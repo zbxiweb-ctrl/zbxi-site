@@ -13,3 +13,6 @@ Thumbs.db
 
 # Never commit real secrets. config.js ships with PLACEHOLDER values only
 # (the Supabase anon key is safe to publish; never add a service_role key here).
+.env
+.env.*
+*.env
