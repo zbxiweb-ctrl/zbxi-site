@@ -1143,17 +1143,19 @@
      random/historical title approved with "— none —" appears on the brother's own
      profile WITHOUT polluting the official board. */
   function renderTitlesTab(q) {
-    var host = document.getElementById('adminBody');
-    host.innerHTML = '<p class="admin-hint">Brothers request a title from their profile; nothing is granted until you approve it here. ' +
+    // `q` IS the content container (every other tab does the same). Writing to a
+    // non-existent #adminBody threw, which left the previous tab's markup on screen.
+    q.innerHTML = '<p class="admin-hint">Brothers request a title from their profile; nothing is granted until you approve it here. ' +
       'Pick a <b>Board</b> of <i>Active</i> or <i>Alumni</i> only for real E-Board seats — that is what puts them on the public board. ' +
       'Leave it as <b>— none —</b> for a random or historical title: it shows on his profile but stays off the official board.</p>' +
-      '<div id="trList"><p class="page-empty">Loading…</p></div>';
+      '<div id="trList"><p class="admin-empty">Loading…</p></div>';
 
     Z.titleRequestsList().then(function (rows) {
-      var list = document.getElementById('trList');
+      var list = q.querySelector('#trList');
+      if (!list) return;
       var pending = rows.filter(function (r) { return r.status === 'pending'; });
       var done = rows.filter(function (r) { return r.status !== 'pending'; }).slice(0, 20);
-      if (!rows.length) { list.innerHTML = '<p class="page-empty">No title requests yet.</p>'; return; }
+      if (!rows.length) { list.innerHTML = '<p class="admin-empty">No title requests yet.</p>'; return; }
 
       function who(r) {
         var b = state.verifiedById[r.brother_id];
@@ -1179,7 +1181,7 @@
       }
 
       list.innerHTML =
-        (pending.length ? '<h4>Awaiting your decision</h4>' + pending.map(row).join('') : '<p class="page-empty">Nothing awaiting a decision.</p>') +
+        (pending.length ? '<h4>Awaiting your decision</h4>' + pending.map(row).join('') : '<p class="admin-empty">Nothing awaiting a decision.</p>') +
         (done.length ? '<h4 style="margin-top:1.6rem">Recently decided</h4>' + done.map(row).join('') : '');
 
       list.querySelectorAll('[data-tr]').forEach(function (el) {
@@ -1202,7 +1204,7 @@
         };
       });
     }).catch(function (e) {
-      document.getElementById('trList').innerHTML = '<p class="page-empty">Could not load requests: ' + esc(e.message || '') + '</p>';
+      q.innerHTML = '<p class="form-status err">Could not load title requests: ' + esc(e.message || '') + '</p>';
     });
   }
 
