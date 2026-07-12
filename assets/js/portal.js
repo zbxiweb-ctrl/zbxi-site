@@ -123,7 +123,11 @@
         renderMemberCard();
         renderPerks(true);
         // First sign-in with no profile: walk them straight into onboarding.
-        if (!state.profile && !sessionStorage.getItem('zbxi_onboard_shown')) {
+        // Homepage only (`card`) — portal.js now also runs on subpages in
+        // modal-only mode, and auto-popping this over a roster/board/gallery
+        // page would ambush the brother. There, the popup opens only when he
+        // actually clicks "My Profile".
+        if (!state.profile && card && !sessionStorage.getItem('zbxi_onboard_shown')) {
           sessionStorage.setItem('zbxi_onboard_shown', '1');
           state.wantModal = true;
         }
