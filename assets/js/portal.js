@@ -568,7 +568,12 @@
   function renderAccount(pr) {
     var host = mbody.querySelector('#portalTabBody');
     var inTree = !!pr.roster_name;
+    var acctEmail = (state.user && state.user.email) || '';
+    var dangerLabel = inTree ? 'Disconnect from the family tree' : 'Delete my profile';
     host.innerHTML =
+      '<div class="acct-block"><h4>🔑 Sign-in email</h4>' +
+        '<p class="acct-email">' + esc(acctEmail) + '</p>' +
+        '<p class="form-note" style="margin:.35rem 0 0">This is the address you log in with. To change it, use the contact form.</p></div>' +
       '<div class="acct-block"><h4>📬 Email preferences</h4>' +
         '<label class="pref-box"><input type="checkbox" id="digestOpt"' + (pr.email_opt_out ? '' : ' checked') + '> ' +
         'Send me the monthly brotherhood digest</label>' +
@@ -576,19 +581,36 @@
         '<p class="form-status" id="digestStatus" role="status"></p></div>' +
       '<div class="acct-block"><h4>Change password</h4>' +
         '<form id="pwForm" novalidate>' +
+          '<div class="field"><label>Current password</label><input type="password" name="oldpw" required autocomplete="current-password" placeholder="Your password today"></div>' +
           '<div class="form-row">' +
-            '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required placeholder="8+ characters"></div>' +
-            '<div class="field"><label>Confirm</label><input type="password" name="pw2" minlength="8" required></div>' +
+            '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required autocomplete="new-password" placeholder="8+ characters"></div>' +
+            '<div class="field"><label>Confirm</label><input type="password" name="pw2" minlength="8" required autocomplete="new-password"></div>' +
           '</div>' +
           '<button class="btn btn--navy" type="submit">Update password</button>' +
           '<p class="form-status" id="pwStatus" role="status"></p>' +
         '</form></div>' +
       '<div class="acct-block acct-block--danger"><h4>Family tree link</h4>' +
         (inTree
-          ? '<p class="form-note">This account is linked to <b>' + esc(pr.roster_name) + '</b> in the family tree. Disconnecting returns that name to the tree (unclaimed, details cleared) and lets it be claimed again.</p>' +
-            '<button class="btn btn--ghost-danger" id="releaseBtn" type="button">Disconnect from the family tree</button>'
-          : '<p class="form-note">This profile was created from scratch (not claimed from the tree). Disconnecting will <b>delete</b> this profile entirely.</p>' +
-            '<button class="btn btn--ghost-danger" id="releaseBtn" type="button">Delete my profile</button>') +
+          ? '<p class="form-note">This account is linked to <b>' + esc(pr.roster_name) + '</b> in the family tree. Disconnecting returns that name to the tree (unclaimed, details cleared) and lets it be claimed again.</p>'
+          : '<p class="form-note">This profile was created from scratch (not claimed from the tree). Disconnecting will <b>delete</b> this profile entirely.</p>') +
+        '<button class="btn btn--ghost-danger" id="releaseBtn" type="button">' + dangerLabel + '</button>' +
+        // step 2: an explicit, typed acknowledgement. A single click should never be
+        // able to destroy a profile — this panel only appears after the first click.
+        '<div class="danger-confirm" id="dangerConfirm" hidden>' +
+          '<p><b>⚠️ Are you sure? This cannot be undone.</b></p>' +
+          '<ul>' +
+            (inTree
+              ? '<li>Your name returns to the family tree as <b>unclaimed</b>.</li><li>Your bio, photo, city, job and contact details are <b>erased</b>.</li>'
+              : '<li>Your profile is <b>permanently deleted</b>.</li><li>Your bio, photo, city, job and contact details are <b>erased</b>.</li>') +
+            '<li>You keep your login, but you will have to set your profile up again from scratch.</li>' +
+          '</ul>' +
+          '<div class="field"><label>Type <b>DELETE</b> to confirm</label>' +
+            '<input id="dangerWord" autocomplete="off" placeholder="DELETE"></div>' +
+          '<div class="danger-actions">' +
+            '<button class="btn btn--ghost" id="dangerCancel" type="button">Cancel — keep my profile</button>' +
+            '<button class="btn btn--danger" id="dangerGo" type="button" disabled>Yes, ' + dangerLabel.toLowerCase() + '</button>' +
+          '</div>' +
+        '</div>' +
         '<p class="form-status" id="releaseStatus" role="status"></p>' +
       '</div>';
 
@@ -609,28 +631,62 @@
     host.querySelector('#pwForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = host.querySelector('#pwStatus');
+      var btn = f.querySelector('button[type=submit]');
       if (!f.checkValidity()) { f.reportValidity(); return; }
-      if (f.pw.value !== f.pw2.value) { st.className = 'form-status err'; st.textContent = 'Passwords don\'t match.'; return; }
-      Z.updatePassword(f.pw.value).then(function (r) {
-        if (r.error) throw r.error;
-        st.className = 'form-status ok'; st.textContent = '✓ Password updated.';
-        f.reset();
+      if (f.pw.value !== f.pw2.value) { st.className = 'form-status err'; st.textContent = 'The new passwords don\'t match.'; return; }
+      if (f.pw.value === f.oldpw.value) { st.className = 'form-status err'; st.textContent = 'That\'s already your current password.'; return; }
+
+      btn.disabled = true;
+      st.className = 'form-status'; st.textContent = 'Checking your current password…';
+      // Prove the OLD password before changing it (Supabase doesn't ask for it).
+      Z.verifyPassword(acctEmail, f.oldpw.value).then(function (v) {
+        if (v.error) {
+          st.className = 'form-status err';
+          st.textContent = 'That current password isn\'t right.';
+          btn.disabled = false;
+          return null;
+        }
+        return Z.updatePassword(f.pw.value).then(function (r) {
+          if (r.error) throw r.error;
+          st.className = 'form-status ok'; st.textContent = '✓ Password updated. Use the new one next time you log in.';
+          f.reset();
+          btn.disabled = false;
+        });
       }).catch(function (err) {
-        st.className = 'form-status err'; st.textContent = err.message || 'Could not update.';
+        st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not update.';
+        btn.disabled = false;
       });
     };
 
-    host.querySelector('#releaseBtn').onclick = function () {
-      var msg = inTree
-        ? 'Disconnect this account from "' + pr.roster_name + '"? Your personal details will be cleared and the name becomes claimable again.'
-        : 'Delete your profile entirely? This cannot be undone.';
-      if (!confirm(msg)) return;
+    /* Two-step destroy. Click 1 only REVEALS the consequences; nothing happens
+       until the brother types DELETE and clicks the second button. */
+    var panel = host.querySelector('#dangerConfirm');
+    var word  = host.querySelector('#dangerWord');
+    var go    = host.querySelector('#dangerGo');
+    var relBtn = host.querySelector('#releaseBtn');
+
+    relBtn.onclick = function () {
+      panel.hidden = false;
+      relBtn.style.display = 'none';
+      word.value = ''; go.disabled = true;
+      word.focus();
+    };
+    host.querySelector('#dangerCancel').onclick = function () {
+      panel.hidden = true;
+      relBtn.style.display = '';
+      host.querySelector('#releaseStatus').textContent = '';
+    };
+    word.oninput = function () { go.disabled = word.value.trim().toUpperCase() !== 'DELETE'; };
+
+    go.onclick = function () {
+      if (word.value.trim().toUpperCase() !== 'DELETE') return;
       var st = host.querySelector('#releaseStatus');
+      go.disabled = true;
       st.className = 'form-status'; st.textContent = 'Working…';
       Z.releaseProfile().then(function (r) {
         var out = (r && r.data) || '';
-        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
-        if (String(out).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(out).replace('error: ', ''); return; }
+        if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; go.disabled = false; return; }
+        if (String(out).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(out).replace('error: ', ''); go.disabled = false; return; }
         state.profile = null; state.tab = 'profile';
         Z._approvedCache = undefined; // re-evaluate member access
         state.wantModal = true;

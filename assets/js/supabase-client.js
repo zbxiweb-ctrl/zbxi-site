@@ -41,6 +41,13 @@
     },
     // Set a new password for the signed-in (or recovery-session) user.
     updatePassword: function (pw) { return client.auth.updateUser({ password: pw }); },
+    /* Supabase's updateUser({password}) does NOT require the current password — so
+       anyone with a borrowed/left-open session could silently change it and lock the
+       brother out. Prove the old password first by re-authenticating with it; this
+       returns { error } on a wrong password and refreshes the same session on success. */
+    verifyPassword: function (email, password) {
+      return client.auth.signInWithPassword({ email: email, password: password });
+    },
     // Disconnect my account from its family-tree row (row becomes claimable again).
     releaseProfile: function () { return client.rpc('release_profile'); },
 

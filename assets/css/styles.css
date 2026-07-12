@@ -50,6 +50,47 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
   background-clip: padding-box;
 }
 
+/* ---- Password fields: GOLD masking dots + 🐓 hold-to-peek ------------------
+   The dots take the input's own `color`, so this genuinely recolors them (the
+   mask *character* itself is browser-drawn and can't be swapped for a glyph). */
+input[type="password"] {
+  color: var(--gold);
+  letter-spacing: .2em;
+  font-weight: 700;
+}
+input[type="password"]::placeholder { color: var(--muted); letter-spacing: normal; font-weight: 400; }
+
+.pw-wrap { position: relative; display: block; }
+.pw-wrap > input { width: 100%; padding-right: 3rem !important; }
+.pw-peek {
+  position: absolute; right: .45rem; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; padding: 0; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--hairline); background: var(--tint);
+  font-size: 1.05rem; line-height: 1; display: grid; place-items: center;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+  transition: background .12s, transform .12s, border-color .12s;
+}
+.pw-peek:hover { background: rgba(200,162,75,.22); border-color: var(--gold); }
+.pw-peek.on { background: var(--gold); border-color: var(--gold-deep); transform: translateY(-50%) scale(1.08); }
+
+/* ---- Account: sign-in email + two-step destructive confirm ---- */
+.acct-email {
+  margin: 0; font-family: var(--sans); font-weight: 600; color: var(--heading);
+  background: var(--tint); border: 1px solid var(--hairline); border-radius: 10px;
+  padding: .65rem .8rem; word-break: break-all;
+}
+.danger-confirm {
+  margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 12px;
+  background: rgba(180,52,43,.08); border: 1px solid rgba(180,52,43,.35);
+}
+.danger-confirm p { margin: 0 0 .5rem; color: #b4342b; }
+.danger-confirm ul { margin: 0 0 .9rem; padding-left: 1.1rem; color: var(--text); font-size: .9rem; line-height: 1.7; }
+.danger-confirm .field { margin-bottom: .8rem; }
+.danger-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.btn--danger { background: #b4342b; color: #fff; }
+.btn--danger:hover:not(:disabled) { background: #9a2b23; }
+.btn--danger:disabled { opacity: .45; cursor: not-allowed; }
+
 /* ---- Global file-input styling: turn the generic "Choose File" button into a
    gold pill site-wide (applies to every current/future <input type=file>) ---- */
 input[type="file"] { font-family: var(--sans); font-size: .88rem; color: var(--muted); cursor: pointer; }
