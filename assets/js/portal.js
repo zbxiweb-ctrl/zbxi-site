@@ -31,7 +31,7 @@
   }
 
   var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false,
-                invite: null };  // { email, has_account } from an invite link
+                invite: null, justReset: false };  // justReset -> show a "log in with your new password" note
 
   // Invite links look like  /?invite=<token>#brothers-portal
   // Resolve the token before the first auth render so we can land the brother
@@ -211,6 +211,14 @@
     target = card;
     var signup = state.mode === 'signup';
     var inv = state.invite;
+    // One-time confirmation after a password reset (then log in with the new one).
+    // Read from sessionStorage so it survives the sign-out reload header-account
+    // triggers, then clear it so it shows exactly once.
+    var justReset = state.justReset || sessionStorage.getItem('zbxi_just_reset') === '1';
+    state.justReset = false; sessionStorage.removeItem('zbxi_just_reset');
+    var resetNote = justReset
+      ? '<div class="invite-banner"><b>✓ Password updated.</b><span>Log in below with your new password.</span></div>'
+      : '';
     // Invited brothers get a warm greeting and a pre-filled, locked-in email.
     var banner = inv
       ? '<div class="invite-banner">' +
@@ -221,7 +229,7 @@
       : '';
     var emailVal = inv ? ' value="' + esc(inv.email) + '"' : '';
 
-    h(banner +
+    h(resetNote + banner +
       '<div class="portal-tabs">' +
         '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin">Log in</button>' +
         '<button class="' + (signup ? 'on' : '') + '" data-tab="signup">Sign up</button>' +
@@ -327,8 +335,19 @@
         if (r.error) throw r.error;
         state.recovery = false;
         setModalCloseVisible(true);   // reset done — the modal is dismissable again
-        st.className = 'form-status ok'; st.textContent = '✓ Password updated — signing you in…';
-        setTimeout(function () { closeModal(); refresh(); }, 800);
+        st.className = 'form-status ok'; st.textContent = '✓ Password updated — log in with your new password.';
+        // Do NOT auto-sign-in off a recovery link. End the recovery session and
+        // hand the brother the normal login form so he signs in fresh with the
+        // password he just set — exactly the flow he asked for.
+        sessionStorage.setItem('zbxi_just_reset', '1');   // survives the sign-out reload
+        setTimeout(function () {
+          Z.signOut().then(function () {
+            state.recovery = false; state.mode = 'signin'; state.justReset = true;
+            state.user = null; state.profile = null; state.wantModal = false;
+            closeModal();
+            refresh();
+          });
+        }, 900);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not update password.';
         f.querySelector('button').disabled = false;
