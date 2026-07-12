@@ -49,28 +49,43 @@
   // "Approved" = verified AND has a linked account (user_id). "Unclaimed" =
   // verified roster names nobody has claimed yet. state.data.verified keeps
   // the combined set (feeds big-brother dropdowns + the tree editor).
-  var state = { tab: 'pending', data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, q: '', events: [], treeLine: null };
   var BRO_TABS = ['pending', 'approved', 'unclaimed', 'rejected'];
+
+  /* Tabs live in a left sidebar and are sorted A→Z inside each group, so the
+     webmaster can always find one by name instead of hunting a pill cloud. */
   var TAB_GROUPS = [
     { label: 'Brothers', tabs: [
-      { id: 'pending',   label: 'Pending'   },
-      { id: 'approved',  label: 'Approved'  },
-      { id: 'unclaimed', label: '📋 Unclaimed' },
-      { id: 'rejected',  label: 'Rejected'  }
+      { id: 'approved',  ic: '✅', label: 'Approved'  },
+      { id: 'pending',   ic: '⏳', label: 'Pending'   },
+      { id: 'rejected',  ic: '✖',  label: 'Rejected'  },
+      { id: 'unclaimed', ic: '📋', label: 'Unclaimed' }
     ]},
     { label: 'Site', tabs: [
-      { id: 'tree',       label: '🌳 Tree'  },
-      { id: 'eboard',     label: '👑 E-Board' },
-      { id: 'titles',     label: '🏅 Title requests <span class="tab-count" data-count="titles" style="display:none"></span>' },
-      { id: 'committees', label: '👥 Committees' },
-      { id: 'events',     label: 'Events'   },
-      { id: 'awards',     label: '🏅 Awards' },
-      { id: 'invite',     label: '✉️ Invite' },
-      { id: 'suggest',    label: '💡 Suggestions <span class="tab-count" data-count="suggest" style="display:none"></span>' },
-      { id: 'stats',      label: 'Stats'    },
-      { id: 'guide',      label: '📖 Guide' }
+      { id: 'awards',     ic: '🏅', label: 'Awards'     },
+      { id: 'committees', ic: '👥', label: 'Committees' },
+      { id: 'eboard',     ic: '👑', label: 'E-Board'    },
+      { id: 'events',     ic: '📅', label: 'Events'     },
+      { id: 'guide',      ic: '📖', label: 'Guide'      },
+      { id: 'invite',     ic: '✉️', label: 'Invite'     },
+      { id: 'stats',      ic: '📊', label: 'Stats'      },
+      { id: 'suggest',    ic: '💡', label: 'Suggestions', count: 'suggest' },
+      { id: 'titles',     ic: '🎖', label: 'Title requests', count: 'titles' },
+      { id: 'tree',       ic: '🌳', label: 'Tree'       }
     ]}
   ];
+  TAB_GROUPS.forEach(function (g) {
+    g.tabs.sort(function (a, b) { return a.label.localeCompare(b.label); });
+  });
+  var ALL_TAB_IDS = TAB_GROUPS.reduce(function (a, g) { return a.concat(g.tabs.map(function (t) { return t.id; })); }, []);
+
+  // Bell notifications deep-link here (admin.html#titles). Honour the hash so the
+  // request you clicked is the thing you land on — not the default Pending tab.
+  function tabFromHash() {
+    var h = (location.hash || '').replace('#', '');
+    return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
+  }
+
+  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -95,27 +110,59 @@
 
   function renderConsole() {
     root.innerHTML =
-      '<div class="admin-head">' +
-        '<div class="admin-head__id"><img class="crest-badge" src="assets/img/crest-sm.png" alt="" />' +
-          '<div><h2>Brotherhood Admin</h2><span class="admin-head__sub">The webmaster console — everything is buttons, never code.</span></div></div>' +
-        '<button class="btn btn--ghost" id="so">Sign out</button></div>' +
-      '<div id="tabs">' +
-        TAB_GROUPS.map(function (g) {
-          return '<div class="admin-tabgroup"><span class="admin-tabgroup__label">' + g.label + '</span>' +
-            '<div class="admin-tabs">' +
-            g.tabs.map(function (t) {
-              var count = BRO_TABS.indexOf(t.id) !== -1 ? ' <span class="tab-count" data-count="' + t.id + '">…</span>' : '';
-              return '<button data-tab="' + t.id + '" class="' + (state.tab === t.id ? 'on' : '') + '">' + t.label + count + '</button>';
+      '<div class="admin-shell">' +
+        // ---- left rail: crest, grouped + alphabetised nav ----
+        '<aside class="admin-side">' +
+          '<div class="admin-side__id">' +
+            '<img class="crest-badge" src="assets/img/crest-sm.png" alt="" />' +
+            '<div><b>ΖΒΞ</b><span>Admin Console</span></div>' +
+          '</div>' +
+          '<button class="admin-side__burger" id="sideBurger" aria-label="Show sections">☰ Sections</button>' +
+          '<nav id="tabs" class="admin-side__nav">' +
+            TAB_GROUPS.map(function (g) {
+              return '<div class="admin-navgroup"><span class="admin-navgroup__label">' + g.label + '</span>' +
+                g.tabs.map(function (t) {
+                  var count = (BRO_TABS.indexOf(t.id) !== -1 || t.count)
+                    ? '<span class="tab-count" data-count="' + t.id + '"' + (t.count ? ' style="display:none"' : '') + '>' + (t.count ? '' : '…') + '</span>'
+                    : '';
+                  return '<button data-tab="' + t.id + '" class="admin-navbtn ' + (state.tab === t.id ? 'on' : '') + '">' +
+                    '<i>' + t.ic + '</i><span>' + esc(t.label) + '</span>' + count + '</button>';
+                }).join('') +
+              '</div>';
             }).join('') +
-            '</div></div>';
-        }).join('') +
-      '</div>' +
-      '<input class="admin-search" id="adminSearch" type="search" placeholder="Search by name, major, pledge class…" value="' + esc(state.q) + '">' +
-      '<div id="q">Loading…</div>';
+          '</nav>' +
+          '<button class="btn btn--ghost admin-side__out" id="so">Sign out</button>' +
+        '</aside>' +
+        // ---- right: the actual work area ----
+        '<div class="admin-main">' +
+          '<div class="admin-head">' +
+            '<div><h2 id="adminTitle">Brotherhood Admin</h2>' +
+            '<span class="admin-head__sub">The webmaster console — everything is buttons, never code.</span></div>' +
+          '</div>' +
+          '<input class="admin-search" id="adminSearch" type="search" placeholder="Search by name, major, pledge class…" value="' + esc(state.q) + '">' +
+          '<div id="q">Loading…</div>' +
+        '</div>' +
+      '</div>';
 
     document.getElementById('so').onclick = function () { Z.signOut().then(function () { renderLogin(''); }); };
+
+    var side = root.querySelector('.admin-side');
+    var burger = document.getElementById('sideBurger');
+    burger.onclick = function () { side.classList.toggle('open'); };
+
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
-      b.onclick = function () { state.tab = b.dataset.tab; syncTabs(); renderList(); };
+      b.onclick = function () {
+        state.tab = b.dataset.tab;
+        history.replaceState(null, '', '#' + state.tab);   // keeps deep-links honest + shareable
+        side.classList.remove('open');                     // close the drawer on phones
+        syncTabs(); renderList();
+      };
+    });
+    // Back/forward, or a second bell click while already on the page.
+    window.addEventListener('hashchange', function () {
+      var t = tabFromHash();
+      if (t === state.tab) return;
+      state.tab = t; side.classList.remove('open'); syncTabs(); renderList();
     });
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
@@ -127,6 +174,19 @@
     document.querySelectorAll('#tabs [data-tab]').forEach(function (b) {
       b.classList.toggle('on', b.dataset.tab === state.tab);
     });
+    // Mirror the open section into the page heading (the sidebar is the nav now).
+    var t = ALL_TAB_IDS.indexOf(state.tab) !== -1
+      ? TAB_GROUPS.reduce(function (f, g) { return f || g.tabs.filter(function (x) { return x.id === state.tab; })[0]; }, null)
+      : null;
+    var h = document.getElementById('adminTitle');
+    if (h && t) h.textContent = t.label;
+  }
+
+  function setCountBadge(id, n) {
+    var c = document.querySelector('.tab-count[data-count="' + id + '"]');
+    if (!c) return;
+    c.textContent = n || '';
+    c.style.display = n ? '' : 'none';
   }
 
   function loadAll() {
@@ -146,6 +206,11 @@
         });
         Z.suggestionsMine().then(function (rows) {
           setSuggestBadge(rows.filter(function (s) { return s.status === 'new'; }).length);
+        }).catch(function () {});
+        // Badge the Title-requests tab so a waiting request is visible without hunting.
+        Z.titleRequestsList().then(function (rows) {
+          state.titleReqs = rows;
+          setCountBadge('titles', rows.filter(function (r) { return r.status === 'pending'; }).length);
         }).catch(function () {});
         renderList();
       }).catch(function (e) {

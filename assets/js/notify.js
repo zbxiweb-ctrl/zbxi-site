@@ -26,8 +26,9 @@
       case 'reply':       return { ic: '↩', text: '<b>' + esc(p.actor || 'A brother') + '</b> replied to “' + esc(p.title || 'your thread') + '”', href: 'board.html' + (p.thread_id ? '#thread=' + p.thread_id : '') };
       case 'approved':    return { ic: '🎉', text: 'You\'re <b>approved</b> — tap for your member orientation', href: 'welcome.html' };
       case 'new_pending': return { ic: '⏳', text: '<b>' + esc(p.name || 'A brother') + '</b> is awaiting verification', href: 'admin.html' };
-      case 'suggestion':  return { ic: '💡', text: '<b>' + esc(p.actor || 'A brother') + '</b> dropped a suggestion: “' + esc(p.text || '') + '”', href: 'admin.html' };
-      case 'title_request': return { ic: '🏅', text: '<b>' + esc(p.actor || 'A brother') + '</b> requested the title <b>' + esc(p.title || '') + ' · ' + esc(p.term || '') + '</b>', href: 'admin.html' };
+      case 'suggestion':  return { ic: '💡', text: '<b>' + esc(p.actor || 'A brother') + '</b> dropped a suggestion: “' + esc(p.text || '') + '”', href: 'admin.html#suggest' };
+      // deep-link straight to the queue — landing on the default tab made the request look missing
+      case 'title_request': return { ic: '🏅', text: '<b>' + esc(p.actor || 'A brother') + '</b> requested the title <b>' + esc(p.title || '') + ' · ' + esc(p.term || '') + '</b>', href: 'admin.html#titles' };
       case 'suggestion_reply': return { ic: '💡', text: 'The webmaster replied to your suggestion: “' + esc(p.text || '') + '”', href: 'board.html' };
       case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect — tap to email him back (' + esc(p.email || '') + ')', href: p.email ? 'mailto:' + esc(p.email) : '#' };
       case 'mentor_request': return { ic: '🎓', text: '<b>' + esc(p.actor || 'A brother') + '</b> is looking for a mentor in <b>' + esc(p.field || 'your field') + '</b>' + (p.note ? ': “' + esc(p.note) + '”' : '') + ' — tap to email him', href: p.email ? 'mailto:' + esc(p.email) + '?subject=' + encodeURIComponent('ΖΒΞ mentoring — ' + (p.field || '')) : '#' };

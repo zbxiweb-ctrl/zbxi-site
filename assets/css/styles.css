@@ -725,7 +725,61 @@ body.modal-open { overflow: hidden; }
 .admin-topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem clamp(1rem,5vw,3rem); border-bottom: 1px solid rgba(200,162,75,.3); }
 .admin-topbar .brand img { height: 40px; }
 .admin-back { color: var(--gold-bright); font-size: .9rem; }
-.admin-wrap { width: min(760px, 94vw); margin: 2.5rem auto; }
+.admin-wrap { width: min(1180px, 96vw); margin: 2.5rem auto; }
+
+/* ============================================================================
+   ADMIN CONSOLE — left rail nav (crest + grouped, alphabetised sections).
+   Replaces the old centre-floating pill cloud, which got unreadable once there
+   were 14 sections.
+   ============================================================================ */
+.admin-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+
+.admin-side {
+  position: sticky; top: 90px;
+  background: var(--navy); border: 1px solid rgba(200,162,75,.32);
+  border-radius: var(--radius); padding: 1rem .75rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+.admin-side__id { display: flex; align-items: center; gap: .6rem; padding: 0 .3rem .8rem; border-bottom: 1px solid rgba(200,162,75,.22); margin-bottom: .8rem; }
+.admin-side__id .crest-badge { width: 40px; height: auto; flex: none; }
+.admin-side__id b { display: block; font-family: var(--display); color: var(--gold-bright); font-size: 1.15rem; letter-spacing: .04em; }
+.admin-side__id span { display: block; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--on-dark); }
+
+.admin-navgroup { margin-bottom: 1rem; }
+.admin-navgroup__label {
+  display: block; font-size: .64rem; font-weight: 800; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--gold); padding: 0 .5rem .4rem;
+}
+.admin-navbtn {
+  display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
+  padding: .55rem .6rem; margin-bottom: .18rem; border: 0; border-radius: 9px;
+  background: none; cursor: pointer; color: var(--on-dark);
+  font-family: var(--sans); font-size: .92rem; font-weight: 500;
+  transition: background .12s, color .12s;
+}
+.admin-navbtn i { font-style: normal; width: 20px; flex: none; text-align: center; }
+.admin-navbtn > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-navbtn:hover { background: rgba(200,162,75,.14); color: var(--gold-bright); }
+.admin-navbtn.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); font-weight: 700; }
+.admin-navbtn.on .tab-count { background: rgba(7,22,52,.22); color: var(--navy-deep); }
+.admin-side__out { width: 100%; margin-top: .4rem; }
+.admin-side__burger { display: none; }
+
+.admin-main { min-width: 0; }
+.admin-main .admin-head { display: block; margin-bottom: 1.1rem; }
+
+@media (max-width: 900px) {
+  .admin-shell { grid-template-columns: 1fr; gap: 1rem; }
+  .admin-side { position: static; padding-bottom: .6rem; }
+  .admin-side__burger {
+    display: block; width: 100%; margin-top: .2rem; padding: .6rem;
+    border: 1px solid rgba(200,162,75,.4); border-radius: 10px; cursor: pointer;
+    background: rgba(200,162,75,.12); color: var(--gold-bright); font-weight: 700; font-family: var(--sans);
+  }
+  .admin-side__nav, .admin-side__out { display: none; }        /* drawer, closed by default */
+  .admin-side.open .admin-side__nav { display: block; margin-top: .8rem; }
+  .admin-side.open .admin-side__out { display: block; }
+}
 .admin-card, .admin-msg { background: var(--surface); color: var(--text); border-radius: var(--radius); padding: 2rem; max-width: 420px; margin: 3rem auto; box-shadow: var(--shadow); }
 .admin-card h2, .admin-msg h2 { color: var(--heading); }
 .admin-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }
