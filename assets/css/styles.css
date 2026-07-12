@@ -101,6 +101,25 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
 /* while held: button fills gold, so flip the bird to navy or it would vanish */
 .pw-peek.on { background: var(--gold); border-color: var(--gold-deep); color: var(--navy-deep); transform: translateY(-50%) scale(1.08); }
 
+/* ---- Chapter-title request (profile) ---- */
+.title-req {
+  margin-top: .5rem; padding: .6rem .75rem; border-radius: 10px;
+  font-size: .88rem; border: 1px solid var(--hairline); background: var(--tint); color: var(--heading);
+}
+.title-req span { display: block; margin-top: .2rem; color: var(--muted); font-size: .8rem; }
+.title-req--wait { border-color: rgba(200,162,75,.5); }
+.title-req--no { border-color: rgba(180,52,43,.4); background: rgba(180,52,43,.07); color: #b4342b; }
+.title-req-open { margin-top: .5rem; }
+.title-req-open > summary {
+  cursor: pointer; font-weight: 600; font-size: .88rem; color: var(--gold-deep);
+  padding: .5rem .75rem; border: 1px dashed var(--gold); border-radius: 10px; background: var(--tint);
+  list-style: none;
+}
+.title-req-open > summary::-webkit-details-marker { display: none; }
+.title-req-open > summary:hover { background: rgba(200,162,75,.18); }
+.title-req-open[open] > summary { border-style: solid; margin-bottom: .7rem; }
+.title-req-form { padding: .2rem .1rem; }
+
 /* ---- Account: sign-in email + two-step destructive confirm ---- */
 .acct-email {
   margin: 0; font-family: var(--sans); font-weight: 600; color: var(--heading);

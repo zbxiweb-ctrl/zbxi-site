@@ -61,6 +61,7 @@
     { label: 'Site', tabs: [
       { id: 'tree',       label: '🌳 Tree'  },
       { id: 'eboard',     label: '👑 E-Board' },
+      { id: 'titles',     label: '🏅 Title requests <span class="tab-count" data-count="titles" style="display:none"></span>' },
       { id: 'committees', label: '👥 Committees' },
       { id: 'events',     label: 'Events'   },
       { id: 'awards',     label: '🏅 Awards' },
@@ -160,6 +161,7 @@
     if (srchEl) srchEl.style.display = BRO_TABS.indexOf(state.tab) !== -1 ? '' : 'none';
     if (state.tab === 'tree') return renderTreeTab(q);
     if (state.tab === 'eboard') return renderEboardTab(q);
+    if (state.tab === 'titles') return renderTitlesTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
@@ -1065,6 +1067,80 @@
   }
 
   /* ---------------- suggestions tab ---------------- */
+  /* ---- 🏅 Title requests ---------------------------------------------------
+     Brothers can now ASK for a chapter title (see upgrade15.sql). They can never
+     write `role` themselves — the tg_guard_status trigger still pins it, and they
+     have no UPDATE policy on their own request. THIS is the only place a title is
+     granted, and only the admin can reach it.
+
+     The `Board` choice is what protects the public E-Board grid: it only shows
+     brothers whose role_scope is 'active'/'alumni' (brothers-page.js:149). So a
+     random/historical title approved with "— none —" appears on the brother's own
+     profile WITHOUT polluting the official board. */
+  function renderTitlesTab(q) {
+    var host = document.getElementById('adminBody');
+    host.innerHTML = '<p class="admin-hint">Brothers request a title from their profile; nothing is granted until you approve it here. ' +
+      'Pick a <b>Board</b> of <i>Active</i> or <i>Alumni</i> only for real E-Board seats — that is what puts them on the public board. ' +
+      'Leave it as <b>— none —</b> for a random or historical title: it shows on his profile but stays off the official board.</p>' +
+      '<div id="trList"><p class="page-empty">Loading…</p></div>';
+
+    Z.titleRequestsList().then(function (rows) {
+      var list = document.getElementById('trList');
+      var pending = rows.filter(function (r) { return r.status === 'pending'; });
+      var done = rows.filter(function (r) { return r.status !== 'pending'; }).slice(0, 20);
+      if (!rows.length) { list.innerHTML = '<p class="page-empty">No title requests yet.</p>'; return; }
+
+      function who(r) {
+        var b = state.verifiedById[r.brother_id];
+        return b ? b.full_name : 'A brother';
+      }
+      function row(r) {
+        var decided = r.status !== 'pending';
+        return '<div class="admin-row" data-tr="' + esc(r.id) + '">' +
+          '<div style="flex:1;min-width:0">' +
+            '<b>' + esc(who(r)) + '</b> requests <b>' + esc(r.title) + ' · ' + esc(r.term) + '</b>' +
+            (r.note ? '<div class="form-note" style="margin:.3rem 0 0">“' + esc(r.note) + '”</div>' : '') +
+            (decided ? '<div class="form-note" style="margin:.3rem 0 0">' + (r.status === 'approved' ? '✅ approved' : '✖ rejected') + '</div>' : '') +
+          '</div>' +
+          (decided ? '' :
+            '<select data-scope style="max-width:150px">' +
+              ['', 'active', 'alumni', 'previous'].map(function (s) {
+                return '<option value="' + s + '">' + (s ? s : '— none —') + '</option>';
+              }).join('') +
+            '</select>' +
+            '<button class="btn btn--gold" data-ok>Approve</button>' +
+            '<button class="btn btn--ghost" data-no>Reject</button>') +
+        '</div>';
+      }
+
+      list.innerHTML =
+        (pending.length ? '<h4>Awaiting your decision</h4>' + pending.map(row).join('') : '<p class="page-empty">Nothing awaiting a decision.</p>') +
+        (done.length ? '<h4 style="margin-top:1.6rem">Recently decided</h4>' + done.map(row).join('') : '');
+
+      list.querySelectorAll('[data-tr]').forEach(function (el) {
+        var id = el.dataset.tr;
+        var r = rows.filter(function (x) { return x.id === id; })[0];
+        var ok = el.querySelector('[data-ok]'), no = el.querySelector('[data-no]');
+        if (ok) ok.onclick = function () {
+          ok.disabled = true; ok.textContent = 'Approving…';
+          var scope = el.querySelector('[data-scope]').value || null;
+          // The ADMIN writes the title — the brother never could.
+          Z.updateBrother(r.brother_id, { role: r.title, role_term: r.term, role_scope: scope })
+            .then(function (u) { if (u.error) throw u.error; return Z.titleRequestDecide(id, 'approved'); })
+            .then(loadAll)
+            .catch(function (e) { ok.disabled = false; ok.textContent = 'Approve'; alert(e.message || 'Could not approve.'); });
+        };
+        if (no) no.onclick = function () {
+          no.disabled = true;
+          Z.titleRequestDecide(id, 'rejected').then(loadAll)
+            .catch(function (e) { no.disabled = false; alert(e.message || 'Could not reject.'); });
+        };
+      });
+    }).catch(function (e) {
+      document.getElementById('trList').innerHTML = '<p class="page-empty">Could not load requests: ' + esc(e.message || '') + '</p>';
+    });
+  }
+
   function renderSuggestTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading suggestions…</p>';
     Z.suggestionsMine().then(function (rows) { // RLS: admin sees all

@@ -457,10 +457,12 @@
             fld('Grad year', 'grad_year', pr.grad_year, 'number') +
             fld('Major', 'major', pr.major) +
           '</div>' +
-          (pr.role
-            ? '<div class="field"><label>Chapter title</label><input value="' + esc(pr.role + (pr.role_term ? ' · ' + pr.role_term : '')) + '" disabled />' +
-              '<p class="form-note" style="margin:.35rem 0 0">Executive-board titles are set by the webmaster. Reach out via the contact form if this needs updating.</p></div>'
-            : '') +
+          '<div class="field"><label>Chapter title</label>' +
+            (pr.role
+              ? '<input value="' + esc(pr.role + (pr.role_term ? ' · ' + pr.role_term : '')) + '" disabled />'
+              : '<input value="— none yet —" disabled />') +
+            '<div id="titleReqBox"></div>' +
+          '</div>' +
           '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Where you are now</legend>' +
@@ -502,6 +504,8 @@
     var back = host.querySelector('#formBack');
     if (back) back.onclick = renderChooser;
 
+    wireTitleRequest(host, pr);
+
     host.querySelector('#profForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = host.querySelector('#profStatus');
@@ -512,12 +516,15 @@
       var chosen = ['email', 'phone', 'linkedin'].filter(function (k) { return f['pref_' + k].checked; });
       var file = f.photo.files[0];
       // Downscale headshots before upload (fast mobile loads, small storage).
+      // No new upload -> keep the stored PATH (`_photo_path`), never the signed URL
+      // that `pr.photo_url` currently holds — that expires, and writing it back
+      // would kill the photo in a few hours.
       var photoP = file
         ? Z.downscale(file, 800).then(function (blob) {
             blob.name = 'photo.jpg';
-            return Z.uploadPhoto(state.user.id, blob);
+            return Z.uploadPhoto(state.user.id, blob);   // returns the storage path
           })
-        : Promise.resolve(pr.photo_url || null);
+        : Promise.resolve(pr._photo_path || pr.photo_url || null);
       photoP.then(function (url) {
         var row = {
           user_id: state.user.id,
@@ -565,6 +572,87 @@
   }
 
   /* ---- account settings tab ---- */
+  /* ---- Request a chapter title -------------------------------------------
+     Titles used to be admin-only and invisible to the brother. Now he can ASK:
+     pick one of the known titles, or type a "random"/forgotten historical one
+     (plenty of old titles exist that nobody has a record of). Season + Year are
+     selects so everything lands in the same `Title · Season Year` shape.
+
+     He is only ever writing a REQUEST row. He still cannot write `role` on his
+     own brothers row (tg_guard_status), and he has no UPDATE policy on his own
+     request, so he can't approve himself. The admin's approval is the only path. */
+  var SEASONS = ['Spring', 'Summer', 'Fall', 'Winter'];
+  var KNOWN_TITLES = ['President', 'Vice President', 'Treasurer', 'Secretary',
+                      'Pledge Master', 'Rush Chair', 'Social Chair', 'Philanthropy Chair',
+                      'Risk Manager', 'Alumni Chair', 'House Manager', 'Historian', 'Webmaster'];
+
+  function wireTitleRequest(host, pr) {
+    var box = host.querySelector('#titleReqBox');
+    if (!box || !state.user) return;
+
+    function form(prev) {
+      // A decided request is shown, then he may ask again.
+      var banner = '';
+      if (prev && prev.status === 'pending') {
+        return box.innerHTML =
+          '<div class="title-req title-req--wait">⏳ <b>Requested:</b> ' + esc(prev.title) + ' · ' + esc(prev.term) +
+          '<span>Awaiting approval from chapter leadership. You\'ll get a notification when it\'s decided.</span></div>';
+      }
+      if (prev && prev.status === 'rejected') {
+        banner = '<div class="title-req title-req--no">Your last request (' + esc(prev.title) + ' · ' + esc(prev.term) + ') wasn\'t approved. You can ask again below.</div>';
+      }
+
+      var y = new Date().getFullYear(), years = '';
+      for (var i = y + 1; i >= 1993; i--) years += '<option>' + i + '</option>';
+
+      box.innerHTML = banner +
+        '<details class="title-req-open"><summary>🏅 Request a chapter title</summary>' +
+          '<div class="title-req-form">' +
+            '<div class="field"><label>Title</label><select id="trTitle">' +
+              KNOWN_TITLES.map(function (t) { return '<option>' + t + '</option>'; }).join('') +
+              '<option value="__custom">✍️ Other — type it myself…</option>' +
+            '</select></div>' +
+            '<div class="field" id="trCustomWrap" hidden><label>Custom title</label>' +
+              '<input id="trCustom" maxlength="60" placeholder="e.g. Door Duty Chair" /></div>' +
+            '<div class="form-row">' +
+              '<div class="field"><label>Season</label><select id="trSeason">' +
+                SEASONS.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select></div>' +
+              '<div class="field"><label>Year</label><select id="trYear">' + years + '</select></div>' +
+            '</div>' +
+            '<div class="field"><label>Anything leadership should know? (optional)</label>' +
+              '<textarea id="trNote" maxlength="300" rows="2" placeholder="e.g. I held this in 2019 — Matt O\'Sullivan can vouch."></textarea></div>' +
+            '<button class="btn btn--navy" id="trSend" type="button">Send request</button>' +
+            '<p class="form-status" id="trStatus" role="status"></p>' +
+            '<p class="form-note" style="margin:.4rem 0 0">Leadership reviews every request. Official E-Board seats are verified before they appear on the board.</p>' +
+          '</div>' +
+        '</details>';
+
+      var sel = box.querySelector('#trTitle');
+      var wrap = box.querySelector('#trCustomWrap');
+      sel.onchange = function () { wrap.hidden = sel.value !== '__custom'; };
+
+      box.querySelector('#trSend').onclick = function () {
+        var st = box.querySelector('#trStatus');
+        var title = sel.value === '__custom' ? (box.querySelector('#trCustom').value || '').trim() : sel.value;
+        var term = box.querySelector('#trSeason').value + ' ' + box.querySelector('#trYear').value;
+        var note = (box.querySelector('#trNote').value || '').trim();
+        if (title.length < 2) { st.className = 'form-status err'; st.textContent = 'Type the title you\'re requesting.'; return; }
+        st.className = 'form-status'; st.textContent = 'Sending…';
+        Z.titleRequestCreate(state.user.id, pr.id, title, term, note).then(function (r) {
+          if (r.error) throw r.error;
+          form({ status: 'pending', title: title, term: term });
+        }).catch(function (err) {
+          st.className = 'form-status err';
+          st.textContent = /duplicate|unique/i.test(err.message || '')
+            ? 'You already have a request awaiting a decision.'
+            : (err.message || 'Could not send the request.');
+        });
+      };
+    }
+
+    Z.titleRequestMine(state.user.id).then(form).catch(function () { form(null); });
+  }
+
   function renderAccount(pr) {
     var host = mbody.querySelector('#portalTabBody');
     var inTree = !!pr.roster_name;

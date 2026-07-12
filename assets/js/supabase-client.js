@@ -55,8 +55,55 @@
     // Disconnect my account from its family-tree row (row becomes claimable again).
     releaseProfile: function () { return client.rpc('release_profile'); },
 
+    /* ---- profile photos: PRIVATE bucket, signed on the way out ---------------
+       `brother-photos` went private in upgrade16 (it used to be world-readable by
+       URL). `brothers.photo_url` now stores a storage PATH, not a URL.
+
+       Rather than teach ~10 render sites to sign, we sign HERE — at the single
+       boundary every brother row passes through. Downstream code still just reads
+       `b.photo_url` and gets something it can drop straight into an <img>.
+       Batch-signed (one request for N paths), same as gallerySignedUrls. */
+    _signPhotos: function (rows) {
+      if (!configured || !rows) return Promise.resolve(rows);
+      var list = Array.isArray(rows) ? rows : [rows];
+      // Only sign storage paths. Anything already absolute (http/data/blob) is
+      // left alone — e.g. a legacy or externally-hosted image.
+      var paths = [];
+      list.forEach(function (b) {
+        var v = b && b.photo_url;
+        if (v && !/^(https?:|data:|blob:)/i.test(v) && paths.indexOf(v) === -1) paths.push(v);
+      });
+      if (!paths.length) return Promise.resolve(rows);
+      return client.storage.from('brother-photos').createSignedUrls(paths, 21600) // 6h
+        .then(function (r) {
+          var map = {};
+          (r.data || []).forEach(function (row, i) { if (row && row.signedUrl) map[paths[i]] = row.signedUrl; });
+          list.forEach(function (b) {
+            if (!b || !b.photo_url) return;
+            // Keep the ORIGINAL path. photo_url is about to become a signed URL that
+            // expires; anything saving the row back (the profile editor) must write
+            // the path, or the next save would persist a dying URL into the DB.
+            if (!/^(https?:|data:|blob:)/i.test(b.photo_url)) b._photo_path = b.photo_url;
+            if (map[b.photo_url]) b.photo_url = map[b.photo_url];
+            else if (b._photo_path) b.photo_url = null;   // not allowed to see it
+          });
+          return rows;
+        })
+        .catch(function () {
+          // No permission to sign (e.g. signed-out) -> show no photo rather than a broken one.
+          list.forEach(function (b) {
+            if (b && b.photo_url && !/^(https?:|data:|blob:)/i.test(b.photo_url)) {
+              b._photo_path = b.photo_url;
+              b.photo_url = null;
+            }
+          });
+          return rows;
+        });
+    },
+
     /* ---- brothers ---- */
-    // PUBLIC: names + lineage only (via the family_public view — no details).
+    // PUBLIC: names + lineage only (via the family_public view — no details, and
+    // no photo_url column at all, so nothing to sign here).
     listFamilyPublic: function () {
       if (!configured) return Promise.resolve([]);
       return client.from('family_public').select('*')
@@ -66,8 +113,9 @@
     // approved brother / admin. Used to hydrate the roster for signed-in brothers.
     listVerifiedDetail: function () {
       if (!configured) return Promise.resolve([]);
+      var self = this;
       return client.from('brothers').select('*').eq('status', 'verified')
-        .then(function (r) { return r.data || []; });
+        .then(function (r) { return self._signPhotos(r.data || []); });
     },
     // Unregistered (claimable) tree entries, alphabetical — for the claim picker.
     listUnclaimed: function () {
@@ -83,8 +131,9 @@
     // One brother's full detail (RLS-gated: approved brother / admin / owner).
     brotherDetail: function (id) {
       if (!configured) return Promise.resolve(null);
+      var self = this;
       return client.from('brothers').select('*').eq('id', id).maybeSingle()
-        .then(function (r) { return r.data || null; });
+        .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
     },
     // Is the currently signed-in user an approved (verified) brother? (cached)
     amApprovedBrother: function () {
@@ -103,16 +152,22 @@
     // The signed-in user's own row (may be pending)
     myProfile: function (userId) {
       if (!configured) return Promise.resolve(null);
+      var self = this;
       return client.from('brothers').select('*').eq('user_id', userId).maybeSingle()
-        .then(function (r) { return r.data || null; });
+        .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
     },
     upsertProfile: function (row) {
       return client.from('brothers').upsert(row, { onConflict: 'user_id' }).select().maybeSingle();
     },
     // Admin: list by status (alphabetical by name)
     listByStatus: function (status) {
+      var self = this;
       return client.from('brothers').select('*').eq('status', status)
-        .order('full_name', { ascending: true });
+        .order('full_name', { ascending: true })
+        .then(function (r) {
+          if (r.error || !r.data) return r;
+          return self._signPhotos(r.data).then(function () { return r; }); // callers read r.data
+        });
     },
     listPending: function () { return this.listByStatus('pending'); },
     setStatus: function (id, status) {
@@ -136,8 +191,10 @@
       if (this._dirCache) return Promise.resolve(this._dirCache);
       var self = this;
       return client.from('member_directory').select('*').then(function (r) {
+        return self._signPhotos(r.data || []);   // author chips show avatars
+      }).then(function (rows) {
         var map = {};
-        (r.data || []).forEach(function (m) { map[m.user_id] = m; });
+        (rows || []).forEach(function (m) { map[m.user_id] = m; });
         self._dirCache = map;
         return map;
       });
@@ -349,6 +406,34 @@
         .then(function (r) { if (r.error) throw r.error; return r.data; });
     },
 
+    /* ---- Chapter-title requests -------------------------------------------
+       A brother can only ASK. RLS lets him insert/read his own row and nothing
+       else — he has no UPDATE policy, so he cannot flip his own request to
+       'approved', and the tg_guard_status trigger still stops him writing
+       `role` on his brothers row. Only the admin's approval grants a title. */
+    titleRequestCreate: function (userId, brotherId, title, term, note) {
+      return client.from('title_requests').insert({
+        user_id: userId, brother_id: brotherId || null,
+        title: title, term: term, note: note || null
+      });
+    },
+    titleRequestMine: function (userId) {
+      return client.from('title_requests').select('*')
+        .eq('user_id', userId).order('created_at', { ascending: false }).limit(1)
+        .then(function (r) { if (r.error) throw r.error; return (r.data || [])[0] || null; });
+    },
+    // admin only (RLS enforces it)
+    titleRequestsList: function () {
+      return client.from('title_requests').select('*')
+        .order('status', { ascending: true }).order('created_at', { ascending: false })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    titleRequestDecide: function (id, status) {
+      return client.from('title_requests')
+        .update({ status: status, decided_at: new Date().toISOString() })
+        .eq('id', id);
+    },
+
     /* ---- email: digest + invites (Edge Functions; see supabase/functions/) ---- */
     _fn: function (slug) { return (window.ZBXI_CONFIG.SUPABASE_URL) + '/functions/v1/' + slug; },
     _token: function () {
@@ -416,13 +501,16 @@
     },
 
     /* ---- storage: profile photos ---- */
+    /* Returns the storage PATH (not a URL) — the bucket is private since
+       upgrade16, so a public URL would 404. `_signPhotos` turns this back into a
+       viewable signed URL whenever the row is read. */
     uploadPhoto: function (userId, file) {
       var ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       var path = userId + '/' + Date.now() + '.' + ext;
       return client.storage.from('brother-photos').upload(path, file, { upsert: true })
         .then(function (r) {
           if (r.error) throw r.error;
-          return client.storage.from('brother-photos').getPublicUrl(path).data.publicUrl;
+          return path;
         });
     }
   };
