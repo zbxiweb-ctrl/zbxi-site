@@ -48,6 +48,10 @@
     verifyPassword: function (email, password) {
       return client.auth.signInWithPassword({ email: email, password: password });
     },
+    /* Change the SIGN-IN email. Supabase sends a confirmation link and does not
+       switch the address until it's clicked, so an account can't be hijacked by a
+       typo. (Separate from `brothers.email`, the contact address on the profile.) */
+    updateEmail: function (email) { return client.auth.updateUser({ email: email }); },
     // Disconnect my account from its family-tree row (row becomes claimable again).
     releaseProfile: function () { return client.rpc('release_profile'); },
 

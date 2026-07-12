@@ -66,12 +66,15 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
   position: absolute; right: .45rem; top: 50%; transform: translateY(-50%);
   width: 34px; height: 34px; padding: 0; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--hairline); background: var(--tint);
-  font-size: 1.05rem; line-height: 1; display: grid; place-items: center;
+  color: var(--gold);                 /* the SVG rooster is fill=currentColor -> GOLD */
+  line-height: 1; display: grid; place-items: center;
   user-select: none; -webkit-user-select: none; touch-action: none;
-  transition: background .12s, transform .12s, border-color .12s;
+  transition: background .12s, transform .12s, border-color .12s, color .12s;
 }
-.pw-peek:hover { background: rgba(200,162,75,.22); border-color: var(--gold); }
-.pw-peek.on { background: var(--gold); border-color: var(--gold-deep); transform: translateY(-50%) scale(1.08); }
+.pw-peek svg { width: 20px; height: 20px; display: block; }
+.pw-peek:hover { background: rgba(200,162,75,.22); border-color: var(--gold); color: var(--gold-bright); }
+/* while held: button fills gold, so flip the bird to navy or it would vanish */
+.pw-peek.on { background: var(--gold); border-color: var(--gold-deep); color: var(--navy-deep); transform: translateY(-50%) scale(1.08); }
 
 /* ---- Account: sign-in email + two-step destructive confirm ---- */
 .acct-email {

@@ -573,7 +573,15 @@
     host.innerHTML =
       '<div class="acct-block"><h4>🔑 Sign-in email</h4>' +
         '<p class="acct-email">' + esc(acctEmail) + '</p>' +
-        '<p class="form-note" style="margin:.35rem 0 0">This is the address you log in with. To change it, use the contact form.</p></div>' +
+        '<form id="emailForm" novalidate>' +
+          '<div class="form-row">' +
+            '<div class="field"><label>New sign-in email</label><input type="email" name="newEmail" required autocomplete="email" placeholder="you@example.com"></div>' +
+            '<div class="field"><label>Current password</label><input type="password" name="epw" required autocomplete="current-password" placeholder="Confirm it\'s you"></div>' +
+          '</div>' +
+          '<button class="btn btn--navy" type="submit">Change sign-in email</button>' +
+          '<p class="form-status" id="emailStatus" role="status"></p>' +
+        '</form>' +
+        '<p class="form-note" style="margin:.6rem 0 0">We send a confirmation link to the new address — your sign-in email only changes once you click it. This is <b>separate</b> from the contact email on your profile.</p></div>' +
       '<div class="acct-block"><h4>📬 Email preferences</h4>' +
         '<label class="pref-box"><input type="checkbox" id="digestOpt"' + (pr.email_opt_out ? '' : ' checked') + '> ' +
         'Send me the monthly brotherhood digest</label>' +
@@ -625,6 +633,38 @@
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not save.';
         digestBox.checked = !digestBox.checked;
+      });
+    };
+
+    /* Change the sign-in email. Gated on the current password: an open session
+       could otherwise repoint the account to an attacker's inbox and then use
+       "forgot password" to take it over outright. */
+    host.querySelector('#emailForm').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, st = host.querySelector('#emailStatus');
+      var btn = f.querySelector('button[type=submit]');
+      if (!f.checkValidity()) { f.reportValidity(); return; }
+      var next = f.newEmail.value.trim().toLowerCase();
+      if (next === (acctEmail || '').toLowerCase()) {
+        st.className = 'form-status err'; st.textContent = 'That\'s already your sign-in email.'; return;
+      }
+      btn.disabled = true;
+      st.className = 'form-status'; st.textContent = 'Checking your password…';
+      Z.verifyPassword(acctEmail, f.epw.value).then(function (v) {
+        if (v.error) {
+          st.className = 'form-status err'; st.textContent = 'That password isn\'t right.';
+          btn.disabled = false; return null;
+        }
+        return Z.updateEmail(next).then(function (r) {
+          if (r.error) throw r.error;
+          st.className = 'form-status ok';
+          st.textContent = '✓ Confirmation link sent to ' + next + '. Click it to finish — until then you still log in with ' + acctEmail + '.';
+          f.reset();
+          btn.disabled = false;
+        });
+      }).catch(function (err) {
+        st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not change the email.';
+        btn.disabled = false;
       });
     };
 
