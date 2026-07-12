@@ -434,6 +434,46 @@
         .eq('id', id);
     },
 
+    /* ---- Officer permissions (Officer Console; see upgrade17.sql) ----------
+       officer_grants is the Admin-controlled toggle matrix. Everyone signed in
+       may READ it; only the admin may WRITE it (RLS). The real enforcement is
+       server-side: officer_can() is added to the safe-table policies, so these
+       client helpers only decide what UI to show. */
+    officerGrantsList: function () {
+      return client.from('officer_grants').select('*')
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    // Admin upsert of one toggle. RLS rejects this for anyone but the admin.
+    officerGrantSet: function (seat, permission, enabled) {
+      return client.auth.getUser().then(function (r) {
+        var uid = r.data && r.data.user && r.data.user.id;
+        return client.from('officer_grants').upsert(
+          { seat: seat, permission: permission, enabled: enabled,
+            updated_at: new Date().toISOString(), updated_by: uid },
+          { onConflict: 'seat,permission' });
+      });
+    },
+    // The caller's seat, derived server-side from his own pinned role/scope.
+    myOfficerSeat: function () {
+      return client.rpc('my_officer_seat')
+        .then(function (r) { if (r.error) throw r.error; return r.data || null; });
+    },
+    // Cached local check (seat + grants loaded once) for UI gating only.
+    officerCan: function (perm) {
+      var self = this;
+      if (!self._officerP) {
+        self._officerP = Promise.all([self.myOfficerSeat(), self.officerGrantsList()])
+          .then(function (res) { return { seat: res[0], grants: res[1] || [] }; })
+          .catch(function () { return { seat: null, grants: [] }; });
+      }
+      return self._officerP.then(function (st) {
+        if (!st.seat) return false;
+        return st.grants.some(function (g) {
+          return g.seat === st.seat && g.permission === perm && g.enabled;
+        });
+      });
+    },
+
     /* ---- email: digest + invites (Edge Functions; see supabase/functions/) ---- */
     _fn: function (slug) { return (window.ZBXI_CONFIG.SUPABASE_URL) + '/functions/v1/' + slug; },
     _token: function () {

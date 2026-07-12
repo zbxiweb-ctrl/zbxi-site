@@ -799,6 +799,18 @@ body.modal-open { overflow: hidden; }
 }
 .admin-card, .admin-msg { background: var(--surface); color: var(--text); border-radius: var(--radius); padding: 2rem; max-width: 420px; margin: 3rem auto; box-shadow: var(--shadow); }
 .admin-card h2, .admin-msg h2 { color: var(--heading); }
+
+/* Officer-permissions grid (admin Officers tab + reused nowhere else). */
+.og-table { width: 100%; border-collapse: collapse; margin-top: .6rem; background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.og-table th, .og-table td { padding: .8rem .7rem; border-bottom: 1px solid rgba(200,162,75,.18); text-align: left; vertical-align: top; }
+.og-table tr:last-child td { border-bottom: 0; }
+.og-table th { color: var(--gold-bright); font-family: var(--sans); font-size: .95rem; background: var(--navy); }
+.og-table td b { color: var(--text); }
+.og-table th small, .og-table td small { display: block; color: var(--on-dark); font-weight: 400; font-size: .78rem; margin-top: .2rem; }
+.og-table th:not(:first-child), .og-table td:not(:first-child) { text-align: center; width: 160px; }
+.og-table input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); cursor: pointer; }
+.og-na { color: rgba(150,150,150,.5); }
+.og-saved { display: block; color: var(--gold-bright); font-size: .68rem; margin-top: .25rem; }
 .admin-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }
 .admin-head h2 { color: var(--gold-bright); margin: 0; }
 .admin-empty { text-align: center; color: var(--on-dark); padding: 2rem; }

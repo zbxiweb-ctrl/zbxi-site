@@ -67,6 +67,7 @@
       { id: 'events',     ic: '📅', label: 'Events'     },
       { id: 'guide',      ic: '📖', label: 'Guide'      },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
+      { id: 'officers',   ic: '🛡', label: 'Officers'   },
       { id: 'stats',      ic: '📊', label: 'Stats'      },
       { id: 'suggest',    ic: '💡', label: 'Suggestions', count: 'suggest' },
       { id: 'titles',     ic: '🎖', label: 'Title requests', count: 'titles' },
@@ -232,6 +233,7 @@
     if (state.tab === 'awards') return renderAwardsTab(q);
     if (state.tab === 'invite') return renderInviteTab(q);
     if (state.tab === 'suggest') return renderSuggestTab(q);
+    if (state.tab === 'officers') return renderOfficersTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
     var rows = state.data[state.tab].slice();
@@ -1259,6 +1261,78 @@
     if (!b) return;
     b.style.display = n ? '' : 'none';
     b.textContent = n;
+  }
+
+  /* ---------------- officers tab ----------------
+     Admin-only grid of permission toggles. Flipping a box writes officer_grants;
+     the DB (officer_can() on the safe-table policies) is the real enforcement —
+     this UI just decides what a President is allowed to do. The 4 dangerous
+     powers (approve brothers, assign titles, invite, settings) are NOT here, so
+     there is no toggle that could grant them. */
+  var OFFICER_SEATS = [
+    { id: 'active_president', label: 'Active President', scope: 'active' },
+    { id: 'alumni_president', label: 'Alumni President', scope: 'alumni' }
+  ];
+  var OFFICER_PERMS = [
+    { key: 'events.manage',       label: 'Manage events',          desc: 'Create, edit, and delete calendar events.',              seats: ['active_president', 'alumni_president'] },
+    { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['active_president'] },
+    { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
+    { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
+    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] }
+  ];
+
+  function officerSeatHolder(scope) {
+    var b = state.data.verified.filter(function (x) {
+      return x.role === 'President' && x.role_scope === scope;
+    })[0];
+    return b ? b.full_name : null;
+  }
+
+  function renderOfficersTab(q) {
+    q.innerHTML = '<p class="admin-hint">Switch on only the tools you want each President to run day-to-day. ' +
+      'Everything is <b>off by default</b>, and you can change it anytime — flipping a switch off removes that power immediately. ' +
+      'Approving brothers, assigning titles, sending invites, and every other sensitive task always stay with you.</p>' +
+      '<div id="ogGrid"><p class="admin-empty">Loading…</p></div>';
+
+    Z.officerGrantsList().then(function (grants) {
+      var on = {};
+      grants.forEach(function (g) { if (g.enabled) on[g.seat + '|' + g.permission] = true; });
+
+      var head = '<tr><th>Permission</th>' + OFFICER_SEATS.map(function (s) {
+        var who = officerSeatHolder(s.scope);
+        return '<th>' + esc(s.label) + '<br><small>' + (who ? esc(who) : 'seat currently empty') + '</small></th>';
+      }).join('') + '</tr>';
+
+      var body = OFFICER_PERMS.map(function (p) {
+        return '<tr><td><b>' + esc(p.label) + '</b><br><small>' + esc(p.desc) + '</small></td>' +
+          OFFICER_SEATS.map(function (s) {
+            if (p.seats.indexOf(s.id) === -1) return '<td class="og-na" title="Not applicable to this seat">—</td>';
+            return '<td><input type="checkbox" data-seat="' + esc(s.id) + '" data-perm="' + esc(p.key) + '"' +
+              (on[s.id + '|' + p.key] ? ' checked' : '') + ' aria-label="' + esc(p.label + ' — ' + s.label) + '">' +
+              '<span class="og-saved" style="display:none">saved ✓</span></td>';
+          }).join('') + '</tr>';
+      }).join('');
+
+      var grid = q.querySelector('#ogGrid');
+      grid.innerHTML = '<table class="og-table">' + head + body + '</table>';
+
+      grid.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        cb.onchange = function () {
+          var saved = cb.parentNode.querySelector('.og-saved');
+          cb.disabled = true;
+          Z.officerGrantSet(cb.dataset.seat, cb.dataset.perm, cb.checked).then(function (r) {
+            if (r && r.error) throw r.error;
+            cb.disabled = false;
+            if (saved) { saved.style.display = ''; setTimeout(function () { saved.style.display = 'none'; }, 1400); }
+          }).catch(function (e) {
+            cb.checked = !cb.checked; cb.disabled = false;
+            alert(e.message || 'Could not save that change.');
+          });
+        };
+      });
+    }).catch(function (e) {
+      q.innerHTML = '<p class="form-status err">Could not load officer permissions: ' + esc(e.message || '') + '</p>';
+    });
   }
 
   /* ---------------- guide tab ---------------- */
