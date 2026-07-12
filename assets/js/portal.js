@@ -328,7 +328,7 @@
     target = mbody;
     var onAccount = state.tab === 'account';
     h('<div class="portal-tabs">' +
-        '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile">My Profile</button>' +
+        '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile">Brother Profile</button>' +
         '<button class="' + (onAccount ? 'on' : '') + '" data-ptab="account">Account</button>' +
       '</div><div id="portalTabBody"></div>');
     mbody.querySelectorAll('[data-ptab]').forEach(function (b) {
@@ -573,10 +573,14 @@
     host.innerHTML =
       '<div class="acct-block"><h4>🔑 Sign-in email</h4>' +
         '<p class="acct-email">' + esc(acctEmail) + '</p>' +
-        '<form id="emailForm" novalidate>' +
+        // autocomplete=off + the readonly-until-focus trick: Chrome sees an
+        // email+password pair, assumes it's a login form, and autofills it (painting
+        // its own light background over the theme). Both are needed — Chrome ignores
+        // autocomplete=off on its own, but it will not autofill a readonly field.
+        '<form id="emailForm" novalidate autocomplete="off">' +
           '<div class="form-row">' +
-            '<div class="field"><label>New sign-in email</label><input type="email" name="newEmail" required autocomplete="email" placeholder="you@example.com"></div>' +
-            '<div class="field"><label>Current password</label><input type="password" name="epw" required autocomplete="current-password" placeholder="Confirm it\'s you"></div>' +
+            '<div class="field"><label>New sign-in email</label><input type="email" name="newEmail" required autocomplete="off" readonly data-unlock placeholder="you@example.com"></div>' +
+            '<div class="field"><label>Current password</label><input type="password" name="epw" required autocomplete="off" readonly data-unlock placeholder="Confirm it\'s you"></div>' +
           '</div>' +
           '<button class="btn btn--navy" type="submit">Change sign-in email</button>' +
           '<p class="form-status" id="emailStatus" role="status"></p>' +
@@ -635,6 +639,14 @@
         digestBox.checked = !digestBox.checked;
       });
     };
+
+    // Drop the anti-autofill `readonly` the moment the brother actually clicks in,
+    // so the fields behave completely normally for him.
+    host.querySelectorAll('[data-unlock]').forEach(function (i) {
+      var free = function () { i.removeAttribute('readonly'); };
+      i.addEventListener('focus', free);
+      i.addEventListener('pointerdown', free);
+    });
 
     /* Change the sign-in email. Gated on the current password: an open session
        could otherwise repoint the account to an attacker's inbox and then use

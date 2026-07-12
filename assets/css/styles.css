@@ -50,6 +50,31 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
   background-clip: padding-box;
 }
 
+/* ---- Kill the browser's autofill paint job ---------------------------------
+   When Chrome/Safari autofills a field it slaps its own pale blue/yellow
+   background and near-black text over the input, which looked white-on-dark and
+   broke the theme. There's no `background` override for it — the supported route
+   is a giant inset box-shadow (which paints on top) plus -webkit-text-fill-color.
+   The absurd transition delay keeps it from flashing back on focus. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg) inset;
+          box-shadow: 0 0 0 1000px var(--bg) inset;
+  caret-color: var(--text);
+  border: 1.5px solid var(--hairline);
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
+/* autofilled passwords keep the gold dots */
+input[type="password"]:-webkit-autofill { -webkit-text-fill-color: var(--gold); }
+
+/* the modal's ✕ sits at the card's top-right — keep the tab row out from under it */
+.pmodal .portal-tabs { padding-right: 2rem; }
+
 /* ---- Password fields: GOLD masking dots + 🐓 hold-to-peek ------------------
    The dots take the input's own `color`, so this genuinely recolors them (the
    mask *character* itself is browser-drawn and can't be swapped for a glyph). */
