@@ -8,6 +8,24 @@
   var configured = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
     window.supabase && typeof window.supabase.createClient === 'function');
 
+  /* ---- RECOVERY LATCH (must run before createClient) -----------------------
+     A password-reset email lands here as  #...&type=recovery  (or ?type=recovery).
+     Two things then race to destroy that fact:
+       1. supabase-js consumes the tokens and SCRUBS the hash, and
+       2. header-account.js may reload the page on an auth-identity change.
+     Either one loses the in-memory PASSWORD_RECOVERY signal, after which the
+     restored session looks like an ordinary login — which is exactly how the
+     reset link ended up silently signing brothers in without resetting.
+     So latch it in sessionStorage the instant the page loads, before the client
+     exists. It survives reloads and is cleared only when the password is
+     actually changed (or the brother cancels). */
+  try {
+    if (/(^|[#&?])type=recovery\b/.test(location.hash || '') ||
+        /[?&]type=recovery\b/.test(location.search || '')) {
+      sessionStorage.setItem('zbxi_recovery', '1');
+    }
+  } catch (e) { /* private mode — fall back to the in-memory event */ }
+
   var client = null;
   if (configured) {
     try {
@@ -19,6 +37,19 @@
     configured: configured,
     client: client,
     adminEmail: (cfg.ADMIN_EMAIL || '').toLowerCase(),
+
+    /* ---- password-recovery latch (see the block above) ---- */
+    // True from the moment a reset link lands until the password is actually
+    // changed — survives the hash scrub AND a full page reload.
+    isRecovery: function () {
+      try { return sessionStorage.getItem('zbxi_recovery') === '1'; } catch (e) { return false; }
+    },
+    setRecovery: function () {
+      try { sessionStorage.setItem('zbxi_recovery', '1'); } catch (e) {}
+    },
+    clearRecovery: function () {
+      try { sessionStorage.removeItem('zbxi_recovery'); } catch (e) {}
+    },
 
     /* ---- auth ---- */
     getUser: function () {

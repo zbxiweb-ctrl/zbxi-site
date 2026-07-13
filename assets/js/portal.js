@@ -30,7 +30,14 @@
     return;
   }
 
-  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false,
+  // `recovery` is seeded from the sessionStorage LATCH (set in supabase-client.js the
+  // instant a reset link lands), NOT from the PASSWORD_RECOVERY event alone. That event
+  // is fragile: supabase-js scrubs the URL hash, and header-account.js could reload the
+  // page — either one lost the signal, after which the restored session looked like an
+  // ordinary login and the brother was signed in WITHOUT ever resetting. The latch
+  // survives both, so the reset can't be skipped.
+  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile',
+                recovery: !!(Z && Z.isRecovery && Z.isRecovery()), loaded: false, wantModal: false,
                 invite: null, justReset: false };  // justReset -> show a "log in with your new password" note
 
   // Invite links look like  /?invite=<token>#brothers-portal
@@ -110,13 +117,19 @@
     return m ? m[1] : null;
   }
 
-  // Password-recovery links land back here with a recovery session.
+  // Password-recovery links land back here with a recovery session. Belt-and-braces:
+  // the latch (above) is the source of truth, but if the event fires we set it too.
   Z.onAuth(function (event) {
     if (event === 'PASSWORD_RECOVERY') {
+      Z.setRecovery();
       state.recovery = true;
       openModal();
     }
   });
+  // Latch already set (e.g. the page reloaded mid-reset, or the event fired before
+  // this script ran): put the reset form up immediately — don't wait for an event
+  // that may never come again.
+  if (state.recovery) openModal();
 
   /* ---------------- main refresh ---------------- */
   function refresh() {
@@ -324,7 +337,23 @@
         '<div class="field"><label>Confirm new password</label><input type="password" name="pw2" minlength="8" required></div>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">Save new password</button>' +
         '<p class="form-status" id="newPwStatus" role="status"></p>' +
-      '</form></div>');
+      '</form>' +
+      // Escape hatch: the form can't be dismissed, so give an explicit way out that
+      // ENDS the recovery session rather than leaving him signed in without resetting.
+      '<button class="portal-signout" id="newPwCancel" type="button">Cancel and sign out</button></div>');
+
+    target.querySelector('#newPwCancel').onclick = function () {
+      Z.clearRecovery();
+      var bail = function () {
+        state.recovery = false; state.mode = 'signin';
+        state.user = null; state.profile = null; state.wantModal = false;
+        setModalCloseVisible(true);
+        closeModal();
+        refresh();
+      };
+      Z.signOut().then(bail).catch(bail);
+    };
+
     target.querySelector('#newPwForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = f.querySelector('#newPwStatus');
@@ -333,6 +362,9 @@
       f.querySelector('button').disabled = true;
       Z.updatePassword(f.pw.value).then(function (r) {
         if (r.error) throw r.error;
+        // Released here and in "Cancel and sign out" — and nowhere else. Both end
+        // the recovery session, so the link can never leave him signed in unreset.
+        Z.clearRecovery();
         state.recovery = false;
         setModalCloseVisible(true);   // reset done — the modal is dismissable again
         st.className = 'form-status ok'; st.textContent = '✓ Password updated — log in with your new password.';
