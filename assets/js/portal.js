@@ -30,8 +30,15 @@
     return;
   }
 
-  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile', recovery: false, loaded: false, wantModal: false,
-                invite: null };  // { email, has_account } from an invite link
+  // `recovery` is seeded from the sessionStorage LATCH (set in supabase-client.js the
+  // instant a reset link lands), NOT from the PASSWORD_RECOVERY event alone. That event
+  // is fragile: supabase-js scrubs the URL hash, and header-account.js could reload the
+  // page — either one lost the signal, after which the restored session looked like an
+  // ordinary login and the brother was signed in WITHOUT ever resetting. The latch
+  // survives both, so the reset can't be skipped.
+  var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile',
+                recovery: !!(Z && Z.isRecovery && Z.isRecovery()), loaded: false, wantModal: false,
+                invite: null, resetExpired: false };  // resetExpired -> "that link expired" note on the login card
 
   // Invite links look like  /?invite=<token>#brothers-portal
   // Resolve the token before the first auth render so we can land the brother
@@ -62,7 +69,17 @@
   }
   function closeModal() {
     if (!modal) return;
+    // During password recovery the modal IS the "choose a new password" form.
+    // Don't let Escape, a backdrop click, or the ✕ dismiss it into a live
+    // session before a new password is actually set — that made the reset link
+    // behave like a one-time login. It closes itself once the password is saved.
+    if (state.recovery) return;
     modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+  }
+  // Hide/show the modal's ✕ so recovery can't be dismissed without finishing.
+  function setModalCloseVisible(v) {
+    var x = modal && modal.querySelector('[data-pm-close]');
+    if (x) x.style.display = v ? '' : 'none';
   }
   if (modal) {
     modal.addEventListener('click', function (e) {
@@ -100,19 +117,33 @@
     return m ? m[1] : null;
   }
 
-  // Password-recovery links land back here with a recovery session.
+  // Password-recovery links land back here with a recovery session. Belt-and-braces:
+  // the latch (above) is the source of truth, but if the event fires we set it too.
   Z.onAuth(function (event) {
     if (event === 'PASSWORD_RECOVERY') {
+      Z.setRecovery();
       state.recovery = true;
       openModal();
     }
   });
+  // Latch already set (e.g. the page reloaded mid-reset, or the event fired before
+  // this script ran): put the reset form up immediately — don't wait for an event
+  // that may never come again.
+  if (state.recovery) openModal();
 
   /* ---------------- main refresh ---------------- */
   function refresh() {
     Z.getUser().then(function (u) {
       state.user = u;
       if (!u) {
+        // Latched as "recovering" but no session ever materialised (expired link,
+        // already-used link, or a crafted/junk token). There is nothing to reset
+        // without a session — drop the latch so we don't strand him on an unusable
+        // form, and TELL him why, or the link looks like it silently did nothing.
+        if (state.recovery) {
+          Z.clearRecovery(); state.recovery = false; setModalCloseVisible(true);
+          state.resetExpired = true;
+        }
         state.loaded = true; state.profile = null;
         closeModal();
         renderPerks(false);
@@ -137,7 +168,15 @@
           sessionStorage.setItem('zbxi_onboard_shown', '1');
           state.wantModal = true;
         }
-        if (state.wantModal || (modal && modal.classList.contains('open'))) {
+        // A password-recovery session must land on — and STAY on — the "choose a
+        // new password" form; it must never fall through to the profile. Without
+        // this guard, refresh() painted the profile over the recovery form a beat
+        // after it appeared, so clicking the email link looked like it just logged
+        // you straight in (never letting you set a new password). openModal()
+        // itself renders the recovery form when state.recovery is set.
+        if (state.recovery) {
+          openModal();
+        } else if (state.wantModal || (modal && modal.classList.contains('open'))) {
           openModal(); renderProfileArea();
         }
       });
@@ -193,6 +232,16 @@
     target = card;
     var signup = state.mode === 'signup';
     var inv = state.invite;
+    // One-time confirmation after a password reset (then log in with the new one).
+    // A reset link that expired / was already used lands here with no session, so the
+    // reset form can't run. Say so — otherwise the brother clicks the link, sees a
+    // plain login page, and thinks the link silently did nothing.
+    var resetNote = '';
+    if (state.resetExpired) {
+      state.resetExpired = false;
+      resetNote = '<div class="invite-banner"><b>⏳ That reset link has expired.</b>' +
+        '<span>Reset links last one hour and work only once. Choose <b>Forgot your password?</b> below to get a fresh one.</span></div>';
+    }
     // Invited brothers get a warm greeting and a pre-filled, locked-in email.
     var banner = inv
       ? '<div class="invite-banner">' +
@@ -203,7 +252,7 @@
       : '';
     var emailVal = inv ? ' value="' + esc(inv.email) + '"' : '';
 
-    h(banner +
+    h(resetNote + banner +
       '<div class="portal-tabs">' +
         '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin">Log in</button>' +
         '<button class="' + (signup ? 'on' : '') + '" data-tab="signup">Sign up</button>' +
@@ -290,13 +339,31 @@
 
   function renderNewPassword() {
     target = mbody || card;
+    setModalCloseVisible(false);   // must finish the reset — no dismissing out of it
     h('<div class="portal-claim"><h3>Choose a new password</h3>' +
+      '<p class="form-note">For your security, set a new password to finish signing in. This link won’t work again.</p>' +
       '<form id="newPwForm" novalidate>' +
         '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required placeholder="8+ characters"></div>' +
         '<div class="field"><label>Confirm new password</label><input type="password" name="pw2" minlength="8" required></div>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">Save new password</button>' +
         '<p class="form-status" id="newPwStatus" role="status"></p>' +
-      '</form></div>');
+      '</form>' +
+      // Escape hatch: the form can't be dismissed, so give an explicit way out that
+      // ENDS the recovery session rather than leaving him signed in without resetting.
+      '<button class="portal-signout" id="newPwCancel" type="button">Cancel and sign out</button></div>');
+
+    target.querySelector('#newPwCancel').onclick = function () {
+      Z.clearRecovery();
+      var bail = function () {
+        state.recovery = false; state.mode = 'signin';
+        state.user = null; state.profile = null; state.wantModal = false;
+        setModalCloseVisible(true);
+        closeModal();
+        refresh();
+      };
+      Z.signOut().then(bail).catch(bail);
+    };
+
     target.querySelector('#newPwForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = f.querySelector('#newPwStatus');
@@ -305,9 +372,17 @@
       f.querySelector('button').disabled = true;
       Z.updatePassword(f.pw.value).then(function (r) {
         if (r.error) throw r.error;
+        // Released here and in "Cancel and sign out" — and nowhere else. Both end
+        // the recovery session, so the link can never leave him signed in unreset.
+        Z.clearRecovery();
         state.recovery = false;
-        st.className = 'form-status ok'; st.textContent = '✓ Password updated — signing you in…';
-        setTimeout(function () { closeModal(); refresh(); }, 800);
+        setModalCloseVisible(true);   // reset done — the modal is dismissable again
+        st.className = 'form-status ok'; st.textContent = '✓ Password updated — you’re all set.';
+        // Signing him straight in is safe and is what every other site does: he
+        // proved he controls the email AND just set a new password. (The danger was
+        // ever being signed in WITHOUT resetting — the latch prevents that.)
+        state.wantModal = false;
+        setTimeout(function () { closeModal(); refresh(); }, 900);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not update password.';
         f.querySelector('button').disabled = false;
@@ -318,6 +393,7 @@
   /* ---------------- popup: profile area ---------------- */
   function renderProfileArea() {
     target = mbody;
+    setModalCloseVisible(true);   // normal profile view is always dismissable
     var pr = state.profile;
     if (pr && pr.status === 'pending') return renderPending(pr);
     if (!pr) return renderChooser(); // no profile yet: claim an existing tree entry or create new

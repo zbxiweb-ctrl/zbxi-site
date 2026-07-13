@@ -246,7 +246,15 @@
       render();
       var uid = (session && session.user && session.user.id) || null;
       if (!sawFirst) { sawFirst = true; lastUid = uid; return; }  // initial session
-      if (event === 'PASSWORD_RECOVERY') return;                  // portal opens the reset form
+      // NEVER reload during a password reset. This used to reload the page and
+      // destroy the recovery state, after which the restored session looked like
+      // an ordinary login — the brother was signed in without ever resetting.
+      // (The old `return` here also failed to record lastUid, so the very NEXT
+      // auth event read as a new identity and reloaded anyway.)
+      if (event === 'PASSWORD_RECOVERY' || (Z.isRecovery && Z.isRecovery())) {
+        lastUid = uid;                                            // don't let a later event reload
+        return;
+      }
       if (uid === lastUid) return;                                // token refresh / tab focus
       lastUid = uid;
       reloadClean();   // lands at the TOP of a clean url, not mid-page on the login card
