@@ -10,6 +10,13 @@
     return String(name || '').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean)
       .slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase() || 'ΖΒΞ';
   }
+  // Only allow http(s) links; upgrade a bare domain, drop javascript:/data:/etc.
+  function safeUrl(u) {
+    u = String(u || '').trim();
+    if (/^https?:\/\//i.test(u)) return u;
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(u)) return '';
+    return u ? 'https://' + u : '';
+  }
 
   // "President · Fall 2019" from role + role_term
   function titleOf(b) {
@@ -33,8 +40,10 @@
       contact += '<div class="bm__row"><span>Email</span><b><a href="mailto:' + esc(d.email) + '">' + esc(d.email) + '</a></b></div>';
     if (prefs.indexOf('phone') !== -1 && d.phone)
       contact += row('Phone', d.phone);
-    if ((prefs.indexOf('linkedin') !== -1 || !d.contact_prefs) && d.linkedin)
-      contact += '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(d.linkedin) + '" target="_blank" rel="noopener">profile ↗</a></b></div>';
+    if ((prefs.indexOf('linkedin') !== -1 || !d.contact_prefs) && d.linkedin) {
+      var li = safeUrl(d.linkedin);
+      if (li) contact += '<div class="bm__row"><span>LinkedIn</span><b><a href="' + esc(li) + '" target="_blank" rel="noopener">profile ↗</a></b></div>';
+    }
 
     return openChips(d) +
       row('Title', titleOf(d)) +

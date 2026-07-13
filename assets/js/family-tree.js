@@ -439,7 +439,7 @@
     sel.id = 'famSelect';
     sel.className = 'fam-select';
     sel.innerHTML = '<option value="">🌳 All families</option>' + rs.map(function (r) {
-      return '<option value="' + r.id + '">' + lineLabel(r) + ' (' + (1 + (descCount[r.id] || 0)) + ')</option>';
+      return '<option value="' + r.id + '">' + esc(lineLabel(r)) + ' (' + (1 + (descCount[r.id] || 0)) + ')</option>';
     }).join('');
     sel.onchange = function () { selectBranch(sel.value || null); };
     bar.parentNode.insertBefore(sel, bar);
