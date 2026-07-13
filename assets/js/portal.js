@@ -403,7 +403,9 @@
   function renderShell(pr) {
     target = mbody;
     var onAccount = state.tab === 'account';
-    h('<div class="portal-tabs">' +
+    h('<div class="pf-masthead"><img class="pf-masthead__crest" src="assets/img/crest-sm.png" alt="" />' +
+        '<span class="pf-masthead__eyebrow">Zeta Beta Xi · Brother Registry</span></div>' +
+      '<div class="portal-tabs">' +
         '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile">Brother Profile</button>' +
         '<button class="' + (onAccount ? 'on' : '') + '" data-ptab="account">Account</button>' +
       '</div><div id="portalTabBody"></div>');

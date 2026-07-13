@@ -918,8 +918,17 @@ body.modal-open { overflow: hidden; }
    ============================================================================ */
 
 /* ---------- Portal: profile fieldsets + account tab ---------- */
+/* Profile modal: a small "brother registry" header (echoes the console masthead's
+   crest + gold eyebrow). Left-aligned so it clears the ✕ close button. Uses theme
+   tokens, so it adapts to light/dark like the rest of the modal. */
+.pf-masthead { display: flex; align-items: center; gap: .55rem; padding: 0 2rem .8rem 0; margin-bottom: 1rem; border-bottom: 1px solid var(--hairline); }
+.pf-masthead__crest { width: 34px; height: auto; flex: none; }
+.pf-masthead__eyebrow { font-family: var(--sans); font-size: .64rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); }
+
 .pf-group { border: 1px solid var(--hairline); border-radius: 12px; padding: 1rem 1.2rem 1.2rem; margin: 0 0 1.3rem; }
-.pf-group legend { font-family: var(--display); color: var(--heading); font-size: 1.02rem; padding: 0 .5rem; }
+.pf-group legend { font-family: var(--display); color: var(--heading); font-size: 1.06rem; padding: 0 .55rem; }
+/* Gold registry marker before each section name — echoes the console's ✦ rule. */
+.pf-group legend::before { content: "✦"; color: var(--gold); font-size: .72em; margin-right: .42rem; vertical-align: middle; opacity: .85; }
 .pref-row { display: flex; gap: .9rem; flex-wrap: wrap; padding-top: .55rem; }
 .pref-box { display: inline-flex; align-items: center; gap: .4rem; font-size: .92rem; color: var(--text); cursor: pointer; }
 .acct-block { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 1.2rem 1.3rem; margin-bottom: 1.2rem; }
