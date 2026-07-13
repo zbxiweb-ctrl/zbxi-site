@@ -168,6 +168,11 @@
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
 
+    // Deep links (admin.html#titles from the 🔔 bell) render the right tab but used
+    // to leave the heading on the default "Brotherhood Admin" — syncTabs only ran on
+    // a click or a hashchange, never on first paint. Sync once here so the heading
+    // matches the tab you actually landed on.
+    syncTabs();
     loadAll();
   }
 
