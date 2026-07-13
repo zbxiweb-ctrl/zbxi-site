@@ -143,8 +143,18 @@
     // no photo_url column at all, so nothing to sign here).
     listFamilyPublic: function () {
       if (!configured) return Promise.resolve([]);
-      return client.from('family_public').select('*')
-        .then(function (r) { return r.data || []; });
+      // Despite the name, family_public is brothers-only: `anon` has no SELECT grant
+      // on the view, so asking while signed out always 401s. That painted two red
+      // console errors onto every visitor's homepage — harmless, but it reads as a
+      // broken site to anyone who opens devtools. Callers already treat [] as
+      // "not allowed" (tree -> placeholder, homepage stats -> "🔒 members"), so just
+      // don't make a request we know will be refused. getSession() is local (no
+      // network round-trip), unlike getUser().
+      return client.auth.getSession().then(function (r) {
+        if (!r.data || !r.data.session) return [];
+        return client.from('family_public').select('*')
+          .then(function (x) { return x.data || []; });
+      });
     },
     // Full detail of ALL verified brothers — RLS only returns data to an
     // approved brother / admin. Used to hydrate the roster for signed-in brothers.
