@@ -729,6 +729,46 @@ body.modal-open { overflow: hidden; }
 .admin-wrap { width: min(1180px, 96vw); margin: 2.5rem auto; }
 
 /* ============================================================================
+   CONSOLE MASTHEAD — the "chapter registry" signature. Full on the landing
+   view; collapses to a slim bar (.is-slim) once you enter a tab. Shared by the
+   Admin + Officer consoles (both are .admin-body pages).
+   ============================================================================ */
+.console-masthead {
+  position: relative; overflow: hidden; text-align: center;
+  padding: 1.7rem 1rem 1.5rem; margin-bottom: 1.6rem;
+  border: 1px solid rgba(200,162,75,.30); border-radius: var(--radius);
+  background:
+    radial-gradient(120% 170% at 50% -45%, rgba(200,162,75,.13), transparent 55%),
+    linear-gradient(180deg, var(--navy), var(--navy-deep));
+  transition: padding .28s ease;
+}
+.console-masthead__crest { display: block; width: 60px; height: auto; margin: 0 auto .45rem;
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,.5)); transition: width .28s ease; }
+.console-masthead__eyebrow { display: block; font-family: var(--sans); font-size: .64rem; font-weight: 700;
+  letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
+.console-masthead__title { font-family: var(--display); font-weight: 700; color: var(--cream);
+  font-size: clamp(1.9rem, 4.5vw, 2.8rem); line-height: 1; margin: .3rem 0 .5rem; }
+.console-masthead__rule { display: flex; align-items: center; justify-content: center; gap: .7rem;
+  max-width: 320px; margin: .1rem auto .55rem; }
+.console-masthead__rule::before, .console-masthead__rule::after { content: ""; height: 1px; flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(200,162,75,.42), transparent); }
+.console-masthead__rule i { font-style: normal; color: var(--gold); font-size: .85rem; }
+.console-masthead__seat { font-family: var(--serif); font-size: 1.1rem; color: var(--on-dark); margin: 0; }
+.console-masthead__seat b { color: var(--gold-bright); font-weight: 700; }
+
+/* Slim state — crest + title on one line, identity pushed to the right. */
+.console-masthead.is-slim { display: flex; align-items: center; gap: .85rem; text-align: left; padding: .7rem 1.15rem; }
+.console-masthead.is-slim .console-masthead__crest { width: 34px; margin: 0; }
+.console-masthead.is-slim .console-masthead__eyebrow,
+.console-masthead.is-slim .console-masthead__rule { display: none; }
+.console-masthead.is-slim .console-masthead__title { font-size: 1.35rem; margin: 0; }
+.console-masthead.is-slim .console-masthead__seat { font-size: .92rem; margin-left: auto; text-align: right; }
+@media (max-width: 600px) {
+  .console-masthead.is-slim { flex-wrap: wrap; }
+  .console-masthead.is-slim .console-masthead__seat { margin-left: 0; width: 100%; text-align: left; }
+}
+
+/* ============================================================================
    ADMIN CONSOLE — left rail nav (crest + grouped, alphabetised sections).
    Replaces the old centre-floating pill cloud, which got unreadable once there
    were 14 sections.
@@ -779,8 +819,25 @@ body.modal-open { overflow: hidden; }
 .admin-side__out { width: 100%; margin-top: .4rem; }
 .admin-side__burger { display: none; }
 
+/* The main column carries a faint high-res crest watermark (same art as the hero)
+   so a sparse tab no longer floats in an empty navy void. It sits behind the
+   content, which is lifted above it. */
 .admin-main { min-width: 0; }
 .admin-main .admin-head { display: block; margin-bottom: 1.1rem; }
+
+/* Crest emblem pinned to the LOWER-RIGHT corner of the screen. A single fixed
+   rule, so the Admin and Officer consoles carry an IDENTICAL watermark (same
+   size, position, opacity) — in both light and dark mode, since the console is
+   always dark-chrome. It sits behind the content, which is lifted above it. */
+.admin-body::after {
+  content: ""; position: fixed; right: 0; bottom: 0; width: 300px; height: 300px;
+  background: url(../img/crest-hero.png) right bottom / contain no-repeat;
+  opacity: .06; pointer-events: none; z-index: 0;
+}
+.admin-topbar, .admin-wrap { position: relative; z-index: 1; }
+@media (max-width: 600px) {
+  .admin-body::after { width: 168px; height: 168px; opacity: .05; }
+}
 
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; gap: 1rem; }
@@ -797,32 +854,53 @@ body.modal-open { overflow: hidden; }
   .admin-side.open .admin-side__nav { display: block; margin-top: .8rem; }
   .admin-side.open .admin-side__out { display: block; }
 }
-.admin-card, .admin-msg { background: var(--surface); color: var(--text); border-radius: var(--radius); padding: 2rem; max-width: 420px; margin: 3rem auto; box-shadow: var(--shadow); }
-.admin-card h2, .admin-msg h2 { color: var(--heading); }
+/* Login / message card: navy to match the console (box-shadow is invisible on
+   navy, so it needs a gold hairline to have an edge). */
+.admin-card, .admin-msg { background: linear-gradient(180deg, var(--navy), var(--navy-deep)); color: var(--cream);
+  border: 1px solid rgba(200,162,75,.28); border-radius: var(--radius); padding: 2rem; max-width: 420px; margin: 3rem auto; box-shadow: var(--shadow); }
+.admin-card h2, .admin-msg h2 { color: var(--gold-bright); }
 
 /* Officer-permissions grid (admin Officers tab + reused nowhere else). */
-.og-table { width: 100%; border-collapse: collapse; margin-top: .6rem; background: var(--surface); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.og-table { width: 100%; border-collapse: collapse; margin-top: .6rem;
+  background: linear-gradient(180deg, #16294b, #101f3b); border: 1px solid rgba(200,162,75,.22);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 10px 26px rgba(0,0,0,.28); }
 .og-table th, .og-table td { padding: .8rem .7rem; border-bottom: 1px solid rgba(200,162,75,.18); text-align: left; vertical-align: top; }
 .og-table tr:last-child td { border-bottom: 0; }
-.og-table th { color: var(--gold-bright); font-family: var(--sans); font-size: .95rem; background: var(--navy); }
-.og-table td b { color: var(--text); }
+.og-table th { color: var(--gold-bright); font-family: var(--sans); font-size: .95rem; background: rgba(6,13,29,.55); }
+.og-table td b { color: var(--cream); }
 .og-table th small, .og-table td small { display: block; color: var(--on-dark); font-weight: 400; font-size: .78rem; margin-top: .2rem; }
 .og-table th:not(:first-child), .og-table td:not(:first-child) { text-align: center; width: 160px; }
 .og-table input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); cursor: pointer; }
 .og-na { color: rgba(150,150,150,.5); }
 .og-saved { display: block; color: var(--gold-bright); font-size: .68rem; margin-top: .25rem; }
 .admin-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.4rem; }
-.admin-head h2 { color: var(--gold-bright); margin: 0; }
+.admin-head h2 { color: var(--gold-bright); margin: 0; font-family: var(--display); font-size: 1.9rem; line-height: 1.05; }
 .admin-empty { text-align: center; color: var(--on-dark); padding: 2rem; }
-.admin-row { display: flex; align-items: center; gap: 1rem; background: var(--surface); color: var(--text); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); }
-.admin-row__ph { width: 56px; height: 56px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
+/* Record-row card: crisp lifted navy with a gold "ledger spine" down the left,
+   replacing the old washed-out grey (var(--surface) is light in light mode, but
+   the console body is always navy, so grey rows read as disabled). */
+.admin-row { display: flex; align-items: center; gap: 1rem;
+  background: linear-gradient(180deg, #16294b, #112240); color: var(--cream);
+  border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold);
+  border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .8rem;
+  box-shadow: 0 10px 26px rgba(0,0,0,.28); transition: transform .12s, border-color .12s; }
+.admin-row:hover { transform: translateY(-1px); border-left-color: var(--gold-bright); }
+.admin-row__ph { width: 54px; height: 54px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright);
+  border: 1px solid rgba(200,162,75,.28); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
 .admin-row__ph img { width: 100%; height: 100%; object-fit: cover; }
 .admin-row__info { flex: 1; min-width: 0; }
-.admin-row__info b { display: block; color: var(--heading); font-family: var(--display); font-size: 1.1rem; }
-.admin-row__info span { color: var(--muted); font-size: .85rem; }
-.admin-row__info em { display: block; color: var(--heading); font-size: .85rem; margin-top: .2rem; }
+.admin-row__info b { display: block; color: var(--cream); font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
+.admin-row__info span { color: #93a4c2; font-size: .85rem; }
+.admin-row__info em { display: block; color: var(--gold-bright); font-size: .85rem; margin-top: .2rem; }
 .admin-row__act { display: flex; gap: .5rem; flex: none; }
-.admin-row__act .btn { padding: .5rem 1rem; font-size: .85rem; }
+/* Refined record-row actions: hairline pills that sit quietly on the navy card
+   and light up on hover — not the heavy 2px outline the site buttons use. */
+.admin-row__act .btn { padding: .45rem 1rem; font-size: .84rem; border-width: 1px; font-weight: 600; }
+.admin-row__act .btn--ghost { border-color: rgba(200,162,75,.42); color: var(--on-dark); background: none; }
+.admin-row__act .btn--ghost:hover { border-color: var(--gold-bright); color: var(--gold-bright); background: rgba(200,162,75,.10); }
+.admin-row__act .btn--danger { background: none; border: 1px solid rgba(178,58,58,.6); color: #e59a9a; }
+.admin-row__act .btn--danger:hover { background: #7a2626; color: #fff; border-color: #7a2626; transform: none; }
+.admin-row__act .btn--gold { box-shadow: 0 6px 16px rgba(200,162,75,.28); }
 
 @media (max-width: 620px) {
   .admin-row { flex-wrap: wrap; }
@@ -1350,9 +1428,11 @@ input, select, textarea { background: var(--surface-2); }
 .admin-tabs button.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); border-color: transparent; box-shadow: 0 6px 18px rgba(200,162,75,.35); }
 .admin-tabs button.on .tab-count { background: rgba(var(--chrome),.25); color: var(--navy-deep); }
 .tab-count { background: rgba(200,162,75,.22); color: var(--gold-bright); border-radius: 999px; padding: .06rem .45rem; font-size: .72rem; }
-.admin-search { border: 1.5px solid rgba(200,162,75,.35); background: rgba(255,255,255,.9); }
-.admin-row { border: 1px solid transparent; transition: transform .15s, border-color .15s; }
-.admin-row:hover { transform: translateY(-2px); border-color: var(--gold); }
+/* Console search: navy to match (scoped to .admin-body so the light-page mentor
+   bar keeps its own styling). The old .admin-row overrides here were stale
+   leftovers that reset the gold ledger-spine — removed. */
+.admin-body .admin-search { border: 1.5px solid rgba(200,162,75,.30); background: rgba(10,23,48,.72); color: var(--cream); }
+.admin-body .admin-search::placeholder { color: #7f90ad; }
 .stat-card { border-top: 3px solid var(--gold); }
 .stat-h { display: flex; align-items: center; gap: .6rem; }
 .stat-h::after { content: ''; flex: 1; height: 1px; background: rgba(200,162,75,.3); }

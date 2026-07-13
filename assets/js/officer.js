@@ -44,6 +44,7 @@
       var grants = res[1] || [];
       var dir = res[2] || {};
       state.verified = Object.keys(dir).map(function (k) { return dir[k]; });
+      state.myName = (dir[u.id] && dir[u.id].full_name) || (u.email || '').split('@')[0];
       state.seatLabel = state.seat === 'active_president' ? 'Active President'
         : state.seat === 'alumni_president' ? 'Alumni President' : '';
       grants.forEach(function (g) { if (g.seat === state.seat && g.enabled) state.grants[g.permission] = true; });
@@ -68,6 +69,14 @@
       : '';
 
     root.innerHTML =
+      // ---- chapter-registry masthead (full on landing; collapses on tab change) ----
+      '<div class="console-masthead" id="masthead">' +
+        '<img class="console-masthead__crest" src="assets/img/crest-hero.png" alt="" />' +
+        '<span class="console-masthead__eyebrow">Zeta Beta Xi · Chapter Registry · Est. 1993</span>' +
+        '<h1 class="console-masthead__title">Officer Console</h1>' +
+        '<div class="console-masthead__rule"><i>✦</i></div>' +
+        '<p class="console-masthead__seat">Held by <b>' + esc(state.myName) + '</b> — ' + esc(state.seatLabel) + '</p>' +
+      '</div>' +
       '<div class="admin-shell">' +
         '<aside class="admin-side">' +
           '<div class="admin-side__id">' +
@@ -96,7 +105,11 @@
     if (burger) burger.onclick = function () { side.classList.toggle('open'); };
 
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
-      b.onclick = function () { state.tab = b.dataset.tab; side.classList.remove('open'); renderTab(); };
+      b.onclick = function () {
+        state.tab = b.dataset.tab; side.classList.remove('open');
+        var m = document.getElementById('masthead'); if (m) m.classList.add('is-slim');  // ceremony on entry, efficiency once working
+        renderTab();
+      };
     });
 
     if (!state.tools.length) {

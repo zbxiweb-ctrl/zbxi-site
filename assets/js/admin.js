@@ -109,8 +109,18 @@
       : '<span class="schip">Alumni</span>';
   }
 
+  function slimMasthead() { var m = document.getElementById('masthead'); if (m) m.classList.add('is-slim'); }
+
   function renderConsole() {
     root.innerHTML =
+      // ---- chapter-registry masthead (full on landing; collapses on tab change) ----
+      '<div class="console-masthead" id="masthead">' +
+        '<img class="console-masthead__crest" src="assets/img/crest-hero.png" alt="" />' +
+        '<span class="console-masthead__eyebrow">Zeta Beta Xi · Chapter Registry · Est. 1993</span>' +
+        '<h1 class="console-masthead__title">Admin Console</h1>' +
+        '<div class="console-masthead__rule"><i>✦</i></div>' +
+        '<p class="console-masthead__seat">Chapter webmaster — full administration</p>' +
+      '</div>' +
       '<div class="admin-shell">' +
         // ---- left rail: crest, grouped + alphabetised nav ----
         '<aside class="admin-side">' +
@@ -156,6 +166,7 @@
         state.tab = b.dataset.tab;
         history.replaceState(null, '', '#' + state.tab);   // keeps deep-links honest + shareable
         side.classList.remove('open');                     // close the drawer on phones
+        slimMasthead();                                    // ceremony on entry, efficiency once working
         syncTabs(); renderList();
       };
     });
@@ -163,7 +174,7 @@
     window.addEventListener('hashchange', function () {
       var t = tabFromHash();
       if (t === state.tab) return;
-      state.tab = t; side.classList.remove('open'); syncTabs(); renderList();
+      state.tab = t; side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
     });
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
