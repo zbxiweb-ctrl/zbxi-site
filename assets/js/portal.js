@@ -38,7 +38,7 @@
   // survives both, so the reset can't be skipped.
   var state = { user: null, profile: null, mode: 'signin', verified: [], tab: 'profile',
                 recovery: !!(Z && Z.isRecovery && Z.isRecovery()), loaded: false, wantModal: false,
-                invite: null, justReset: false };  // justReset -> show a "log in with your new password" note
+                invite: null, resetExpired: false };  // resetExpired -> "that link expired" note on the login card
 
   // Invite links look like  /?invite=<token>#brothers-portal
   // Resolve the token before the first auth render so we can land the brother
@@ -137,9 +137,13 @@
       state.user = u;
       if (!u) {
         // Latched as "recovering" but no session ever materialised (expired link,
-        // or a crafted/junk token). There is nothing to reset without a session —
-        // drop the latch so we don't strand him on an unusable form.
-        if (state.recovery) { Z.clearRecovery(); state.recovery = false; setModalCloseVisible(true); }
+        // already-used link, or a crafted/junk token). There is nothing to reset
+        // without a session — drop the latch so we don't strand him on an unusable
+        // form, and TELL him why, or the link looks like it silently did nothing.
+        if (state.recovery) {
+          Z.clearRecovery(); state.recovery = false; setModalCloseVisible(true);
+          state.resetExpired = true;
+        }
         state.loaded = true; state.profile = null;
         closeModal();
         renderPerks(false);
@@ -229,13 +233,15 @@
     var signup = state.mode === 'signup';
     var inv = state.invite;
     // One-time confirmation after a password reset (then log in with the new one).
-    // Read from sessionStorage so it survives the sign-out reload header-account
-    // triggers, then clear it so it shows exactly once.
-    var justReset = state.justReset || sessionStorage.getItem('zbxi_just_reset') === '1';
-    state.justReset = false; sessionStorage.removeItem('zbxi_just_reset');
-    var resetNote = justReset
-      ? '<div class="invite-banner"><b>✓ Password updated.</b><span>Log in below with your new password.</span></div>'
-      : '';
+    // A reset link that expired / was already used lands here with no session, so the
+    // reset form can't run. Say so — otherwise the brother clicks the link, sees a
+    // plain login page, and thinks the link silently did nothing.
+    var resetNote = '';
+    if (state.resetExpired) {
+      state.resetExpired = false;
+      resetNote = '<div class="invite-banner"><b>⏳ That reset link has expired.</b>' +
+        '<span>Reset links last one hour and work only once. Choose <b>Forgot your password?</b> below to get a fresh one.</span></div>';
+    }
     // Invited brothers get a warm greeting and a pre-filled, locked-in email.
     var banner = inv
       ? '<div class="invite-banner">' +
@@ -371,20 +377,12 @@
         Z.clearRecovery();
         state.recovery = false;
         setModalCloseVisible(true);   // reset done — the modal is dismissable again
-        st.className = 'form-status ok'; st.textContent = '✓ Password updated — log in with your new password.';
-        // Do NOT auto-sign-in off a recovery link. End the recovery session and
-        // hand the brother the normal login form so he signs in fresh with the
-        // password he just set — exactly the flow he asked for.
-        sessionStorage.setItem('zbxi_just_reset', '1');   // survives the sign-out reload
-        var afterReset = function () {
-          state.recovery = false; state.mode = 'signin'; state.justReset = true;
-          state.user = null; state.profile = null; state.wantModal = false;
-          closeModal();
-          refresh();
-        };
-        // A failed sign-out just leaves them signed in with their NEW password
-        // (a safe state) — either way, don't leave them stuck on the form.
-        setTimeout(function () { Z.signOut().then(afterReset).catch(afterReset); }, 900);
+        st.className = 'form-status ok'; st.textContent = '✓ Password updated — you’re all set.';
+        // Signing him straight in is safe and is what every other site does: he
+        // proved he controls the email AND just set a new password. (The danger was
+        // ever being signed in WITHOUT resetting — the latch prevents that.)
+        state.wantModal = false;
+        setTimeout(function () { closeModal(); refresh(); }, 900);
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not update password.';
         f.querySelector('button').disabled = false;
