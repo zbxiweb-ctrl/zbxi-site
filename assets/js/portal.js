@@ -136,6 +136,10 @@
     Z.getUser().then(function (u) {
       state.user = u;
       if (!u) {
+        // Latched as "recovering" but no session ever materialised (expired link,
+        // or a crafted/junk token). There is nothing to reset without a session —
+        // drop the latch so we don't strand him on an unusable form.
+        if (state.recovery) { Z.clearRecovery(); state.recovery = false; setModalCloseVisible(true); }
         state.loaded = true; state.profile = null;
         closeModal();
         renderPerks(false);

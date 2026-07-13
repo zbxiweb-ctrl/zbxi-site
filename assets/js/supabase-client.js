@@ -18,10 +18,16 @@
      reset link ended up silently signing brothers in without resetting.
      So latch it in sessionStorage the instant the page loads, before the client
      exists. It survives reloads and is cleared only when the password is
-     actually changed (or the brother cancels). */
+     actually changed (or the brother cancels).
+
+     Require an access_token ALONGSIDE type=recovery: a real Supabase recovery
+     redirect always carries one. Latching on a bare `#type=recovery` would let a
+     crafted link force a "choose a new password" prompt on any signed-in brother.
+     (A junk token can't survive either — refresh() drops the latch if no session
+     actually materialises, since you cannot change a password without one.) */
   try {
-    if (/(^|[#&?])type=recovery\b/.test(location.hash || '') ||
-        /[?&]type=recovery\b/.test(location.search || '')) {
+    var h = (location.hash || '') + '&' + (location.search || '');
+    if (/\btype=recovery\b/.test(h) && /\baccess_token=/.test(h)) {
       sessionStorage.setItem('zbxi_recovery', '1');
     }
   } catch (e) { /* private mode — fall back to the in-memory event */ }
