@@ -179,7 +179,7 @@
     brotherDetail: function (id) {
       if (!configured) return Promise.resolve(null);
       var self = this;
-      return client.from('brothers').select('*').eq('id', id).maybeSingle()
+      return client.from('brothers').select('*, brother_titles(title,term,scope,sort)').eq('id', id).maybeSingle()
         .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
     },
     // Is the currently signed-in user an approved (verified) brother? (cached)
@@ -479,6 +479,22 @@
       return client.from('title_requests')
         .update({ status: status, decided_at: new Date().toISOString() })
         .eq('id', id);
+    },
+
+    /* ---- Positions history (brother_titles; see upgrade19.sql) --------------
+       The FULL list of titles a brother has held. brothers.role stays the
+       headline (E-Board). Admin writes; approved brothers read (RLS). */
+    brotherTitlesList: function (broId) {
+      return client.from('brother_titles').select('*').eq('brother_id', broId)
+        .order('sort', { ascending: true })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    brotherTitleAdd: function (row) {
+      return client.from('brother_titles').insert(row).select()
+        .then(function (r) { if (r.error) throw r.error; return (r.data || [])[0] || null; });
+    },
+    brotherTitleDelete: function (id) {
+      return client.from('brother_titles').delete().eq('id', id);
     },
 
     /* ---- Officer permissions (Officer Console; see upgrade17.sql) ----------

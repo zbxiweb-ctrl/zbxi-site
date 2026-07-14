@@ -32,6 +32,15 @@
     return chips ? '<div class="ot-chips">' + chips + '</div>' : '';
   }
 
+  // Full positions history (brother_titles). Falls back to the single headline
+  // title when a brother has no history rows yet.
+  function titlesRow(d) {
+    var ts = (d.brother_titles || []).slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+    if (!ts.length) return row('Title', titleOf(d));
+    var val = ts.map(function (t) { return esc(t.title) + (t.term ? ' · ' + esc(t.term) : ''); }).join('<br>');
+    return '<div class="bm__row"><span>Positions held</span><b>' + val + '</b></div>';
+  }
+
   // The detail body for an APPROVED viewer, given the full brothers row.
   function detailHtml(d) {
     var prefs = String(d.contact_prefs || '').split(',');
@@ -46,7 +55,7 @@
     }
 
     return openChips(d) +
-      row('Title', titleOf(d)) +
+      titlesRow(d) +
       row('Major', d.major) +
       row('Class of', d.grad_year) +
       row('Occupation', d.occupation) +
@@ -92,9 +101,18 @@
     }
 
     if (!b.registered) {
-      body.innerHTML = lineage +
+      // Signed-out visitors get the claim CTA (it drives new signups); a signed-in
+      // brother is already on the site, so show an informational note instead.
+      var claimCta = lineage +
         '<div class="bm__locked">🌳 <b>Profile unclaimed</b><span>Is this you? Sign in and claim your name to bring this profile to life.</span>' +
         '<a class="btn btn--gold" href="' + portal + '" data-close>Claim your profile</a></div>';
+      body.innerHTML = lineage + '<p class="bm__loading">…</p>';
+      window.ZBXI.getUser().then(function (me) {
+        body.innerHTML = me
+          ? lineage + '<div class="bm__locked">🌳 <b>Not on the site yet</b><span>' + esc(b.full_name) +
+              ' is in the family tree from the chapter records but hasn’t created an account yet.</span></div>'
+          : claimCta;
+      }).catch(function () { body.innerHTML = claimCta; });
       return;
     }
 

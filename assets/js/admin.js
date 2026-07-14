@@ -274,9 +274,15 @@
     }
     q.innerHTML = addBar + intro + rows.map(function (b) {
       var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null), (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null)].filter(Boolean).map(esc).join(' · ');
+      var wt = state.tab === 'pending' ? ['Signed up', b.created_at]
+             : state.tab === 'rejected' ? ['Rejected', b.decided_at || b.created_at]
+             : state.tab === 'approved' ? [b.decided_at ? 'Approved' : 'Added', b.decided_at || b.created_at]
+             : ['Added', b.created_at];
+      var whenLine = wt[1] ? '<span class="admin-row__when">' + wt[0] + ' ' + stamp(wt[1]) + '</span>' : '';
       return '<div class="admin-row" data-id="' + b.id + '">' +
         '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(b.full_name) + ' ' + statusChip(b) + '</b><span>' + meta + '</span>' +
+          whenLine +
           (b.quote ? '<em>“' + esc(b.quote) + '”</em>' : '') + '</div>' +
         '<div class="admin-row__act">' + actionsFor(state.tab) + '</div></div>';
     }).join('');
@@ -296,7 +302,7 @@
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
 
   function actionsFor(tab) {
-    if (tab === 'pending') return btn('approve', 'Approve', 'gold') + btn('reject', 'Reject', 'ghost') + btn('edit', 'Edit', 'ghost');
+    if (tab === 'pending') return btn('approve', 'Approve', 'gold') + btn('reject', 'Reject', 'danger') + btn('edit', 'Edit', 'ghost');
     if (tab === 'approved') return btn('revoke', 'Revoke', 'ghost') + btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
     if (tab === 'unclaimed') return btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
     return btn('restore', 'Restore', 'gold') + btn('delete', 'Delete', 'danger'); // rejected
@@ -304,6 +310,13 @@
   function btn(action, label, kind) {
     var cls = kind === 'gold' ? 'btn btn--gold' : kind === 'danger' ? 'btn btn--danger' : 'btn btn--ghost';
     return '<button class="' + cls + '" data-' + action + '>' + label + '</button>';
+  }
+  // "Jul 3, 2026 · 2:14 PM" — compact date + time for console rows.
+  function stamp(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
 
   function setStatus(id, status) { Z.setStatus(id, status).then(afterChange); }
@@ -332,6 +345,8 @@
         '<div class="field"><label>Board (for the title)</label><select data-f="role_scope">' +
           ['', 'active', 'alumni', 'previous'].map(function (s) { return '<option value="' + s + '"' + ((b.role_scope || '') === s ? ' selected' : '') + '>' + (s || '— none —') + '</option>'; }).join('') +
         '</select></div></div>' +
+      '<div class="field"><label>Positions held (full history — shows on his profile)</label>' +
+        '<div id="posEditor" class="pos-editor"><p class="form-note" style="margin:0">Loading…</p></div></div>' +
       '<div class="form-row">' + fld('City', 'city', b.city) + fld('Occupation', 'occupation', b.occupation) + '</div>' +
       fld('Skills', 'skills', b.skills) +
       '<div class="field"><label>Big brother</label><select data-f="big_id">' + opts + '</select></div>' +
@@ -344,6 +359,36 @@
     document.body.appendChild(wrap);
     function close() { wrap.remove(); }
     wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) close(); });
+
+    // Positions history editor — writes immediately (independent of Save changes).
+    function renderPositions() {
+      var box = wrap.querySelector('#posEditor');
+      if (!box) return;
+      Z.brotherTitlesList(b.id).then(function (list) {
+        var rowsHtml = list.length
+          ? list.map(function (t) {
+              return '<div class="pos-row" data-pos="' + esc(t.id) + '"><span>' + esc(t.title) +
+                (t.term ? ' · ' + esc(t.term) : '') + (t.scope ? ' <em>(' + esc(t.scope) + ')</em>' : '') +
+                '</span><button type="button" class="pos-del" data-del title="Remove">✕</button></div>';
+            }).join('')
+          : '<p class="form-note" style="margin:.2rem 0">No positions recorded yet.</p>';
+        box.innerHTML = rowsHtml +
+          '<div class="pos-add">' +
+            '<input class="pos-in" data-nt placeholder="Title (e.g. Treasurer)">' +
+            '<input class="pos-in pos-in--term" data-ntm placeholder="Term (e.g. Spring 2021)">' +
+            '<select data-nsc>' + ['', 'active', 'alumni', 'previous'].map(function (s) { return '<option value="' + s + '">' + (s || '— none —') + '</option>'; }).join('') + '</select>' +
+            '<button type="button" class="btn btn--ghost" data-add>+ Add</button></div>';
+        box.querySelectorAll('[data-pos]').forEach(function (el) {
+          el.querySelector('[data-del]').onclick = function () { Z.brotherTitleDelete(el.dataset.pos).then(renderPositions); };
+        });
+        box.querySelector('[data-add]').onclick = function () {
+          var t = box.querySelector('[data-nt]').value.trim();
+          if (!t) { box.querySelector('[data-nt]').focus(); return; }
+          Z.brotherTitleAdd({ brother_id: b.id, title: t, term: box.querySelector('[data-ntm]').value.trim() || null, scope: box.querySelector('[data-nsc]').value || null, sort: list.length }).then(renderPositions);
+        };
+      }).catch(function () { box.innerHTML = '<p class="form-status err">Could not load positions.</p>'; });
+    }
+    renderPositions();
     wrap.querySelector('[data-save]').onclick = function () {
       var fields = {};
       wrap.querySelectorAll('[data-f]').forEach(function (i) {
@@ -593,10 +638,10 @@
               var status = r.accepted_at ? '<span class="schip schip--active">● Joined</span>'
                          : r.sent_at ? '<span class="schip">Sent</span>'
                          : '<span class="schip schip--warn">Failed</span>';
-              var when = new Date(r.sent_at || r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              var when = stamp(r.sent_at || r.created_at) + (r.accepted_at ? ' · joined ' + stamp(r.accepted_at) : '');
               return '<div class="admin-row"><div class="admin-row__ph">✉️</div>' +
                 '<div class="admin-row__info"><b>' + esc(r.email) + ' ' + status + '</b>' +
-                '<span>' + esc(when) + (r.error ? ' · ⚠ ' + esc(r.error) : '') + '</span></div></div>';
+                '<span>' + when + (r.error ? ' · ⚠ ' + esc(r.error) : '') + '</span></div></div>';
             }).join('')
           : '<p class="admin-empty">No invitations sent yet.</p>');
 
@@ -1185,16 +1230,17 @@
           '<div style="flex:1;min-width:0">' +
             '<b>' + esc(who(r)) + '</b> requests <b>' + esc(r.title) + ' · ' + esc(r.term) + '</b>' +
             (r.note ? '<div class="form-note" style="margin:.3rem 0 0">“' + esc(r.note) + '”</div>' : '') +
-            (decided ? '<div class="form-note" style="margin:.3rem 0 0">' + (r.status === 'approved' ? '✅ approved' : '✖ rejected') + '</div>' : '') +
+            '<div class="admin-row__when">Requested ' + stamp(r.created_at) +
+              (decided ? ' · ' + (r.status === 'approved' ? '✅ approved' : '✖ rejected') + ' ' + stamp(r.decided_at) : '') + '</div>' +
           '</div>' +
           (decided ? '' :
-            '<select data-scope style="max-width:150px">' +
+            '<select data-scope class="zselect">' +
               ['', 'active', 'alumni', 'previous'].map(function (s) {
                 return '<option value="' + s + '">' + (s ? s : '— none —') + '</option>';
               }).join('') +
             '</select>' +
             '<button class="btn btn--gold" data-ok>Approve</button>' +
-            '<button class="btn btn--ghost" data-no>Reject</button>') +
+            '<button class="btn btn--danger" data-no>Reject</button>') +
         '</div>';
       }
 
@@ -1211,7 +1257,9 @@
           var scope = el.querySelector('[data-scope]').value || null;
           // The ADMIN writes the title — the brother never could.
           Z.updateBrother(r.brother_id, { role: r.title, role_term: r.term, role_scope: scope })
-            .then(function (u) { if (u.error) throw u.error; return Z.titleRequestDecide(id, 'approved'); })
+            .then(function (u) { if (u.error) throw u.error; return Z.brotherTitlesList(r.brother_id); })
+            .then(function (list) { return Z.brotherTitleAdd({ brother_id: r.brother_id, title: r.title, term: r.term, scope: scope, sort: list.length }); })
+            .then(function () { return Z.titleRequestDecide(id, 'approved'); })
             .then(loadAll)
             .catch(function (e) { ok.disabled = false; ok.textContent = 'Approve'; alert(e.message || 'Could not approve.'); });
         };
@@ -1236,10 +1284,9 @@
       function block(title, list, showActions) {
         if (!list.length) return '';
         return '<h3 class="stat-h">' + title + ' (' + list.length + ')</h3>' + list.map(function (s) {
-          var d = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
           return '<div class="sug-card" data-sug="' + s.id + '">' +
             '<p class="sug-card__body">' + esc(s.body) + '</p>' +
-            '<small>' + d + '</small>' +
+            '<small>' + stamp(s.created_at) + (s.responded_at ? ' · replied ' + stamp(s.responded_at) : '') + '</small>' +
             (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +
             (showActions
               ? '<div class="sug-card__act">' +

@@ -50,7 +50,7 @@
     if (!list.length) { box.innerHTML = '<p class="bell__empty">No notifications yet.</p>'; return; }
     box.innerHTML = list.map(function (n) {
       var d = describe(n);
-      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" href="' + d.href + '">' +
+      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" href="' + d.href + '" title="' + esc(new Date(n.created_at).toLocaleString()) + '">' +
         '<i>' + d.ic + '</i><span>' + d.text + '</span><em>' + when(n.created_at) + '</em></a>';
     }).join('');
   }

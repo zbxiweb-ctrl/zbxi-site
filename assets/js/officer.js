@@ -17,6 +17,13 @@
   if (!Z || !Z.configured) { root.innerHTML = '<div class="admin-msg"><h2>Not configured</h2><p>The site backend isn’t reachable right now.</p></div>'; return; }
 
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  // "Jul 3, 2026 · 2:14 PM" — compact date + time for console rows.
+  function stamp(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
   function btn(action, label, kind) {
     var cls = kind === 'gold' ? 'btn btn--gold' : kind === 'danger' ? 'btn btn--danger' : 'btn btn--ghost';
     return '<button class="' + cls + '" data-' + action + '>' + label + '</button>';
@@ -386,10 +393,9 @@
       function block(title, list, showActions) {
         if (!list.length) return '';
         return '<h3 class="stat-h">' + title + ' (' + list.length + ')</h3>' + list.map(function (s) {
-          var d = new Date(s.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
           return '<div class="sug-card" data-sug="' + s.id + '">' +
             '<p class="sug-card__body">' + esc(s.body) + '</p>' +
-            '<small>' + d + '</small>' +
+            '<small>' + stamp(s.created_at) + (s.responded_at ? ' · replied ' + stamp(s.responded_at) : '') + '</small>' +
             (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +
             (showActions
               ? '<div class="sug-card__act">' +

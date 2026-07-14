@@ -902,6 +902,37 @@ body.modal-open { overflow: hidden; }
 .admin-row__act .btn--danger:hover { background: #7a2626; color: #fff; border-color: #7a2626; transform: none; }
 .admin-row__act .btn--gold { box-shadow: 0 6px 16px rgba(200,162,75,.28); }
 
+/* Timestamp line on record rows — its own muted line so it never collides with actions. */
+.admin-row__when { display: block; color: #8595b4; font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
+
+/* Navy/gold dropdown for the always-navy console (title-request approval). */
+.zselect {
+  appearance: none; -webkit-appearance: none;
+  background-color: #0f2143; color: var(--cream);
+  border: 1px solid rgba(200,162,75,.5); border-radius: 9px;
+  padding: .5rem 1.9rem .5rem .75rem; font-size: .86rem; font-weight: 600; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E8C766' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .65rem center;
+}
+.zselect:hover { border-color: var(--gold-bright); }
+.zselect:focus { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.25); }
+.zselect option { background: #0f2143; color: var(--cream); }
+
+/* Positions-held editor (inside the theme-aware brother edit modal). */
+.pos-editor { display: flex; flex-direction: column; gap: .4rem; }
+.pos-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+  background: rgba(200,162,75,.10); border: 1px solid rgba(200,162,75,.28); border-radius: 8px; padding: .4rem .7rem; }
+.pos-row span { color: var(--text); font-size: .9rem; }
+.pos-row em { color: var(--heading); opacity: .72; font-style: normal; font-size: .8rem; }
+.pos-del { background: none; border: none; color: #b4342b; cursor: pointer; font-size: 1.05rem; line-height: 1; padding: .1rem .35rem; }
+.pos-del:hover { color: #d0433a; }
+.pos-add { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .2rem; }
+.pos-add .pos-in, .pos-add select { padding: .5rem .7rem; border-radius: 9px; border: 1px solid rgba(200,162,75,.4);
+  background: var(--surface-2); color: var(--text); font-size: .88rem; }
+.pos-add .pos-in { flex: 1; min-width: 110px; }
+.pos-add select { min-width: 118px; }
+.pos-add .pos-in:focus, .pos-add select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,162,75,.22); }
+
 @media (max-width: 620px) {
   .admin-row { flex-wrap: wrap; }
   .admin-row__act { width: 100%; }
