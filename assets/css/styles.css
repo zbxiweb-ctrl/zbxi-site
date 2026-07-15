@@ -126,6 +126,10 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
   background: var(--tint); border: 1px solid var(--hairline); border-radius: 10px;
   padding: .65rem .8rem; word-break: break-all;
 }
+/* Cloudflare Turnstile widget holder on the auth forms. Collapses to nothing
+   when empty (widget disabled or not yet mounted) so there's no phantom gap. */
+.ts-holder { margin: .2rem 0 .9rem; }
+.ts-holder:empty { margin: 0; }
 .danger-confirm {
   margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 12px;
   background: rgba(180,52,43,.08); border: 1px solid rgba(180,52,43,.35);

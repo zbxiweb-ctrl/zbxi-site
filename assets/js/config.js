@@ -14,6 +14,11 @@ window.ZBXI_CONFIG = {
   // line too so the browser UI matches.
   ADMIN_EMAIL:       'zbxi.web@gmail.com',
 
+  // Cloudflare Turnstile site key (PUBLIC — safe to expose). Bot protection on the
+  // auth forms. The matching SECRET lives only in Supabase Auth config, never here.
+  // Leave '' to disable the widgets entirely.
+  TURNSTILE_SITEKEY: '0x4AAAAAAD2Mxx_Wd2cIu6R0',
+
   // Giving campaigns: paste the chapter's Stripe Payment Link / PayPal / Venmo
   // URLs here when ready — the "Give now" buttons appear automatically.
   DONATION_LINKS: {

@@ -62,18 +62,19 @@
       if (!configured) return Promise.resolve(null);
       return client.auth.getUser().then(function (r) { return r.data ? r.data.user : null; });
     },
-    signUp: function (email, password) {
-      return client.auth.signUp({ email: email, password: password });
+    signUp: function (email, password, captchaToken) {
+      return client.auth.signUp({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
     },
-    signIn: function (email, password) {
-      return client.auth.signInWithPassword({ email: email, password: password });
+    signIn: function (email, password, captchaToken) {
+      return client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
     },
     signOut: function () { return client.auth.signOut(); },
     onAuth: function (cb) { if (configured) client.auth.onAuthStateChange(cb); },
     // Send a password-reset email (link returns to the portal).
-    resetPassword: function (email) {
+    resetPassword: function (email, captchaToken) {
       return client.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/index.html#brothers-portal'
+        redirectTo: window.location.origin + '/index.html#brothers-portal',
+        captchaToken: captchaToken || undefined
       });
     },
     // Set a new password for the signed-in (or recovery-session) user.
@@ -82,8 +83,8 @@
        anyone with a borrowed/left-open session could silently change it and lock the
        brother out. Prove the old password first by re-authenticating with it; this
        returns { error } on a wrong password and refreshes the same session on success. */
-    verifyPassword: function (email, password) {
-      return client.auth.signInWithPassword({ email: email, password: password });
+    verifyPassword: function (email, password, captchaToken) {
+      return client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
     },
     /* Change the SIGN-IN email. Supabase sends a confirmation link and does not
        switch the address until it's clicked, so an account can't be hijacked by a

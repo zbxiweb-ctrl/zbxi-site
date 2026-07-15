@@ -260,6 +260,7 @@
       '<form id="authForm" novalidate>' +
         '<div class="field"><label>Email</label><input type="email" name="email" required' + emailVal + '></div>' +
         '<div class="field"><label>Password</label><input type="password" name="password" minlength="8" required placeholder="8+ characters"' + (inv ? ' autofocus' : '') + '></div>' +
+        '<div class="ts-holder" id="tsAuth"></div>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (signup ? 'Create account' : 'Log in') + '</button>' +
         '<p class="form-status" id="authStatus" role="status"></p>' +
       '</form>' +
@@ -273,13 +274,14 @@
     var forgot = card.querySelector('#forgotPw');
     if (forgot) forgot.onclick = function (e) { e.preventDefault(); renderForgot(); };
 
+    var capAuth = window.ZBXITurnstile ? ZBXITurnstile.render(card.querySelector('#tsAuth')) : null;
     card.querySelector('#authForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, email = f.email.value.trim(), pw = f.password.value;
       var st = card.querySelector('#authStatus');
       st.className = 'form-status'; st.textContent = '';
       if (!f.checkValidity()) { f.reportValidity(); return; }
-      var p = signup ? Z.signUp(email, pw) : Z.signIn(email, pw);
+      var p = signup ? Z.signUp(email, pw, capAuth && capAuth.token()) : Z.signIn(email, pw, capAuth && capAuth.token());
       f.querySelector('button').disabled = true;
       p.then(function (r) {
         if (r.error) throw r.error;
@@ -304,6 +306,7 @@
           return;
         }
         st.className = 'form-status err'; st.textContent = msg;
+        if (capAuth) capAuth.reset();
         f.querySelector('button').disabled = false;
       });
     };
@@ -316,22 +319,25 @@
       '<p class="form-note">Enter your account email and we\'ll send you a reset link.</p>' +
       '<form id="resetForm" novalidate>' +
         '<div class="field"><label>Email</label><input type="email" name="email" required></div>' +
+        '<div class="ts-holder" id="tsReset"></div>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">Send reset link</button>' +
         '<p class="form-status" id="resetStatus" role="status"></p>' +
       '</form>' +
       '<button class="portal-signout" id="resetBack" type="button">← Back to log in</button></div>');
     card.querySelector('#resetBack').onclick = function () { state.mode = 'signin'; renderAuth(); };
+    var capReset = window.ZBXITurnstile ? ZBXITurnstile.render(card.querySelector('#tsReset')) : null;
     card.querySelector('#resetForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = card.querySelector('#resetStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
       f.querySelector('button').disabled = true;
-      Z.resetPassword(f.email.value.trim()).then(function (r) {
+      Z.resetPassword(f.email.value.trim(), capReset && capReset.token()).then(function (r) {
         if (r.error) throw r.error;
         st.className = 'form-status ok';
         st.textContent = '✓ Check your email for the reset link.';
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not send the link.';
+        if (capReset) capReset.reset();
         f.querySelector('button').disabled = false;
       });
     };
@@ -748,6 +754,7 @@
             '<div class="field"><label>New sign-in email</label><input type="email" name="newEmail" required autocomplete="off" readonly data-unlock placeholder="you@example.com"></div>' +
             '<div class="field"><label>Current password</label><input type="password" name="epw" required autocomplete="off" readonly data-unlock placeholder="Confirm it\'s you"></div>' +
           '</div>' +
+          '<div class="ts-holder" id="tsEmail"></div>' +
           '<button class="btn btn--navy" type="submit">Change sign-in email</button>' +
           '<p class="form-status" id="emailStatus" role="status"></p>' +
         '</form>' +
@@ -764,6 +771,7 @@
             '<div class="field"><label>New password</label><input type="password" name="pw" minlength="8" required autocomplete="new-password" placeholder="8+ characters"></div>' +
             '<div class="field"><label>Confirm</label><input type="password" name="pw2" minlength="8" required autocomplete="new-password"></div>' +
           '</div>' +
+          '<div class="ts-holder" id="tsPw"></div>' +
           '<button class="btn btn--navy" type="submit">Update password</button>' +
           '<p class="form-status" id="pwStatus" role="status"></p>' +
         '</form></div>' +
@@ -817,6 +825,7 @@
     /* Change the sign-in email. Gated on the current password: an open session
        could otherwise repoint the account to an attacker's inbox and then use
        "forgot password" to take it over outright. */
+    var capEmail = window.ZBXITurnstile ? ZBXITurnstile.render(host.querySelector('#tsEmail')) : null;
     host.querySelector('#emailForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = host.querySelector('#emailStatus');
@@ -828,9 +837,10 @@
       }
       btn.disabled = true;
       st.className = 'form-status'; st.textContent = 'Checking your password…';
-      Z.verifyPassword(acctEmail, f.epw.value).then(function (v) {
+      Z.verifyPassword(acctEmail, f.epw.value, capEmail && capEmail.token()).then(function (v) {
         if (v.error) {
           st.className = 'form-status err'; st.textContent = 'That password isn\'t right.';
+          if (capEmail) capEmail.reset();
           btn.disabled = false; return null;
         }
         return Z.updateEmail(next).then(function (r) {
@@ -842,10 +852,12 @@
         });
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not change the email.';
+        if (capEmail) capEmail.reset();
         btn.disabled = false;
       });
     };
 
+    var capPw = window.ZBXITurnstile ? ZBXITurnstile.render(host.querySelector('#tsPw')) : null;
     host.querySelector('#pwForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = host.querySelector('#pwStatus');
@@ -857,10 +869,11 @@
       btn.disabled = true;
       st.className = 'form-status'; st.textContent = 'Checking your current password…';
       // Prove the OLD password before changing it (Supabase doesn't ask for it).
-      Z.verifyPassword(acctEmail, f.oldpw.value).then(function (v) {
+      Z.verifyPassword(acctEmail, f.oldpw.value, capPw && capPw.token()).then(function (v) {
         if (v.error) {
           st.className = 'form-status err';
           st.textContent = 'That current password isn\'t right.';
+          if (capPw) capPw.reset();
           btn.disabled = false;
           return null;
         }
@@ -872,6 +885,7 @@
         });
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not update.';
+        if (capPw) capPw.reset();
         btn.disabled = false;
       });
     };

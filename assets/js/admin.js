@@ -21,13 +21,15 @@
       '<form id="al" novalidate>' +
       '<div class="field"><label>Email</label><input name="email" type="email" required></div>' +
       '<div class="field"><label>Password</label><input name="password" type="password" minlength="8" required></div>' +
+      '<div class="ts-holder" id="tsAdmin"></div>' +
       '<button class="btn btn--navy" style="width:100%" type="submit">Log in</button>' +
       '<p class="form-status ' + (msg ? 'err' : '') + '">' + (msg || '') + '</p></form></div>';
+    var capAdmin = window.ZBXITurnstile ? ZBXITurnstile.render(document.getElementById('tsAdmin')) : null;
     document.getElementById('al').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target;
       f.querySelector('button').disabled = true;
-      Z.signIn(f.email.value.trim(), f.password.value).then(function (r) {
+      Z.signIn(f.email.value.trim(), f.password.value, capAdmin && capAdmin.token()).then(function (r) {
         if (r.error) throw r.error; gate();
       }).catch(function (err) { renderLogin(err.message || 'Login failed'); });
     };
