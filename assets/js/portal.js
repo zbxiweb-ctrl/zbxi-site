@@ -273,7 +273,7 @@
       '<form id="authForm" novalidate>' +
         '<div class="field"><label>Email</label><input type="email" name="email" required' + emailVal + '></div>' +
         '<div class="field"><label>Password</label><input type="password" name="password" minlength="8" required placeholder="8+ characters"' + (inv ? ' autofocus' : '') + '></div>' +
-        '<div class="ts-holder" id="tsAuth"></div>' +
+        (signup && inv ? '' : '<div class="ts-holder" id="tsAuth"></div>') +   // invited claim is token-gated; no visible captcha
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (signup ? 'Create account' : 'Log in') + '</button>' +
         '<p class="form-status" id="authStatus" role="status"></p>' +
       '</form>' +
@@ -292,55 +292,61 @@
       e.preventDefault();
       var f = e.target, email = f.email.value.trim(), pw = f.password.value;
       var st = card.querySelector('#authStatus');
+      var btn = f.querySelector('button');
       st.className = 'form-status'; st.textContent = '';
       if (!f.checkValidity()) { f.reportValidity(); return; }
+      btn.disabled = true;
+
+      // Log an invited brother in once his account exists. Uses a fresh offscreen
+      // captcha token (the visible widget is hidden on the invited step); if it
+      // can't get one, falls back to a normal log-in — his account is ready.
+      function afterInvitedReady() {
+        return (window.ZBXITurnstile && ZBXITurnstile.getToken ? ZBXITurnstile.getToken() : Promise.resolve(''))
+          .then(function (tok) { return Z.signIn(email, pw, tok); })
+          .then(function (r2) {
+            if (r2.error) {
+              state.mode = 'signin'; if (state.invite) state.invite.has_account = true; renderAuth();
+              var st2 = card.querySelector('#authStatus');
+              if (st2) { st2.className = 'form-status ok'; st2.textContent = '✓ Your account is ready — log in with the password you just set.'; }
+              return;
+            }
+            refresh();
+          });
+      }
+
+      // INVITED signup: create his account ALREADY CONFIRMED via the invite token
+      // (no confirmation email is ever sent — see supabase/functions/zbxi-claim.ts)
+      // and log him straight in. One email, one step.
+      var invTok = (signup && state.invite) ? inviteToken() : null;
+      if (invTok) {
+        st.textContent = 'Creating your account…';
+        Z.claimInvite(invTok, pw).then(function (res) {
+          if (res.body && res.body.exists) return afterInvitedReady();   // already had an account -> just log in
+          if (res.status !== 200 || !(res.body && res.body.ok)) {
+            throw new Error((res.body && res.body.error) || 'Could not create your account.');
+          }
+          return afterInvitedReady();
+        }).catch(function (err) {
+          st.className = 'form-status err'; st.textContent = (err && err.message) || 'Something went wrong.';
+          btn.disabled = false;
+        });
+        return;
+      }
+
+      // Normal (non-invited) signup or login.
       var p = signup ? Z.signUp(email, pw, capAuth && capAuth.token()) : Z.signIn(email, pw, capAuth && capAuth.token());
-      f.querySelector('button').disabled = true;
       p.then(function (r) {
         if (r.error) throw r.error;
         if (signup && r.data && !r.data.session) {
-          // INVITED brother: his invite token already proved his inbox, so confirm
-          // his email server-side and log him straight in — no second confirmation
-          // email. FAIL-SAFE: any hiccup falls back to the normal confirm-email
-          // flow, so this can never leave an invited brother stuck.
-          var invTok = state.invite ? inviteToken() : null;
-          if (invTok) {
-            st.className = 'form-status'; st.textContent = 'Finishing setup…';
-            Z.confirmInvited(invTok).then(function (c) {
-              if (c.error || !c.data) {                 // token didn't confirm -> normal email flow
-                st.className = 'form-status ok'; st.textContent = '✓ Check your email to confirm, then log in.';
-                f.querySelector('button').disabled = false;
-                return;
-              }
-              return (window.ZBXITurnstile && ZBXITurnstile.getToken ? ZBXITurnstile.getToken() : Promise.resolve(''))
-                .then(function (tok) { return Z.signIn(email, pw, tok); })
-                .then(function (r2) {
-                  if (r2.error) {                       // confirmed, but couldn't auto-login -> ask him to log in
-                    state.mode = 'signin'; if (state.invite) state.invite.has_account = true;
-                    renderAuth();
-                    var st2 = card.querySelector('#authStatus');
-                    if (st2) { st2.className = 'form-status ok'; st2.textContent = '✓ Your account is ready — log in with the password you just set.'; }
-                    return;
-                  }
-                  refresh();                            // logged straight in
-                });
-            }).catch(function () {
-              st.className = 'form-status ok'; st.textContent = '✓ Check your email to confirm, then log in.';
-              f.querySelector('button').disabled = false;
-            });
-            return;
-          }
-          // non-invited signup: normal confirm-email flow
           st.className = 'form-status ok';
           st.textContent = '✓ Check your email to confirm, then log in.';
-          f.querySelector('button').disabled = false;
+          btn.disabled = false;
           return;
         }
         refresh();
       }).catch(function (err) {
         var msg = (err && err.message) || 'Something went wrong.';
-        // Signing up with an address that already exists: send them to log in
-        // rather than leaving them stuck on an error.
+        // Signing up with an address that already exists: send them to log in.
         if (signup && /already registered|already exists|user already/i.test(msg)) {
           state.mode = 'signin';
           if (state.invite) state.invite.has_account = true;
@@ -352,7 +358,7 @@
         }
         st.className = 'form-status err'; st.textContent = msg;
         if (capAuth) capAuth.reset();
-        f.querySelector('button').disabled = false;
+        btn.disabled = false;
       });
     };
   }

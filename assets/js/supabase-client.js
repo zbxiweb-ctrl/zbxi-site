@@ -610,9 +610,19 @@
         .then(function (r) { return (r.error || !r.data) ? null : r.data; })
         .catch(function () { return null; });
     },
-    // After an INVITED brother signs up, confirm his email using the invite token
-    // (his invite already proved his inbox) — skips the redundant confirm email.
-    confirmInvited: function (token) { return client.rpc('confirm_invited', { tok: token }); },
+    // An invited brother sets his password via his invite token. Creates his
+    // account ALREADY CONFIRMED (no confirmation email ever sent) — see
+    // supabase/functions/zbxi-claim.ts. Resolves { status, body }.
+    claimInvite: function (token, password) {
+      var Z = this;
+      return fetch(Z._fn('zbxi-claim'), {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + (window.ZBXI_CONFIG.SUPABASE_ANON_KEY || ''), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, password: password })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { status: r.status, body: j }; }, function () { return { status: r.status, body: {} }; });
+      });
+    },
     invitesList: function () {
       return client.from('invites').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });
