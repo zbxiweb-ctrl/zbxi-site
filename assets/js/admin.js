@@ -20,12 +20,13 @@
     root.innerHTML = '<div class="admin-card"><h2>Admin sign-in</h2>' +
       '<form id="al" novalidate>' +
       '<div class="field"><label>Email</label><input name="email" type="email" required></div>' +
-      '<div class="field"><label>Password</label><input name="password" type="password" required></div>' +
+      '<div class="field"><label>Password</label><input name="password" type="password" minlength="8" required></div>' +
       '<button class="btn btn--navy" style="width:100%" type="submit">Log in</button>' +
       '<p class="form-status ' + (msg ? 'err' : '') + '">' + (msg || '') + '</p></form></div>';
     document.getElementById('al').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target;
+      f.querySelector('button').disabled = true;
       Z.signIn(f.email.value.trim(), f.password.value).then(function (r) {
         if (r.error) throw r.error; gate();
       }).catch(function (err) { renderLogin(err.message || 'Login failed'); });
@@ -1341,6 +1342,7 @@
     { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['active_president'] },
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
     { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
+    { key: 'gallery.post',        label: 'Post to the gallery',    desc: 'Create new gallery posts (otherwise only the admin can).', seats: ['alumni_president'] },
     { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] }
   ];
 

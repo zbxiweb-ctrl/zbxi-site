@@ -28,9 +28,10 @@
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
   // canMod = may delete anyone's post/comment: the admin, OR a President whose
-  // seat has gallery.moderate switched on. The DB enforces it either way (the
-  // gallery delete policies check officer_can); this only shows the button.
-  var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false;
+  // seat has gallery.moderate switched on. canPost = may create a post: the admin
+  // OR a seat with gallery.post switched on. The DB enforces both (the gallery
+  // insert/delete policies check officer_can); these flags only shape the UI.
+  var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
 
   function likeCount(pid) { return likes.filter(function (l) { return l.post_id === pid; }).length; }
   function iLike(pid) { return me && likes.some(function (l) { return l.post_id === pid && l.user_id === me.id; }); }
@@ -70,7 +71,7 @@
       }).join('') + '</div>';
     }
 
-    root.innerHTML = uploader + grid;
+    root.innerHTML = (canPost ? uploader : '') + grid;
     wireUpload();
     root.querySelectorAll('[data-post]').forEach(function (c) {
       c.addEventListener('click', function () {
@@ -205,8 +206,12 @@
     canMod = isAdmin;
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
-      (Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false)).then(function (can) {
-        canMod = isAdmin || can;
+      Promise.all([
+        Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false),
+        Z.officerCan ? Z.officerCan('gallery.post') : Promise.resolve(false)
+      ]).then(function (r) {
+        canMod = isAdmin || r[0];
+        canPost = isAdmin || r[1];
         loadAll().catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
         });
