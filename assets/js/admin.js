@@ -387,6 +387,11 @@
       '<div class="field"><label>Status</label><select data-f="status">' +
         ['pending', 'verified', 'rejected'].map(function (s) { return '<option' + (b.status === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
       '</select></div>' +
+      (b.user_id
+        ? '<div class="field" style="margin-top:.5rem"><label>Two-factor authentication</label>' +
+            '<button type="button" class="btn btn--ghost-danger" data-reset2fa style="width:100%">Reset 2FA</button>' +
+            '<p class="form-note" style="margin:.4rem 0 0">Use only if he lost his authenticator — removes it so he can log in with just his password and set 2FA up again.</p></div>'
+        : '') +
       '<button class="btn btn--navy" data-save style="width:100%">Save changes</button>' +
       '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
@@ -422,6 +427,20 @@
       }).catch(function () { box.innerHTML = '<p class="form-status err">Could not load positions.</p>'; });
     }
     renderPositions();
+
+    var r2fa = wrap.querySelector('[data-reset2fa]');
+    if (r2fa) r2fa.onclick = function () {
+      if (!window.confirm('Reset two-factor for ' + (b.full_name || 'this brother') + '? He\'ll be able to log in with just his password, and can set 2FA up again.')) return;
+      r2fa.disabled = true; r2fa.textContent = 'Resetting…';
+      Z.adminResetMfa(b.user_id).then(function (r) {
+        if (r.error) throw r.error;
+        r2fa.textContent = r.data ? '✓ 2FA reset — he can log in with his password now' : '✓ Done — he had no 2FA set up';
+      }).catch(function (err) {
+        r2fa.disabled = false; r2fa.textContent = 'Reset 2FA';
+        var st = wrap.querySelector('[data-status]');
+        if (st) { st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not reset 2FA.'; }
+      });
+    };
     wrap.querySelector('[data-save]').onclick = function () {
       var fields = {};
       wrap.querySelectorAll('[data-f]').forEach(function (i) {

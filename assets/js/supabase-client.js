@@ -120,6 +120,9 @@
     },
     mfaUnenroll: function (factorId) { return client.auth.mfa.unenroll({ factorId: factorId }); },
     mfaAAL: function () { return client.auth.mfa.getAuthenticatorAssuranceLevel(); },
+    // Admin-only: clear a brother's 2FA (if he lost his authenticator) so he can
+    // log in with just his password again. Server RPC is is_admin()-gated.
+    adminResetMfa: function (targetUserId) { return client.rpc('admin_reset_2fa', { target: targetUserId }); },
 
     // Disconnect my account from its family-tree row (row becomes claimable again).
     releaseProfile: function () { return client.rpc('release_profile'); },
