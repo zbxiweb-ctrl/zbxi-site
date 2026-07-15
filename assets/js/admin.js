@@ -44,8 +44,38 @@
         document.getElementById('so').onclick = function () { Z.signOut().then(function () { renderLogin(''); }); };
         return;
       }
-      renderConsole();
+      // 2FA: if the admin account has a verified authenticator and this session is
+      // still at aal1 (password only), require the 6-digit code before the console.
+      Z.mfaAAL().then(function (aal) {
+        var d = aal && aal.data;
+        if (d && d.currentLevel === 'aal1' && d.nextLevel === 'aal2') { renderAdminMfa(); return; }
+        renderConsole();
+      }).catch(function () { renderConsole(); });
     });
+  }
+
+  function renderAdminMfa() {
+    root.innerHTML = '<div class="admin-card"><h2>🔐 Two-step verification</h2>' +
+      '<p class="form-note">Enter the 6-digit code from your authenticator app.</p>' +
+      '<form id="amfa" novalidate>' +
+      '<div class="field"><label>6-digit code</label><input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required autofocus></div>' +
+      '<button class="btn btn--navy" style="width:100%" type="submit">Verify</button>' +
+      '<p class="form-status" id="amfaStatus"></p></form>' +
+      '<button class="btn btn--ghost" id="amfaCancel" style="width:100%;margin-top:.5rem" type="button">Cancel &amp; sign out</button></div>';
+    document.getElementById('amfaCancel').onclick = function () { Z.signOut().then(function () { renderLogin(''); }); };
+    document.getElementById('amfa').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, st = document.getElementById('amfaStatus'), btn = f.querySelector('button[type=submit]');
+      if (!f.checkValidity()) { f.reportValidity(); return; }
+      btn.disabled = true; st.className = 'form-status'; st.textContent = 'Verifying…';
+      Z.mfaVerifiedTotp().then(function (factor) {
+        if (!factor) { gate(); return null; }
+        return Z.mfaChallengeVerify(factor.id, f.code.value).then(function (r) {
+          if (r.error) { st.className = 'form-status err'; st.textContent = 'That code isn\'t right — try again.'; f.code.value = ''; f.code.focus(); btn.disabled = false; return; }
+          gate();
+        });
+      }).catch(function (err) { st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not verify.'; btn.disabled = false; });
+    };
   }
 
   /* ---------------- console ---------------- */

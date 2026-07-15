@@ -90,6 +90,37 @@
        switch the address until it's clicked, so an account can't be hijacked by a
        typo. (Separate from `brothers.email`, the contact address on the profile.) */
     updateEmail: function (email) { return client.auth.updateUser({ email: email }); },
+
+    /* ---- two-factor auth (TOTP), opt-in per brother --------------------
+       enroll() returns a QR + secret for an authenticator app; challengeVerify()
+       confirms a 6-digit code (used to FINISH enrollment AND to satisfy a login).
+       mfaAAL(): currentLevel 'aal1' + nextLevel 'aal2' means this session still
+       owes a 2FA code (a verified factor exists but hasn't been used yet).
+       MFA challenge/verify are NOT the password endpoint, so Turnstile captcha
+       does not apply to them. */
+    mfaListFactors: function () { return client.auth.mfa.listFactors(); },
+    mfaVerifiedTotp: function () {
+      return client.auth.mfa.listFactors().then(function (r) {
+        var list = (r.data && (r.data.totp || r.data.all)) || [];
+        return list.filter(function (f) { return f.factor_type === 'totp' && f.status === 'verified'; })[0] || null;
+      });
+    },
+    mfaEnroll: function () {
+      // Clear any half-finished (unverified) factor first, so re-enrolling after an
+      // abandoned attempt doesn't hit "a factor with this friendly name already exists".
+      return client.auth.mfa.listFactors().then(function (r) {
+        var stale = ((r.data && r.data.all) || []).filter(function (f) { return f.status !== 'verified'; });
+        return Promise.all(stale.map(function (f) { return client.auth.mfa.unenroll({ factorId: f.id }); }));
+      }).then(function () {
+        return client.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'ZBXi authenticator ' + Date.now() });
+      });
+    },
+    mfaChallengeVerify: function (factorId, code) {
+      return client.auth.mfa.challengeAndVerify({ factorId: factorId, code: String(code || '').trim() });
+    },
+    mfaUnenroll: function (factorId) { return client.auth.mfa.unenroll({ factorId: factorId }); },
+    mfaAAL: function () { return client.auth.mfa.getAuthenticatorAssuranceLevel(); },
+
     // Disconnect my account from its family-tree row (row becomes claimable again).
     releaseProfile: function () { return client.rpc('release_profile'); },
 

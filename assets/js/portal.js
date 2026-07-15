@@ -154,31 +154,44 @@
           renderAuth();
         });
       }
-      return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
-        state.profile = res[0]; state.verified = res[1] || [];
-        state.loaded = true;
-        renderMemberCard();
-        renderPerks(true);
-        // First sign-in with no profile: walk them straight into onboarding.
-        // Homepage only (`card`) — portal.js now also runs on subpages in
-        // modal-only mode, and auto-popping this over a roster/board/gallery
-        // page would ambush the brother. There, the popup opens only when he
-        // actually clicks "My Profile".
-        if (!state.profile && card && !sessionStorage.getItem('zbxi_onboard_shown')) {
-          sessionStorage.setItem('zbxi_onboard_shown', '1');
-          state.wantModal = true;
+      return Z.mfaAAL().catch(function () { return {}; }).then(function (aal) {
+        var d = aal && aal.data;   // AAL glitch -> {} -> d undefined -> no gate, normal render
+        // 2FA gate: a brother with a verified authenticator who has only completed
+        // the password step is at aal1 — hold the members area until he enters his
+        // 6-digit code. Enforced on the homepage card (where sign-in happens); once
+        // verified the session is aal2 site-wide. Skipped during password recovery,
+        // which is its own aal1 flow that must reach the new-password form.
+        if (card && !state.recovery && d && d.currentLevel === 'aal1' && d.nextLevel === 'aal2') {
+          state.loaded = true; state.profile = null;
+          closeModal(); renderPerks(false); renderMfaChallenge();
+          return;
         }
-        // A password-recovery session must land on — and STAY on — the "choose a
-        // new password" form; it must never fall through to the profile. Without
-        // this guard, refresh() painted the profile over the recovery form a beat
-        // after it appeared, so clicking the email link looked like it just logged
-        // you straight in (never letting you set a new password). openModal()
-        // itself renders the recovery form when state.recovery is set.
-        if (state.recovery) {
-          openModal();
-        } else if (state.wantModal || (modal && modal.classList.contains('open'))) {
-          openModal(); renderProfileArea();
-        }
+        return Promise.all([Z.myProfile(u.id), Z.listFamilyPublic()]).then(function (res) {
+          state.profile = res[0]; state.verified = res[1] || [];
+          state.loaded = true;
+          renderMemberCard();
+          renderPerks(true);
+          // First sign-in with no profile: walk them straight into onboarding.
+          // Homepage only (`card`) — portal.js now also runs on subpages in
+          // modal-only mode, and auto-popping this over a roster/board/gallery
+          // page would ambush the brother. There, the popup opens only when he
+          // actually clicks "My Profile".
+          if (!state.profile && card && !sessionStorage.getItem('zbxi_onboard_shown')) {
+            sessionStorage.setItem('zbxi_onboard_shown', '1');
+            state.wantModal = true;
+          }
+          // A password-recovery session must land on — and STAY on — the "choose a
+          // new password" form; it must never fall through to the profile. Without
+          // this guard, refresh() painted the profile over the recovery form a beat
+          // after it appeared, so clicking the email link looked like it just logged
+          // you straight in (never letting you set a new password). openModal()
+          // itself renders the recovery form when state.recovery is set.
+          if (state.recovery) {
+            openModal();
+          } else if (state.wantModal || (modal && modal.classList.contains('open'))) {
+            openModal(); renderProfileArea();
+          }
+        });
       });
     }).catch(function (err) {
       if (!card) return;               // modal-only pages have no section to show the error in
@@ -341,6 +354,129 @@
         f.querySelector('button').disabled = false;
       });
     };
+  }
+
+  /* ---------------- 2FA: enter your code to finish signing in ----------------
+     Shown by refresh() when the session is aal1 but the account has a verified
+     authenticator (nextLevel aal2). Verifying upgrades the session to aal2. */
+  function renderMfaChallenge() {
+    if (!card) return;
+    target = card;
+    h('<div class="portal-claim"><h3>🔐 Two-step verification</h3>' +
+      '<p class="form-note">Enter the 6-digit code from your authenticator app to finish signing in.</p>' +
+      '<form id="mfaForm" novalidate>' +
+        '<div class="field"><label>6-digit code</label>' +
+          '<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456" autofocus></div>' +
+        '<button class="btn btn--navy" style="width:100%" type="submit">Verify</button>' +
+        '<p class="form-status" id="mfaStatus" role="status"></p>' +
+      '</form>' +
+      '<button class="portal-signout" id="mfaCancel" type="button">← Cancel and sign out</button></div>');
+    card.querySelector('#mfaCancel').onclick = function () {
+      // Don't leave them stranded at aal1 — sign out fully and reload to the login card.
+      Z.signOut().then(function () { location.reload(); });
+    };
+    card.querySelector('#mfaForm').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, st = card.querySelector('#mfaStatus');
+      if (!f.checkValidity()) { f.reportValidity(); return; }
+      var btn = f.querySelector('button');
+      btn.disabled = true; st.className = 'form-status'; st.textContent = 'Verifying…';
+      Z.mfaVerifiedTotp().then(function (factor) {
+        if (!factor) { refresh(); return null; }        // no factor after all — just proceed
+        return Z.mfaChallengeVerify(factor.id, f.code.value).then(function (r) {
+          if (r.error) {
+            st.className = 'form-status err'; st.textContent = 'That code isn\'t right — try again.';
+            f.code.value = ''; f.code.focus(); btn.disabled = false; return;
+          }
+          refresh();                                     // session is now aal2 -> members area
+        });
+      }).catch(function (err) {
+        st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not verify the code.';
+        btn.disabled = false;
+      });
+    };
+  }
+
+  /* ---------------- 2FA account settings: status / enroll / turn off ----------------
+     Renders into the #mfa2fa box inside the Account tab. Self-re-rendering as the
+     brother moves through set-up -> on, or on -> off. */
+  function renderTwoFactor(box) {
+    if (!box) return;
+    box.innerHTML = '<p class="form-note">Checking…</p>';
+    Z.mfaVerifiedTotp().then(function (factor) {
+      if (factor) {
+        // ON: to turn it off, prove possession of the authenticator with a live code.
+        box.innerHTML =
+          '<p class="mfa-on">✅ Two-factor is <b>on</b>. You\'ll enter a code from your authenticator app each time you log in.</p>' +
+          '<form id="mfaOffForm" novalidate>' +
+            '<div class="field"><label>Enter a current code to turn it off</label>' +
+              '<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456"></div>' +
+            '<button class="btn btn--ghost-danger" type="submit">Turn off two-factor</button>' +
+            '<p class="form-status" id="mfaOffStatus" role="status"></p>' +
+          '</form>' +
+          '<p class="form-note" style="margin:.6rem 0 0">Lost your authenticator? Ask the webmaster to reset it for you.</p>';
+        box.querySelector('#mfaOffForm').onsubmit = function (e) {
+          e.preventDefault();
+          var f = e.target, st = box.querySelector('#mfaOffStatus'), btn = f.querySelector('button');
+          if (!f.checkValidity()) { f.reportValidity(); return; }
+          btn.disabled = true; st.className = 'form-status'; st.textContent = 'Verifying…';
+          Z.mfaChallengeVerify(factor.id, f.code.value).then(function (r) {
+            if (r.error) { st.className = 'form-status err'; st.textContent = 'That code isn\'t right.'; btn.disabled = false; return; }
+            return Z.mfaUnenroll(factor.id).then(function (r2) {
+              if (r2.error) throw r2.error;
+              renderTwoFactor(box);
+            });
+          }).catch(function (err) {
+            st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not turn it off.'; btn.disabled = false;
+          });
+        };
+      } else {
+        // OFF: offer set-up.
+        box.innerHTML =
+          '<p class="form-note">Add a second step at login with an authenticator app (Google Authenticator, Authy, 1Password, and the like). Even if someone learns your password, they can\'t get in without your phone.</p>' +
+          '<button class="btn btn--navy" id="mfaSetupBtn" type="button">Set up two-factor</button>' +
+          '<p class="form-status" id="mfaSetupStatus" role="status"></p>';
+        box.querySelector('#mfaSetupBtn').onclick = function () { startMfaEnroll(box); };
+      }
+    }).catch(function () {
+      box.innerHTML = '<p class="form-status err">Could not load two-factor settings — refresh and try again.</p>';
+    });
+  }
+
+  function startMfaEnroll(box) {
+    box.innerHTML = '<p class="form-note">Preparing your setup code…</p>';
+    Z.mfaEnroll().then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {}, factorId = d.id, qr = d.totp && d.totp.qr_code, secret = d.totp && d.totp.secret;
+      box.innerHTML =
+        '<p class="form-note"><b>1.</b> Scan this with your authenticator app (or type the key by hand), then <b>2.</b> enter the 6-digit code it shows.</p>' +
+        (qr ? '<div class="mfa-qr"><img alt="Two-factor QR code" src="' + esc(qr) + '"></div>' : '') +
+        (secret ? '<p class="mfa-secret">Manual key: <code>' + esc(secret) + '</code></p>' : '') +
+        '<form id="mfaEnrollForm" novalidate>' +
+          '<div class="field"><label>6-digit code</label>' +
+            '<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456" autofocus></div>' +
+          '<button class="btn btn--navy" type="submit">Turn on two-factor</button> ' +
+          '<button class="btn btn--ghost" id="mfaEnrollCancel" type="button">Cancel</button>' +
+          '<p class="form-status" id="mfaEnrollStatus" role="status"></p>' +
+        '</form>';
+      box.querySelector('#mfaEnrollCancel').onclick = function () { renderTwoFactor(box); };
+      box.querySelector('#mfaEnrollForm').onsubmit = function (e) {
+        e.preventDefault();
+        var f = e.target, st = box.querySelector('#mfaEnrollStatus'), btn = f.querySelector('button[type=submit]');
+        if (!f.checkValidity()) { f.reportValidity(); return; }
+        btn.disabled = true; st.className = 'form-status'; st.textContent = 'Verifying…';
+        Z.mfaChallengeVerify(factorId, f.code.value).then(function (r2) {
+          if (r2.error) { st.className = 'form-status err'; st.textContent = 'That code isn\'t right — check the app and try again.'; btn.disabled = false; return; }
+          renderTwoFactor(box);
+        }).catch(function (err) {
+          st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not turn on two-factor.'; btn.disabled = false;
+        });
+      };
+    }).catch(function (err) {
+      box.innerHTML = '<p class="form-status err">Could not start setup: ' + esc((err && err.message) || 'unknown error') + '</p>' +
+        '<button class="btn btn--ghost" id="mfaRetry" type="button">Try again</button>';
+      box.querySelector('#mfaRetry').onclick = function () { renderTwoFactor(box); };
+    });
   }
 
   function renderNewPassword() {
@@ -775,6 +911,8 @@
           '<button class="btn btn--navy" type="submit">Update password</button>' +
           '<p class="form-status" id="pwStatus" role="status"></p>' +
         '</form></div>' +
+      '<div class="acct-block"><h4>🔐 Two-factor authentication</h4>' +
+        '<div id="mfa2fa"><p class="form-note">Checking…</p></div></div>' +
       '<div class="acct-block acct-block--danger"><h4>Family tree link</h4>' +
         (inTree
           ? '<p class="form-note">This account is linked to <b>' + esc(pr.roster_name) + '</b> in the family tree. Disconnecting returns that name to the tree (unclaimed, details cleared) and lets it be claimed again.</p>'
@@ -889,6 +1027,8 @@
         btn.disabled = false;
       });
     };
+
+    renderTwoFactor(host.querySelector('#mfa2fa'));
 
     /* Two-step destroy. Click 1 only REVEALS the consequences; nothing happens
        until the brother types DELETE and clicks the second button. */
