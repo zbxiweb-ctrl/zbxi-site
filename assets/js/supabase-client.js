@@ -610,6 +610,9 @@
         .then(function (r) { return (r.error || !r.data) ? null : r.data; })
         .catch(function () { return null; });
     },
+    // After an INVITED brother signs up, confirm his email using the invite token
+    // (his invite already proved his inbox) — skips the redundant confirm email.
+    confirmInvited: function (token) { return client.rpc('confirm_invited', { tok: token }); },
     invitesList: function () {
       return client.from('invites').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });

@@ -58,6 +58,25 @@
         } catch (e) { /* double-render or torn-down host — ignore */ }
       });
       return handle;
+    },
+    /* One-off token from an offscreen widget — for a flow that needs a fresh
+       token without a visible widget (e.g. auto-login right after an invited
+       signup, since the sign-up consumed the form's token). Resolves '' if
+       disabled or it can't solve in time; the caller must handle ''. */
+    getToken: function () {
+      if (!KEY) return Promise.resolve('');
+      return load().then(function (ok) {
+        if (!ok || !window.turnstile) return '';
+        return new Promise(function (res) {
+          var box = document.createElement('div');
+          box.style.position = 'fixed'; box.style.left = '-9999px'; box.style.top = '0';
+          document.body.appendChild(box);
+          var done = false;
+          var finish = function (t) { if (!done) { done = true; try { box.remove(); } catch (e) {} res(t || ''); } };
+          try { window.turnstile.render(box, { sitekey: KEY, callback: finish }); } catch (e) { finish(''); }
+          setTimeout(function () { finish(''); }, 10000);
+        });
+      });
     }
   };
 

@@ -299,6 +299,38 @@
       p.then(function (r) {
         if (r.error) throw r.error;
         if (signup && r.data && !r.data.session) {
+          // INVITED brother: his invite token already proved his inbox, so confirm
+          // his email server-side and log him straight in — no second confirmation
+          // email. FAIL-SAFE: any hiccup falls back to the normal confirm-email
+          // flow, so this can never leave an invited brother stuck.
+          var invTok = state.invite ? inviteToken() : null;
+          if (invTok) {
+            st.className = 'form-status'; st.textContent = 'Finishing setup…';
+            Z.confirmInvited(invTok).then(function (c) {
+              if (c.error || !c.data) {                 // token didn't confirm -> normal email flow
+                st.className = 'form-status ok'; st.textContent = '✓ Check your email to confirm, then log in.';
+                f.querySelector('button').disabled = false;
+                return;
+              }
+              return (window.ZBXITurnstile && ZBXITurnstile.getToken ? ZBXITurnstile.getToken() : Promise.resolve(''))
+                .then(function (tok) { return Z.signIn(email, pw, tok); })
+                .then(function (r2) {
+                  if (r2.error) {                       // confirmed, but couldn't auto-login -> ask him to log in
+                    state.mode = 'signin'; if (state.invite) state.invite.has_account = true;
+                    renderAuth();
+                    var st2 = card.querySelector('#authStatus');
+                    if (st2) { st2.className = 'form-status ok'; st2.textContent = '✓ Your account is ready — log in with the password you just set.'; }
+                    return;
+                  }
+                  refresh();                            // logged straight in
+                });
+            }).catch(function () {
+              st.className = 'form-status ok'; st.textContent = '✓ Check your email to confirm, then log in.';
+              f.querySelector('button').disabled = false;
+            });
+            return;
+          }
+          // non-invited signup: normal confirm-email flow
           st.className = 'form-status ok';
           st.textContent = '✓ Check your email to confirm, then log in.';
           f.querySelector('button').disabled = false;
