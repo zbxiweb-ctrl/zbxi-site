@@ -485,12 +485,21 @@
     });
   }
 
+  function boardSkeleton() {
+    var one = '<div class="thread-row sk-wrap" aria-hidden="true"><span class="thread-row__av sk"></span>' +
+      '<div class="thread-row__main"><span class="sk sk-line" style="width:55%"></span>' +
+      '<span class="sk sk-line" style="width:82%"></span></div>' +
+      '<div class="thread-row__count"><span class="sk sk-line" style="width:2.2em"></span></div></div>';
+    return '<div class="thread-list" aria-hidden="true">' + new Array(7).join(one) + '</div>';
+  }
+
   Z.getUser().then(function (u) {
     me = u;
     if (!u) { locked('Members only', true); return; }
     isAdmin = Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail;
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
+      root.innerHTML = boardSkeleton();        // shimmer while threads load
       loadAll().then(function () {
         // Deep links: #thread=<id> (notifications), #compose=<title> (class pages)
         var m = location.hash.match(/thread=([\w-]+)/);

@@ -2130,3 +2130,21 @@ body.tree-lock { overflow: hidden; }
     @keyframes hero-parallax { to { transform: translateY(-46px); } }
   }
 }
+
+/* ============================================================================
+   Skeleton loaders — placeholder shimmer shown while a view's data fetches,
+   then swapped for the real cards. Skeleton markup REUSES the component classes
+   (.bro-card / .ggrid__cell / .thread-row / .admin-row) so the layout matches
+   exactly; .sk just paints the shimmer. Decorative — always aria-hidden.
+   ============================================================================ */
+.sk { position: relative; overflow: hidden; background: rgba(130,142,164,.20); border-radius: 8px; }
+.sk::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.13), transparent);
+  transform: translateX(-100%); animation: sk-shimmer 1.25s ease-in-out infinite;
+}
+.sk-line { display: block; height: .72em; margin: .4em 0; }
+:root[data-theme="dark"] .sk { background: rgba(200,210,230,.10); }
+[aria-hidden="true"].sk-wrap, .sk-wrap[aria-hidden="true"] { pointer-events: none; }
+@keyframes sk-shimmer { 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }

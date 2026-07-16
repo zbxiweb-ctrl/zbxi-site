@@ -398,7 +398,15 @@
     if (filtersEl) filtersEl.style.display = 'none';
   }
 
+  function skeletonCards(n) {
+    var one = '<div class="bro-card sk-wrap" aria-hidden="true"><span class="bro-card__av sk"></span>' +
+      '<span class="bro-card__meta"><span class="sk sk-line" style="width:62%"></span>' +
+      '<span class="sk sk-line" style="width:40%"></span></span></div>';
+    return new Array(n + 1).join(one);
+  }
+
   if (window.ZBXI && window.ZBXI.configured) {
+    gridEl.innerHTML = skeletonCards(8);       // shimmer while the roster loads
     window.ZBXI.listFamilyPublic().then(function (rows) {
       if (rows && rows.length) { RAW = rows; render(RAW); hydrate(); }
       else lockedRoster(); // anon gets an empty result — names are members-only

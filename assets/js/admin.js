@@ -184,7 +184,7 @@
             '<span class="admin-head__sub">The webmaster console — everything is buttons, never code.</span></div>' +
           '</div>' +
           '<input class="admin-search" id="adminSearch" type="search" placeholder="Search by name, major, pledge class…" value="' + esc(state.q) + '">' +
-          '<div id="q">Loading…</div>' +
+          '<div id="q">' + adminSkeleton() + '</div>' +
         '</div>' +
       '</div>';
 
@@ -237,6 +237,13 @@
     if (!c) return;
     c.textContent = n || '';
     c.style.display = n ? '' : 'none';
+  }
+
+  function adminSkeleton() {
+    var one = '<div class="admin-row sk-wrap" aria-hidden="true"><div class="admin-row__ph sk"></div>' +
+      '<div class="admin-row__info"><span class="sk sk-line" style="width:42%"></span>' +
+      '<span class="sk sk-line" style="width:66%"></span></div></div>';
+    return new Array(6).join(one);
   }
 
   function loadAll() {

@@ -199,6 +199,11 @@
     });
   }
 
+  function gallerySkeleton() {
+    var one = '<div class="ggrid__cell sk" aria-hidden="true"></div>';
+    return '<div class="ggrid" aria-hidden="true">' + new Array(13).join(one) + '</div>';
+  }
+
   Z.getUser().then(function (u) {
     me = u;
     if (!u) { locked('Members only', true); return; }
@@ -212,6 +217,7 @@
       ]).then(function (r) {
         canMod = isAdmin || r[0];
         canPost = isAdmin || r[1];
+        root.innerHTML = gallerySkeleton();     // shimmer tiles while photos load
         loadAll().catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
         });
