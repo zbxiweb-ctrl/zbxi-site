@@ -119,7 +119,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
   }
 
-  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -246,9 +246,14 @@
         state.data.pending  = (res[0].data || []);
         state.data.verified = (res[1].data || []);
         state.data.rejected = (res[2].data || []);
-        // Signup (login) email per pending brother — keyed by user_id for the card.
-        state.emailById = {};
-        ((res[3] && res[3].data) || []).forEach(function (r) { state.emailById[r.uid] = r.login_email; });
+        // Signup email + real signup time per pending brother (from auth.users),
+        // keyed by user_id for the card. created_at on the row is the roster-import
+        // time, so the accurate "Signed up" time comes from here.
+        state.emailById = {}; state.signupById = {};
+        ((res[3] && res[3].data) || []).forEach(function (r) {
+          state.emailById[r.uid] = r.login_email;
+          state.signupById[r.uid] = r.signed_up;
+        });
         // Split the verified set: real approved accounts vs unclaimed roster names.
         state.data.approved  = state.data.verified.filter(function (b) { return b.user_id; });
         state.data.unclaimed = state.data.verified.filter(function (b) { return !b.user_id; });
@@ -311,7 +316,7 @@
     }
     q.innerHTML = addBar + intro + rows.map(function (b) {
       var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null), (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null)].filter(Boolean).map(esc).join(' · ');
-      var wt = state.tab === 'pending' ? ['Signed up', b.created_at]
+      var wt = state.tab === 'pending' ? ['Signed up', (b.user_id && state.signupById[b.user_id]) || b.created_at]
              : state.tab === 'rejected' ? ['Rejected', b.decided_at || b.created_at]
              : state.tab === 'approved' ? [b.decided_at ? 'Approved' : 'Added', b.decided_at || b.created_at]
              : ['Added', b.created_at];

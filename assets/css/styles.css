@@ -812,7 +812,7 @@ body.modal-open { overflow: hidden; }
    Replaces the old centre-floating pill cloud, which got unreadable once there
    were 14 sections.
    ============================================================================ */
-.admin-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+.admin-shell { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
 
 /* The rail is capped to the viewport and scrolls its own nav list. Without the
    cap, a rail taller than the screen cannot be pinned by `sticky` at all — it
@@ -844,8 +844,8 @@ body.modal-open { overflow: hidden; }
   text-transform: uppercase; color: var(--gold); padding: 0 .5rem .4rem;
 }
 .admin-navbtn {
-  display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
-  padding: .55rem .6rem; margin-bottom: .18rem; border: 0; border-radius: 9px;
+  display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left;
+  padding: .55rem .55rem; margin-bottom: .18rem; border: 0; border-radius: 9px;
   background: none; cursor: pointer; color: var(--on-dark);
   font-family: var(--sans); font-size: .92rem; font-weight: 500;
   transition: background .12s, color .12s;
