@@ -95,6 +95,7 @@
     ]},
     { label: 'Site', tabs: [
       { id: 'awards',     ic: '🏅', label: 'Awards'     },
+      { id: 'classes',    ic: '🎓', label: 'Pledge Classes' },
       { id: 'committees', ic: '👥', label: 'Committees' },
       { id: 'eboard',     ic: '👑', label: 'E-Board'    },
       { id: 'events',     ic: '📅', label: 'Events'     },
@@ -119,7 +120,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
   }
 
-  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, q: '', events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -289,8 +290,10 @@
   function renderList() {
     var q = document.getElementById('q');
     var srchEl = document.getElementById('adminSearch');
-    if (srchEl) srchEl.style.display = BRO_TABS.indexOf(state.tab) !== -1 ? '' : 'none';
+    if (srchEl) srchEl.style.display = (BRO_TABS.indexOf(state.tab) !== -1 || state.tab === 'classes') ? '' : 'none';
+    if (state.tab !== 'classes') state.classDrill = null;   // leaving the tab closes any open class
     if (state.tab === 'tree') return renderTreeTab(q);
+    if (state.tab === 'classes') return renderClassesTab(q);
     if (state.tab === 'eboard') return renderEboardTab(q);
     if (state.tab === 'titles') return renderTitlesTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
@@ -1265,6 +1268,177 @@
       if (!e.target.value) return;
       Z.committeeAdd(c.id, e.target.value).then(function () { e.target.value = ''; refreshList(); });
     };
+  }
+
+  /* ---- 🎓 Pledge Classes ---------------------------------------------------
+     `brothers.pledge_class` is FREE TEXT, so every typo silently invents a
+     phantom class (74 distinct strings across 327 brothers when this was built —
+     ~10 of them junk). This tab is the cleanup tool: group brothers by that
+     string, sort the classes chronologically, flag the ones that don't match the
+     house format, and let the admin MERGE a bad spelling into the real class,
+     which rewrites every member in one call.
+
+     It fixes the site everywhere because pledge_class is the SINGLE field the
+     roster, the family-tree card and the class pages all read. It also fixes
+     roster placement: the Active/Alumni split is computed from the parsed class
+     YEAR (pledgeYear() in brothers-page.js), so a malformed class misfiles a
+     brother onto the wrong page.
+
+     Moves use a picker, never a text box, so the cleanup can't add new typos.
+     Canonical: `Greek · Season 'YY` (plus `· Season YYYY` for the 1993 founders). */
+  var SEASON_ORD = { Spring: 1, Summer: 2, Fall: 3, Winter: 4 };
+  var CLASS_CANON = /^[A-Z][A-Za-z]*( [A-Za-z]+)* · (Spring|Summer|Fall|Winter) ('\d{2}|(?:19|20)\d{2})$/;
+
+  // Mirrors pledgeYear() in brothers-page.js — the roster splits Active/Alumni on
+  // this same parse, which is exactly why a malformed class misfiles a brother.
+  function classYear(cls) {
+    var s = String(cls || '');
+    var m4 = s.match(/(19|20)\d{2}/);
+    if (m4) return parseInt(m4[0], 10);
+    var m2 = s.match(/'(\d{2})/);
+    if (!m2) return null;
+    var yy = parseInt(m2[1], 10);
+    return yy >= 93 ? 1900 + yy : 2000 + yy;
+  }
+  function classSeason(cls) {
+    var m = String(cls || '').match(/(Spring|Summer|Fall|Winter)/i);
+    return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : null;
+  }
+  function classPrefix(cls) { return String(cls || '').split('·')[0].trim().toLowerCase(); }
+
+  function classGroups() {
+    // verified already contains approved + unclaimed; add the other two buckets.
+    var all = (state.data.verified || []).concat(state.data.pending || [], state.data.rejected || []);
+    var by = {};
+    all.forEach(function (b) {
+      var k = b.pledge_class == null ? '' : String(b.pledge_class);
+      (by[k] = by[k] || []).push(b);
+    });
+    // One Greek letter used by two different class strings is nearly always an
+    // error (e.g. Gamma Omicron · Fall '24 AND Gamma Omicron · Fall '25).
+    var prefixN = {};
+    Object.keys(by).forEach(function (k) {
+      var p = classPrefix(k);
+      if (p) prefixN[p] = (prefixN[p] || 0) + 1;
+    });
+    return Object.keys(by).map(function (k) {
+      var badFormat = !CLASS_CANON.test(k);
+      return {
+        name: k, brothers: by[k], n: by[k].length,
+        year: classYear(k), season: classSeason(k),
+        warn: badFormat ? 'Doesn’t match the house format (Greek · Season ’YY) — likely a typo or a split-off class'
+            : (prefixN[classPrefix(k)] > 1 ? 'Another class uses the same Greek letter — one of them is probably wrong' : null)
+      };
+    }).sort(function (a, z) {
+      if (a.year == null && z.year == null) return a.name.localeCompare(z.name);
+      if (a.year == null) return 1;                       // unparseable sinks to the bottom
+      if (z.year == null) return -1;
+      if (a.year !== z.year) return a.year - z.year;
+      return (SEASON_ORD[a.season] || 9) - (SEASON_ORD[z.season] || 9);
+    });
+  }
+
+  // Free text is only ever accepted here, for a genuinely new class — and it's
+  // validated + warned about, so a typo can't slip in silently.
+  function newClassPrompt() {
+    var v = (prompt('New class name.\n\nHouse format:  Greek · Season \'YY\nExample:      Gamma Sigma · Spring \'26') || '').trim();
+    if (!v) return null;
+    if (!CLASS_CANON.test(v) &&
+        !confirm('“' + v + '” doesn’t match the house format (Greek · Season ’YY).\n\nIt will show a ⚠️ in this list. Use it anyway?')) return null;
+    return v;
+  }
+
+  function renderClassesTab(q) {
+    var groups = classGroups();
+    if (state.classDrill != null) return renderClassDrill(q, groups);
+
+    var flagged = groups.filter(function (g) { return g.warn; });
+    var total = groups.reduce(function (s, g) { return s + g.n; }, 0);
+    var shown = state.q ? groups.filter(function (g) { return g.name.toLowerCase().indexOf(state.q) !== -1; }) : groups;
+
+    q.innerHTML =
+      '<p class="admin-hint">Every brother’s pledge class, grouped and in chapter order. This is the one field the ' +
+      'roster, family tree and class pages all read — <b>fix it here and it changes everywhere</b>. Open a class to ' +
+      'move brothers in or out, or to merge a misspelled class into the real one.</p>' +
+      '<div class="cls-sum"><b>' + groups.length + '</b> classes · <b>' + total + '</b> brothers' +
+        (flagged.length ? ' · <b class="cls-warn">⚠️ ' + flagged.length + ' need attention</b>' : ' · ✅ all match the house format') +
+      '</div>' +
+      (shown.length ? shown.map(classRow).join('')
+                    : '<p class="admin-empty">No classes match “' + esc(state.q) + '”.</p>');
+
+    q.querySelectorAll('[data-cls]').forEach(function (el) {
+      el.onclick = function () { state.classDrill = el.dataset.cls; renderList(); };
+    });
+  }
+
+  function classRow(g) {
+    return '<div class="admin-row" data-cls="' + esc(g.name) + '" style="cursor:pointer">' +
+      '<div class="admin-row__ph">' + g.n + '</div>' +
+      '<div class="admin-row__info"><b>' + esc(g.name || '— blank —') +
+        (g.warn ? ' <span class="cls-warn">⚠️</span>' : '') + '</b>' +
+        '<span>' + g.n + (g.n === 1 ? ' brother' : ' brothers') +
+          (g.year ? ' · ' + esc(String(g.season || '')) + ' ' + g.year : ' · year unknown') + '</span>' +
+        (g.warn ? '<span class="admin-row__when cls-warn">' + esc(g.warn) + '</span>' : '') +
+      '</div>' +
+      '<div class="admin-row__act"><button class="btn btn--ghost">Open →</button></div></div>';
+  }
+
+  function renderClassDrill(q, groups) {
+    var g = groups.filter(function (x) { return x.name === state.classDrill; })[0];
+    if (!g) { state.classDrill = null; return renderClassesTab(q); }   // it was merged away
+
+    var others = groups.filter(function (x) { return x.name !== g.name; });
+    function opts(placeholder) {
+      return '<option value="">' + placeholder + '</option>' +
+        others.map(function (x) { return '<option value="' + esc(x.name) + '">' + esc(x.name || '— blank —') + ' (' + x.n + ')</option>'; }).join('') +
+        '<option value="__new__">＋ New class…</option>';
+    }
+
+    q.innerHTML =
+      '<button class="btn btn--ghost" id="clsBack">← All classes</button>' +
+      '<h4 style="margin:1rem 0 .2rem">' + esc(g.name || '— blank —') + '</h4>' +
+      '<p class="admin-hint" style="margin-top:0">' + g.n + (g.n === 1 ? ' brother' : ' brothers') +
+        (g.warn ? ' · <b class="cls-warn">⚠️ ' + esc(g.warn) + '</b>' : '') + '</p>' +
+      '<div class="cls-bulk"><label for="clsMerge">Merge / rename this whole class</label>' +
+        '<select class="zselect" id="clsMerge">' + opts('— pick a destination —') + '</select>' +
+        '<span class="form-note">Moves all ' + g.n + ' at once, everywhere on the site.</span></div>' +
+      g.brothers.slice().sort(function (a, z) { return String(a.full_name || '').localeCompare(String(z.full_name || '')); })
+        .map(function (b) {
+          return '<div class="admin-row">' +
+            '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
+            '<div class="admin-row__info"><b>' + esc(b.full_name) + ' ' + statusChip(b) + '</b>' +
+              '<span>' + [b.major, (b.grad_year ? 'Class of ' + b.grad_year : null)].filter(Boolean).map(esc).join(' · ') + '</span></div>' +
+            '<div class="admin-row__act"><select class="zselect" data-move="' + esc(b.id) + '">' + opts('Move to…') + '</select></div>' +
+          '</div>';
+        }).join('');
+
+    q.querySelector('#clsBack').onclick = function () { state.classDrill = null; renderList(); };
+
+    var merge = q.querySelector('#clsMerge');
+    merge.onchange = function () {
+      var dest = merge.value; merge.value = '';
+      if (!dest) return;
+      if (dest === '__new__' && !(dest = newClassPrompt())) return;
+      if (!confirm('Move all ' + g.n + ' brother' + (g.n === 1 ? '' : 's') + ' from “' + (g.name || '— blank —') +
+                   '” into “' + dest + '”?\n\nThis updates them on the roster, the family tree and their profiles.')) return;
+      Z.renamePledgeClass(g.name, dest).then(function (r) {
+        if (r && r.error) { alert(r.error.message || 'Could not merge.'); return; }
+        state.classDrill = null;
+        loadAll();
+      });
+    };
+
+    q.querySelectorAll('[data-move]').forEach(function (sel) {
+      sel.onchange = function () {
+        var dest = sel.value; sel.value = '';
+        if (!dest) return;
+        if (dest === '__new__' && !(dest = newClassPrompt())) return;
+        Z.setPledgeClass(sel.dataset.move, dest).then(function (r) {
+          if (r && r.error) { alert(r.error.message || 'Could not move him.'); return; }
+          loadAll();
+        });
+      };
+    });
   }
 
   /* ---------------- suggestions tab ---------------- */

@@ -2148,3 +2148,18 @@ body.tree-lock { overflow: hidden; }
 [aria-hidden="true"].sk-wrap, .sk-wrap[aria-hidden="true"] { pointer-events: none; }
 @keyframes sk-shimmer { 100% { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+
+/* ============================================================================
+   🎓 Pledge Classes tab (admin console) — summary line, ⚠️ flags, bulk merge bar.
+   Rows reuse .admin-row, so only these three bits are new.
+   ============================================================================ */
+.cls-sum { color: var(--on-dark); font-size: .9rem; margin: 0 0 .9rem; }
+.cls-warn { color: #ffcf6b; }
+.admin-row__when.cls-warn { color: #ffcf6b; }
+.cls-bulk {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  margin: .6rem 0 1.2rem; padding: .7rem .8rem;
+  border: 1px solid rgba(200,162,75,.28); border-radius: 10px; background: var(--navy);
+}
+.cls-bulk label { color: var(--gold-bright); font-size: .85rem; font-weight: 600; }
+.cls-bulk .form-note { margin: 0; }

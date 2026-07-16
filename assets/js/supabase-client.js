@@ -271,6 +271,19 @@
     setStatus: function (id, status) {
       return client.from('brothers').update({ status: status }).eq('id', id);
     },
+    /* ---- pledge classes (admin console) --------------------------------------
+       `pledge_class` is one free-text field on the brother's row, and the roster,
+       family-tree card and class pages all read it — so writing it here fixes the
+       brother everywhere at once. No table to keep in sync.
+       Both writes are gated server-side by the brothers_admin_update RLS policy
+       (is_admin(), upgrade14.sql); a non-admin caller updates 0 rows. */
+    setPledgeClass: function (id, cls) {
+      return client.from('brothers').update({ pledge_class: cls }).eq('id', id);
+    },
+    // Bulk merge/rename: move EVERY brother in `oldCls` to `newCls` in one call.
+    renamePledgeClass: function (oldCls, newCls) {
+      return client.from('brothers').update({ pledge_class: newCls }).eq('pledge_class', oldCls);
+    },
     updateBrother: function (id, fields) {
       return client.from('brothers').update(fields).eq('id', id);
     },

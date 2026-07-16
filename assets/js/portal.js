@@ -671,6 +671,21 @@
         .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); })
         .map(function (b) { return '<option value="' + b.id + '"' + (pr.big_id === b.id ? ' selected' : '') + '>' + esc(b.full_name) + ' (' + esc(b.pledge_class || '') + ')</option>'; })
     ).concat(['<option value="__founder__">⭐ I\'m a founder — no big brother</option>']).join('');
+
+    // Pledge class is a PICKER, not a text box. A free-text field here is where the
+    // class data drifts: one typo invents a phantom class that splits him off from
+    // his real brothers on the roster and family tree (and the roster's Active/Alumni
+    // split is computed from the class year, so a bad value misfiles him entirely).
+    // "Not listed" still allows a genuinely new class — the admin sees it flagged
+    // under Admin → Pledge Classes.
+    var classSet = {};
+    state.verified.forEach(function (b) { if (b.pledge_class) classSet[b.pledge_class] = 1; });
+    var knownClass = !!(pr.pledge_class && classSet[pr.pledge_class]);
+    var clsOpts = '<option value="">— select your pledge class —</option>' +
+      Object.keys(classSet).sort(function (a, z) { return a.localeCompare(z); })
+        .map(function (c) { return '<option value="' + esc(c) + '"' + (pr.pledge_class === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') +
+      '<option value="__other__"' + (pr.pledge_class && !knownClass ? ' selected' : '') + '>My class isn’t listed…</option>';
+
     var prefs = String(pr.contact_prefs || '').split(',');
     function prefBox(key, label) {
       return '<label class="pref-box"><input type="checkbox" name="pref_' + key + '"' +
@@ -710,7 +725,11 @@
         '<fieldset class="pf-group"><legend>The basics</legend>' +
           '<div class="form-row">' +
             fld('Full name *', 'full_name', pr.full_name, 'text', true) +
-            fld('Pledge class *', 'pledge_class', pr.pledge_class, 'text', true, 'e.g. Fall 2019') +
+            '<div class="field"><label>Pledge class *</label>' +
+              '<select name="pledge_class" required>' + clsOpts + '</select>' +
+              '<input name="pledge_class_other" placeholder="e.g. Gamma Sigma · Spring \'26"' +
+                (pr.pledge_class && !knownClass ? ' value="' + esc(pr.pledge_class) + '"' : ' style="display:none"') + '>' +
+            '</div>' +
           '</div>' +
           '<div class="form-row">' +
             fld('Grad year', 'grad_year', pr.grad_year, 'number') +
@@ -771,6 +790,21 @@
     var back = host.querySelector('#formBack');
     if (back) back.onclick = renderChooser;
 
+    // "My class isn't listed…" reveals (and requires) the free-text box; any other
+    // choice hides and clears it, so only one of the two can ever carry a value.
+    var clsSel = host.querySelector('select[name="pledge_class"]');
+    var clsOther = host.querySelector('input[name="pledge_class_other"]');
+    if (clsSel && clsOther) {
+      var syncCls = function () {
+        var other = clsSel.value === '__other__';
+        clsOther.style.display = other ? '' : 'none';
+        clsOther.required = other;
+        if (!other) clsOther.value = '';
+      };
+      clsSel.onchange = syncCls;
+      syncCls();
+    }
+
     wireTitleRequest(host, pr);
 
     host.querySelector('#profForm').onsubmit = function (e) {
@@ -802,7 +836,7 @@
         var row = {
           user_id: state.user.id,
           full_name: f.full_name.value.trim(),
-          pledge_class: f.pledge_class.value.trim(),
+          pledge_class: (f.pledge_class.value === '__other__' ? f.pledge_class_other.value.trim() : f.pledge_class.value),
           grad_year: f.grad_year.value ? parseInt(f.grad_year.value, 10) : null,
           major: f.major.value.trim() || null,
           // role / role_scope are intentionally NOT sent — chapter titles are
