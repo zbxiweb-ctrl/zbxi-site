@@ -944,6 +944,10 @@ body.modal-open { overflow: hidden; }
 /* Timestamp line on record rows — its own muted line so it never collides with actions. */
 .admin-row__when { display: block; color: #8595b4; font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
 
+/* Signup email on Pending rows — its own line, a touch brighter than the timestamp so
+   it reads clearly when vetting. Scoped under __info to beat `.admin-row__info span`. */
+.admin-row__info .admin-row__email { display: block; color: #b9c6e0; font-size: .8rem; margin-top: .2rem; word-break: break-all; }
+
 /* Navy/gold dropdown for the always-navy console (title-request approval). */
 .zselect {
   appearance: none; -webkit-appearance: none;

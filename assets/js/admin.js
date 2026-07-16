@@ -119,7 +119,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
   }
 
-  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, q: '', events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -240,11 +240,15 @@
   }
 
   function loadAll() {
-    Promise.all([Z.listByStatus('pending'), Z.listByStatus('verified'), Z.listByStatus('rejected')])
+    Promise.all([Z.listByStatus('pending'), Z.listByStatus('verified'), Z.listByStatus('rejected'),
+                 Z.adminPendingEmails().catch(function () { return { data: [] }; })])
       .then(function (res) {
         state.data.pending  = (res[0].data || []);
         state.data.verified = (res[1].data || []);
         state.data.rejected = (res[2].data || []);
+        // Signup (login) email per pending brother — keyed by user_id for the card.
+        state.emailById = {};
+        ((res[3] && res[3].data) || []).forEach(function (r) { state.emailById[r.uid] = r.login_email; });
         // Split the verified set: real approved accounts vs unclaimed roster names.
         state.data.approved  = state.data.verified.filter(function (b) { return b.user_id; });
         state.data.unclaimed = state.data.verified.filter(function (b) { return !b.user_id; });
@@ -312,10 +316,15 @@
              : state.tab === 'approved' ? [b.decided_at ? 'Approved' : 'Added', b.decided_at || b.created_at]
              : ['Added', b.created_at];
       var whenLine = wt[1] ? '<span class="admin-row__when">' + wt[0] + ' ' + stamp(wt[1]) + '</span>' : '';
+      // Pending only: the email he signed up with, so you can vet before approving.
+      var emailLine = state.tab === 'pending'
+        ? '<span class="admin-row__email">✉️ ' + esc((b.user_id && state.emailById[b.user_id]) || 'no email on file') + '</span>'
+        : '';
       return '<div class="admin-row" data-id="' + b.id + '">' +
         '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(b.full_name) + ' ' + statusChip(b) + '</b><span>' + meta + '</span>' +
           whenLine +
+          emailLine +
           (b.quote ? '<em>“' + esc(b.quote) + '”</em>' : '') + '</div>' +
         '<div class="admin-row__act">' + actionsFor(state.tab) + '</div></div>';
     }).join('');
