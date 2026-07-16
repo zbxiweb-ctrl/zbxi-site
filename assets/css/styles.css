@@ -1471,7 +1471,9 @@ input, select, textarea { background: var(--surface-2); }
 @media (max-width: 640px) {
   .board-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .3rem; }
   .board-tabs::-webkit-scrollbar { display: none; }
-  .board-tabs .bt { flex: 0 0 auto; }
+  /* 40px min: the chips are 37px by default, and now that they live in a
+     drag-scrollable strip an undersized target turns taps into accidental drags. */
+  .board-tabs .bt { flex: 0 0 auto; min-height: 40px; }
 }
 
 /* Introductions composer — the one place on the board that spends boldness.
