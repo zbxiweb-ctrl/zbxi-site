@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alumni Brothers · Zeta Beta Xi</title>
-  <meta name="description" content="The alumni brotherhood of Zeta Beta Xi — graduates of SUNY Geneseo spanning three decades." />
-    <link rel="canonical" href="https://zetabetaxi.com/alumni.html" />
+  <title>Accessibility · Zeta Beta Xi</title>
+  <meta name="description" content="How Zeta Beta Xi works to keep zetabetaxi.com usable for everyone, including people who use assistive technology." />
+  <link rel="canonical" href="https://zetabetaxi.com/accessibility.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Alumni Brothers · Zeta Beta Xi" />
-  <meta property="og:description" content="Three decades of Zeta Beta Xi alumni — the lifelong network of the brotherhood." />
-  <meta property="og:url" content="https://zetabetaxi.com/alumni.html" />
+  <meta property="og:title" content="Accessibility · Zeta Beta Xi" />
+  <meta property="og:description" content="Our commitment to keeping the site usable for everyone." />
+  <meta property="og:url" content="https://zetabetaxi.com/accessibility.html" />
   <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest-main.jpg" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="assets/img/favicon.png" />
@@ -20,7 +20,7 @@
   <script>try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: no-preference)").matches)document.documentElement.classList.add("fx");}catch(e){}</script>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
-<body data-mode="alumni" class="page-body">
+<body class="page-body">
 
   <header class="nav">
     <div class="wrap nav__inner">
@@ -31,7 +31,7 @@
       <nav class="nav__links" id="navLinks">
         <a href="index.html#about">About</a>
         <a href="active.html">Active</a>
-        <a href="alumni.html" class="on">Alumni</a>
+        <a href="alumni.html">Alumni</a>
         <a href="index.html#family-tree">Family Tree</a>
         <a href="index.html#events">Events</a>
         <a href="gallery.html">Gallery</a>
@@ -48,47 +48,58 @@
   <main class="page-main">
     <section class="page-hero">
       <div class="wrap center">
-        <p class="eyebrow">Once a Brother, Always a Brother</p>
-        <h1 class="section-title" style="color:var(--gold-bright)">Alumni Brothers</h1>
+        <p class="eyebrow">Everyone Included</p>
+        <h1 class="section-title" style="color:var(--gold-bright)">Accessibility</h1>
         <hr class="rule" />
-        <p class="lede">Brothers who completed their degrees at SUNY Geneseo — three decades strong, around the world. <span id="pageCount"></span></p>
+        <p class="lede">We want every brother — and everyone — to be able to use this site.</p>
       </div>
     </section>
 
-    <section class="section" style="padding-top:3rem">
+    <section class="section" style="padding-top:3.2rem">
       <div class="wrap">
-        <div id="alumniMapSec" style="display:none">
-          <p class="eyebrow">🗺️ The Brotherhood Worldwide</p>
-          <div id="alumniMap" class="alumni-map"></div>
-          <p class="form-note" style="margin:.5rem 0 3rem">Pins come from the “current city” on brother profiles — update yours to appear on the map.</p>
-        </div>
-        <div id="discoverRail" style="display:none;margin-bottom:3rem"></div>
+        <div class="legal">
+          <p class="legal-updated">Last reviewed: July 15, 2026</p>
 
-        <div id="mentorFinder" style="display:none">
-          <p class="eyebrow">🎓 Find a Mentor</p>
-          <p class="lede" style="margin-bottom:1rem">Search alumni by skill, field, or profession. <button type="button" class="net-help" id="netHelpBtn">❓ How networking works</button></p>
-          <div class="mentor-bar">
-            <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
-            <button type="button" class="btn btn--gold" id="mentorReqBtn" style="display:none">🎓 Request a mentor</button>
+          <div class="legal-note">
+            <p><strong>Our commitment.</strong> Zeta Beta Xi wants this site to be usable by everyone,
+            including brothers who rely on assistive technology — screen readers, keyboard navigation, or
+            larger text. We build with that in mind, and we keep improving.</p>
           </div>
-          <div class="mentor-chips" id="mentorChips"></div>
-          <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
+
+          <h2>What we've done</h2>
+          <ul>
+            <li><strong>Keyboard friendly</strong> — you can move through and use the site without a mouse,
+            and the item you're on shows a visible focus outline.</li>
+            <li><strong>Respects "reduce motion"</strong> — if your device is set to reduce motion, we turn
+            animations off.</li>
+            <li><strong>Works with screen readers</strong> — we use meaningful headings, labels on form
+            fields, and descriptive text for links and buttons.</li>
+            <li><strong>Readable contrast</strong> — we aim for strong color contrast in both light and dark
+            modes.</li>
+            <li><strong>Zoom &amp; resize</strong> — the layout adapts to phones, tablets, and desktops, and
+            to larger text or browser zoom.</li>
+            <li><strong>Descriptive images</strong> — meaningful images include alternative text.</li>
+          </ul>
+
+          <h2>The standard we aim for</h2>
+          <p>We strive to meet the <strong>Web Content Accessibility Guidelines (WCAG) 2.1, Level AA</strong>.
+          This is our goal and an ongoing effort — not a formal certification — and parts of the site will
+          always be a work in progress.</p>
+
+          <h2>Known limitations</h2>
+          <p>We'd rather be honest about the areas we're still improving:</p>
+          <ul>
+            <li>Photos uploaded by brothers in the gallery may not always include descriptive text.</li>
+            <li>The interactive family tree is highly visual and can be harder to explore with a screen
+            reader — the same names and information are also available in the Active and Alumni directories.</li>
+          </ul>
+
+          <h2>Need help, or found a barrier?</h2>
+          <p>If any part of this site is hard to use, or you need information in a different format, please
+          email <a href="mailto:zbxi.web@gmail.com">zbxi.web@gmail.com</a>. Tell us what you ran into and
+          we'll help you directly and work to fix it.</p>
+          <p style="margin-top:1.3rem"><a class="legal-cta" href="mailto:zbxi.web@gmail.com?subject=Accessibility%20-%20Zeta%20Beta%20Xi&amp;body=Hi%20Zeta%20Beta%20Xi%2C%0D%0A%0D%0AI%20ran%20into%20an%20accessibility%20problem%3A%0D%0A%0D%0APage%3A%0D%0AWhat%20happened%3A%0D%0AThe%20device%20or%20assistive%20tool%20I%20use%3A%0D%0A%0D%0AThank%20you.">✉️ Report an accessibility problem</a></p>
         </div>
-
-        <div id="classIndex" style="display:none;margin-bottom:3rem"></div>
-        <p class="eyebrow">Alumni Executive Board</p>
-        <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
-
-        <div id="prevEboard" style="display:none">
-          <p class="eyebrow" style="margin-top:3rem">Previous Executive Board</p>
-          <div class="fam-bar" id="prevChips" style="justify-content:flex-start;margin:.6rem 0 1rem"></div>
-          <div class="eb-grid" id="prevGrid"></div>
-        </div>
-
-        <p class="eyebrow" style="margin-top:3rem">All Alumni Brothers</p>
-        <input class="admin-search" id="pageSearch" type="search" placeholder="Search by name or pledge class…" />
-        <div class="page-filters" id="pageFilters"></div>
-        <div class="bro-grid" id="pageGrid"><p class="page-empty">Loading…</p></div>
       </div>
     </section>
   </main>
@@ -106,21 +117,6 @@
     </div>
   </footer>
 
-  <!-- Brother profile modal -->
-  <div class="bmodal" id="brotherModal" aria-hidden="true">
-    <div class="bmodal__card">
-      <button class="bmodal__close" data-close aria-label="Close">✕</button>
-      <div class="bmodal__head">
-        <div class="bmodal__avatar" data-f="avatar">ΖΒΞ</div>
-        <div>
-          <h3 data-f="name">Brother</h3>
-          <p class="bmodal__sub" data-f="sub"></p>
-        </div>
-      </div>
-      <div class="bmodal__body" data-f="body"></div>
-    </div>
-  </div>
-
   <!-- My Profile / Account popup (opened from the header menu) -->
   <div class="pmodal" id="profileModal" aria-hidden="true">
     <div class="pmodal__card card-form">
@@ -133,15 +129,11 @@
   <script src="assets/js/config.js"></script>
   <script src="assets/js/turnstile.js"></script>
   <script src="assets/js/supabase-client.js"></script>
-  <script src="assets/js/mfa-guard.js"></script>
   <script src="assets/js/page-shell.js"></script>
   <script src="assets/js/header-account.js"></script>
   <script src="assets/js/portal.js"></script>
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/notify.js"></script>
-  <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/brothers-page.js"></script>
-  <script src="assets/js/alumni-map.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>
 </html>
