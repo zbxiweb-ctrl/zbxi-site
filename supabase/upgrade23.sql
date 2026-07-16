@@ -25,7 +25,7 @@ begin
     return;                                    -- non-admins get nothing
   end if;
   return query
-    select b.user_id, u.email
+    select b.user_id, u.email::text   -- auth.users.email is varchar(255); cast to match `text`
     from public.brothers b
     join auth.users u on u.id = b.user_id
     where b.status = 'pending';
