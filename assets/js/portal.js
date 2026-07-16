@@ -207,7 +207,7 @@
   var PERKS = [
     { ic: '📸', title: 'Private Gallery', blurb: 'Photos from the house & reunions — likes and comments, brothers only.', href: 'gallery.html' },
     { ic: '💬', title: 'Brothers Board', blurb: 'Chapter business, advice, and the job & referral board.', href: 'board.html' },
-    { ic: '🌳', title: 'Family Tree', blurb: 'Claim your name and see full profiles across every line.', href: '#family-tree' },
+    { ic: '🌳', title: 'Family Tree', blurb: 'Claim your name and see full profiles across every line.', href: 'family-tree.html' },
     { ic: '🔎', title: 'Member Directory', blurb: 'Find brothers by class year, city, and profession.', href: 'alumni.html' }
   ];
   function renderPerks(signedIn) {

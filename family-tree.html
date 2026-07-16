@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pledge Class · Zeta Beta Xi</title>
-  <meta name="description" content="A Zeta Beta Xi pledge class — the brothers who crossed together." />
+  <title>Family Tree · Zeta Beta Xi</title>
+  <meta name="description" content="The Zeta Beta Xi family tree — every brother since 1993, big to little across all ten founding lines." />
+  <link rel="canonical" href="https://zetabetaxi.com/family-tree.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Family Tree · Zeta Beta Xi" />
+  <meta property="og:description" content="Every brother since 1993 — big to little, across all ten founding lines." />
+  <meta property="og:url" content="https://zetabetaxi.com/family-tree.html" />
+  <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest-main.jpg" />
+  <meta name="twitter:card" content="summary" />
   <link rel="icon" href="assets/img/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,7 +32,7 @@
         <a href="index.html#about">About</a>
         <a href="active.html">Active</a>
         <a href="alumni.html">Alumni</a>
-        <a href="family-tree.html">Family Tree</a>
+        <a href="family-tree.html" class="on">Family Tree</a>
         <a href="events.html">Events</a>
         <a href="gallery.html">Gallery</a>
         <a href="board.html">Board</a>
@@ -41,17 +48,45 @@
   <main class="page-main">
     <section class="page-hero">
       <div class="wrap center">
-        <p class="eyebrow">Crossed Together, Brothers Forever</p>
-        <h1 class="section-title" style="color:var(--gold-bright)" id="classTitle">Pledge Class</h1>
+        <p class="eyebrow">Our Lineage</p>
+        <h1 class="section-title" style="color:var(--gold-bright)">The Family Tree</h1>
         <hr class="rule" />
-        <p class="lede" id="classStats"></p>
+        <p class="lede">Every brother has a big and, in time, littles of their own — big to little, across all ten founding lines. Drag to explore, pinch (or Ctrl + scroll) to zoom, and tap a brother for his card.</p>
       </div>
     </section>
 
-    <section class="section" style="padding-top:3rem">
+    <section class="section" style="padding-top:2.4rem">
       <div class="wrap">
-        <p class="center" style="margin-bottom:2rem"><a class="btn btn--gold" id="classThreadBtn" style="display:none">💬 Open the class thread</a></p>
-        <div class="bro-grid" id="classGrid"><p class="page-empty">Loading…</p></div>
+        <div class="center">
+          <p class="tree-lockline" id="treeLockNote" style="display:none">🔒 <b>The real tree is members-only.</b> The demo below shows how it works — brothers <a href="index.html#brothers-portal">sign in</a> to explore all ten family lines.</p>
+        </div>
+        <div class="tree-search" style="display:none">
+          <input id="treeSearchInput" type="search" placeholder="🔎 Find a brother…" autocomplete="off" />
+          <div class="tree-search__results" id="treeSearchResults"></div>
+        </div>
+        <div class="fam-bar" id="treeFamilies" style="display:none"></div>
+        <div class="tree-legend" id="treeLegend">
+          <span><i class="dot dot--reg"></i> Registered on the site</span>
+          <span><i class="dot dot--unreg"></i> Not yet registered</span>
+          <span><i class="dot dot--chev">▸ n</i> Click to expand a branch</span>
+        </div>
+        <div class="tree-shell" style="margin-top:1rem">
+          <div class="tree-viewport" id="treeViewport">
+            <div class="tree-canvas" id="treeCanvas"></div>
+            <div class="tree-hintchip" id="treeHintChip">✋ Drag to move &nbsp;·&nbsp; 🤏 Pinch (or Ctrl + scroll) to zoom &nbsp;·&nbsp; Tap a brother for his card</div>
+            <div class="tree-controls">
+              <button id="treeExpandAll" aria-label="Expand all" title="Expand all family lines">⊞</button>
+              <button id="treeCollapseAll" aria-label="Back to all families" title="Back to all families">⊟</button>
+              <span class="tree-controls__sep" aria-hidden="true"></span>
+              <button id="treeZoomOut" aria-label="Zoom out" title="Zoom out">−</button>
+              <button id="treeReset" aria-label="Fit to view" title="Fit to view">⟳</button>
+              <button id="treeZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
+              <span class="tree-controls__sep" aria-hidden="true"></span>
+              <button id="treeFull" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+            </div>
+            <button class="tree-fullclose" id="treeFullClose" aria-label="Close fullscreen">✕ Close</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -103,7 +138,7 @@
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/notify.js"></script>
   <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/class-page.js"></script>
+  <script src="assets/js/family-tree.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>
 </html>

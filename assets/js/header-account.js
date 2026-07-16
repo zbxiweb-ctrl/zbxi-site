@@ -23,10 +23,10 @@
   var BROTHERS_ONLY = [
     { ic: '🎓', label: 'Active',      href: 'active.html' },
     { ic: '🏛', label: 'Alumni',      href: 'alumni.html' },
-    { ic: '🌳', label: 'Family Tree', href: BASE + '#family-tree' },
-    { ic: '📅', label: 'Events',      href: BASE + '#events' },
-    { ic: '🖼', label: 'Gallery',     href: 'gallery.html' },
-    { ic: '💬', label: 'Board',       href: 'board.html' }
+    { ic: '💬', label: 'Board',       href: 'board.html' },
+    { ic: '📅', label: 'Events',      href: 'events.html' },
+    { ic: '🌳', label: 'Family Tree', href: 'family-tree.html' },
+    { ic: '🖼', label: 'Gallery',     href: 'gallery.html' }
   ];
 
   /* Reload onto a CLEAN url after a sign-in/out: no #hash and no ?auth=/?invite=
@@ -111,8 +111,9 @@
             (isAdmin ? '<span class="role-pill role-pill--admin">★ Admin</span>' : '<span class="role-pill">Brother of ΖΒΞ</span>') +
           '</div>' +
         '</div>' +
-        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> Brother Profile</a>' +
         '<a href="' + MYPROFILE + '" id="navAccount2" role="menuitem"><i>⚙</i> Account</a>' +
+        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> Brother Profile</a>' +
+        '<a href="welcome.html" role="menuitem"><i>🎉</i> Orientation</a>' +
         '<div class="nav__menu-divider"></div>' +
         '<button type="button" class="nav__sub-toggle" id="navBrothersOnly" aria-expanded="false">' +
           '<i>🔒</i> Brothers Only <em class="nav__sub-caret">▾</em>' +

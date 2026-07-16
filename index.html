@@ -35,8 +35,8 @@
         <a href="#about">About</a>
         <a href="active.html">Active</a>
         <a href="alumni.html">Alumni</a>
-        <a href="#family-tree">Family Tree</a>
-        <a href="#events">Events</a>
+        <a href="family-tree.html">Family Tree</a>
+        <a href="events.html">Events</a>
         <a href="gallery.html">Gallery</a>
         <a href="board.html">Board</a>
         <a href="#contact">Contact</a>
@@ -157,40 +157,16 @@
   </section>
 
   <!-- ============ FAMILY TREE ============ -->
+  <!-- ============ FAMILY TREE (teaser → family-tree.html) ============ -->
   <section class="section section--cream2" id="family-tree">
     <div class="wrap">
       <div class="center">
         <p class="eyebrow">Our Lineage</p>
         <h2 class="section-title">The Family Tree</h2>
         <hr class="rule" />
-        <p class="lede">Every brother has a big and, in time, littles of their own. Drag to explore, pinch (or Ctrl + scroll) to zoom, and tap a brother for his card — or go fullscreen for the whole map.</p>
-        <p class="tree-lockline" id="treeLockNote" style="display:none">🔒 <b>The real tree is members-only.</b> The demo below shows how it works — brothers <a href="#brothers-portal">sign in</a> to explore all ten family lines.</p>
-      </div>
-      <div class="tree-search" style="display:none">
-        <input id="treeSearchInput" type="search" placeholder="🔎 Find a brother…" autocomplete="off" />
-        <div class="tree-search__results" id="treeSearchResults"></div>
-      </div>
-      <div class="fam-bar" id="treeFamilies" style="display:none"></div>
-      <div class="tree-legend" id="treeLegend">
-        <span><i class="dot dot--reg"></i> Registered on the site</span>
-        <span><i class="dot dot--unreg"></i> Not yet registered</span>
-        <span><i class="dot dot--chev">▸ n</i> Click to expand a branch</span>
-      </div>
-      <div class="tree-shell" style="margin-top:1rem">
-        <div class="tree-viewport" id="treeViewport">
-          <div class="tree-canvas" id="treeCanvas"></div>
-          <div class="tree-hintchip" id="treeHintChip">✋ Drag to move &nbsp;·&nbsp; 🤏 Pinch (or Ctrl + scroll) to zoom &nbsp;·&nbsp; Tap a brother for his card</div>
-          <div class="tree-controls">
-            <button id="treeExpandAll" aria-label="Expand all" title="Expand all family lines">⊞</button>
-            <button id="treeCollapseAll" aria-label="Back to all families" title="Back to all families">⊟</button>
-            <span class="tree-controls__sep" aria-hidden="true"></span>
-            <button id="treeZoomOut" aria-label="Zoom out" title="Zoom out">−</button>
-            <button id="treeReset" aria-label="Fit to view" title="Fit to view">⟳</button>
-            <button id="treeZoomIn" aria-label="Zoom in" title="Zoom in">+</button>
-            <span class="tree-controls__sep" aria-hidden="true"></span>
-            <button id="treeFull" aria-label="Fullscreen" title="Fullscreen">⛶</button>
-          </div>
-          <button class="tree-fullclose" id="treeFullClose" aria-label="Close fullscreen">✕ Close</button>
+        <p class="lede">Every brother since 1993 — big to little, across all ten founding lines. Explore the interactive tree: drag, zoom, search, and open any brother's card.</p>
+        <div class="hero__cta" style="justify-content:center;margin-top:2rem">
+          <a href="family-tree.html" class="btn btn--gold">🌳 Explore the Family Tree →</a>
         </div>
       </div>
     </div>
@@ -247,16 +223,18 @@
     </div>
   </section>
 
-  <!-- ============ EVENTS & PHILANTHROPY ============ -->
+  <!-- ============ EVENTS & PHILANTHROPY (teaser → events.html) ============ -->
   <section class="section section--cream2" id="events">
     <div class="wrap">
       <div class="center">
         <p class="eyebrow">On Campus &amp; Beyond</p>
         <h2 class="section-title">Events &amp; Philanthropy</h2>
         <hr class="rule" />
-        <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — the brotherhood's schedule in one place.</p>
+        <p class="lede">Reunions, philanthropy, rush, homecoming and chapter meetings — the brotherhood's schedule, with RSVPs, in one place.</p>
+        <div class="hero__cta" style="justify-content:center;margin-top:2rem">
+          <a href="events.html" class="btn btn--gold">📅 See the Events Calendar →</a>
+        </div>
       </div>
-      <div id="calWrap" style="margin-top:2.4rem"><p class="page-empty">Loading the calendar…</p></div>
     </div>
   </section>
 
@@ -316,7 +294,7 @@
       <p class="motto">Brothers of Zeta Beta Xi</p>
       <nav class="footer__nav">
         <a href="#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a>
-        <a href="#family-tree">Family Tree</a><a href="#events">Events</a><a href="gallery.html">Gallery</a>
+        <a href="family-tree.html">Family Tree</a><a href="events.html">Events</a><a href="gallery.html">Gallery</a>
         <a href="board.html">Board</a><a href="#brothers-portal">Log In / Sign Up</a><a href="#contact">Contact</a>
       </nav>
       <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
@@ -359,7 +337,6 @@
   <script src="assets/js/portal.js"></script>
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/family-tree.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>
 </html>
