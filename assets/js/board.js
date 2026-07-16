@@ -321,12 +321,33 @@
   }
 
   function wireTabs() {
+    // Changing space is arriving somewhere new, so land at the top of it. Keeping
+    // the old scroll offset drops you into the middle of a section you've never
+    // seen — or past the end of a shorter one, where the browser clamps you to a
+    // view of nothing.
+    // The jump must be INSTANT. html{scroll-behavior:smooth} is set site-wide for
+    // anchor links, and it animates window.scrollTo too — measured still gliding
+    // 250ms later, panning over a list you didn't ask for while its content is
+    // being replaced. An inline style out-specifies that rule.
+    var go = function (id) {
+      state.cat = id;
+      renderList();
+      var h = document.documentElement, prev = h.style.scrollBehavior;
+      h.style.scrollBehavior = 'auto';
+      // Load-bearing, do not remove: renderList() just invalidated style, and
+      // scrollTo reads the STALE computed scroll-behavior (still smooth) unless
+      // something forces a recalc first. Measured: without this read the jump
+      // animates; with it, scrollY is 0 synchronously.
+      void getComputedStyle(h).scrollBehavior;
+      window.scrollTo(0, 0);
+      h.style.scrollBehavior = prev;
+    };
     root.querySelectorAll('[data-cat]').forEach(function (b) {
-      b.onclick = function () { state.cat = b.dataset.cat; renderList(); };
+      b.onclick = function () { go(b.dataset.cat); };
     });
     // The mobile select is the same control as the rail — one code path.
     var sel = document.getElementById('spacesSel');
-    if (sel) sel.onchange = function () { state.cat = sel.value; renderList(); };
+    if (sel) sel.onchange = function () { go(sel.value); };
   }
 
   /* ---------- polls ---------- */

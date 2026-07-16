@@ -1488,6 +1488,12 @@ input, select, textarea { background: var(--surface-2); }
   .board-controls__right { width: 100%; }
   .board-controls__right .board-spaces,
   .board-controls__right .page-filter { flex: 1 1 0; min-width: 0; }
+  /* Where you ARE belongs above what you can DO: the spaces select goes directly
+     under the section's hero band, and "+ New thread" drops below it. order:-1
+     rather than reordering the DOM, because on desktop the button and the sort
+     select share one row and that reads correctly already. This also matches
+     renderPolls(), which has always put its controls above its "+ New poll". */
+  .board-controls__right { order: -1; }
 }
 
 /* Introductions composer — the one place on the board that spends boldness.
