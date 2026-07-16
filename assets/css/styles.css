@@ -550,6 +550,35 @@ p { margin: 0 0 1em; }
 .page-hero { background: var(--navy); color: var(--cream); padding: clamp(3rem, 7vw, 5rem) 0; }
 .page-hero .lede { color: var(--on-dark); }
 #pageCount { color: var(--gold-bright); font-weight: 600; }
+
+/* ---------- Legal pages (privacy, terms) — readable long-form prose ---------- */
+.legal { max-width: 820px; margin: 0 auto; }
+.legal h2 { font-family: var(--display); color: var(--heading); font-size: clamp(1.4rem, 3vw, 1.8rem); margin: 2.6rem 0 .9rem; }
+.legal h2:first-of-type { margin-top: 0; }
+.legal h3 { font-family: var(--sans); color: var(--heading); font-size: 1.05rem; font-weight: 700; margin: 1.7rem 0 .5rem; }
+.legal p, .legal li { color: var(--text); line-height: 1.75; font-size: 1.02rem; }
+.legal p { margin: 0 0 1.05rem; }
+.legal ul { margin: .3rem 0 1.2rem; padding-left: 1.25rem; }
+.legal li { margin: 0 0 .55rem; }
+.legal strong { color: var(--heading); font-weight: 700; }
+.legal a { color: var(--gold-deep); text-decoration: underline; text-underline-offset: 2px; }
+:root[data-theme="dark"] .legal a { color: var(--gold-bright); }
+/* Data-request CTA — beats the .legal a link styling in both themes (fixed gold button, dark text) */
+.legal a.legal-cta,
+:root[data-theme="dark"] .legal a.legal-cta {
+  display: inline-block; text-decoration: none; color: var(--navy-deep);
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  font-weight: 700; padding: .7rem 1.15rem; border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(200,162,75,.35);
+}
+.legal a.legal-cta:hover { box-shadow: 0 14px 30px rgba(200,162,75,.5); transform: translateY(-1px); }
+.legal-updated { color: var(--muted); font-size: .95rem; margin: -.4rem 0 2.2rem; }
+.legal-note { background: var(--bg-2); border-left: 3px solid var(--gold); padding: 1rem 1.2rem; border-radius: 8px; margin: 0 0 2rem; }
+.legal-note p:last-child { margin-bottom: 0; }
+.footer__disclaimer { display: block; max-width: 640px; margin: .7rem auto 0; font-size: .72rem; line-height: 1.55; opacity: .7; }
+.footer__legal { display: block; margin-top: .55rem; font-size: .82rem; }
+.footer__legal a { color: var(--gold-bright); text-decoration: none; margin: 0 .3rem; }
+.footer__legal a:hover { text-decoration: underline; }
 .nav__links a.on { color: var(--gold-bright); font-weight: 700; }
 .page-empty { color: var(--muted); padding: 1.4rem 0; }
 

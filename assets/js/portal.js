@@ -279,6 +279,7 @@
       '</form>' +
       (signup
         ? '<p class="form-note">Only established brothers should sign up. New profiles are reviewed by chapter leadership once — after that you can edit your profile freely.</p>'
+          + '<p class="form-note" style="margin-top:.5rem">By creating an account, you agree to our <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a>.</p>'
         : '<p class="form-note center"><a href="#" id="forgotPw">Forgot your password?</a></p>'));
 
     card.querySelectorAll('[data-tab]').forEach(function (b) {
