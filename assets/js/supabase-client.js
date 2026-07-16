@@ -235,7 +235,7 @@
     myProfile: function (userId) {
       if (!configured) return Promise.resolve(null);
       var self = this;
-      return client.from('brothers').select('*').eq('user_id', userId).maybeSingle()
+      return client.from('brothers').select('*, brother_titles(title,term,scope,sort)').eq('user_id', userId).maybeSingle()
         .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
     },
     upsertProfile: function (row) {

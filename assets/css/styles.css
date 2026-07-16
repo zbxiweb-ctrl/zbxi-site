@@ -996,6 +996,11 @@ body.modal-open { overflow: hidden; }
 .pf-masthead__eyebrow { font-family: var(--sans); font-size: .64rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: var(--gold); }
 
 .pf-group { border: 1px solid var(--hairline); border-radius: 12px; padding: 1rem 1.2rem 1.2rem; margin: 0 0 1.3rem; }
+/* Leadership record — read-only positions list in the profile editor (brother_titles) */
+.lead-record { list-style: none; margin: .2rem 0 0; padding: .5rem .75rem; border: 1.5px solid var(--hairline); border-radius: 10px; background: var(--surface); }
+.lead-record li { font-size: .92rem; color: var(--text); padding: .2rem 0; }
+.lead-record li + li { border-top: 1px solid var(--hairline); }
+.lead-record li span { color: var(--muted); }
 .pf-group legend { font-family: var(--display); color: var(--heading); font-size: 1.06rem; padding: 0 .55rem; }
 /* Gold registry marker before each section name — echoes the console's ✦ rule. */
 .pf-group legend::before { content: "✦"; color: var(--gold); font-size: .72em; margin-right: .42rem; vertical-align: middle; opacity: .85; }

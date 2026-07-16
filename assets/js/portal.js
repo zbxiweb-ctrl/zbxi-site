@@ -716,10 +716,17 @@
             fld('Grad year', 'grad_year', pr.grad_year, 'number') +
             fld('Major', 'major', pr.major) +
           '</div>' +
-          '<div class="field"><label>Chapter title</label>' +
-            (pr.role
-              ? '<input value="' + esc(pr.role + (pr.role_term ? ' · ' + pr.role_term : '')) + '" disabled />'
-              : '<input value="— none yet —" disabled />') +
+          '<div class="field"><label>Leadership record</label>' +
+            (function () {
+              // Full positions history (brother_titles); fall back to the single
+              // headline title, then to "none". Admin-managed — read-only here.
+              var ts = ((pr.brother_titles) || []).slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+              if (!ts.length && pr.role) ts = [{ title: pr.role, term: pr.role_term }];
+              if (!ts.length) return '<input value="— none yet —" disabled />';
+              return '<ul class="lead-record">' + ts.map(function (t) {
+                return '<li>' + esc(t.title) + (t.term ? ' <span>· ' + esc(t.term) + '</span>' : '') + '</li>';
+              }).join('') + '</ul>';
+            })() +
             '<div id="titleReqBox"></div>' +
           '</div>' +
           '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select></div>' +
