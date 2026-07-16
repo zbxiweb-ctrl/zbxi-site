@@ -254,7 +254,7 @@
     listPending: function () { return this.listByStatus('pending'); },
     // Admin-only: signup (login) email for each pending brother, from auth.users.
     // Returns [] for non-admins (the DB function is admin-gated). See upgrade23.sql.
-    adminPendingEmails: function () { return client.rpc('admin_pending_emails'); },
+    adminPendingEmails: function () { return client.rpc('admin_pending_emails').then(function (r) { return r; }); },
     setStatus: function (id, status) {
       return client.from('brothers').update({ status: status }).eq('id', id);
     },
