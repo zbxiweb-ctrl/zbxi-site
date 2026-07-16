@@ -11,6 +11,10 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Agent memory. This repo is PUBLIC and these notes catalogue unfixed weaknesses
+# in this site by file and line — a map for anyone who reads it. Never track.
+.claude/
+
 # Never commit real secrets. config.js ships with PLACEHOLDER values only
 # (the Supabase anon key is safe to publish; never add a service_role key here).
 .env
