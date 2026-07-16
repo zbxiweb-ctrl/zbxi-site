@@ -18,12 +18,21 @@
   }
 
   var CATS = [
+    { id: 'introductions', label: 'Introductions',    ic: '👋', desc: 'New here? Say hi — your class, where you landed, what you’re up to.' },
     { id: 'chapter',       label: 'Chapter Business', ic: '⚖️', desc: 'Official chapter matters — meetings, votes, house business.' },
     { id: 'advice',        label: 'Advice',           ic: '🧭', desc: 'Classes, careers, life — ask the brotherhood anything.' },
     { id: 'social',        label: 'Social',           ic: '🎉', desc: 'Plans, memories, class threads and everything fun.' },
     { id: 'opportunities', label: 'Opportunities',    ic: '💼', desc: 'Jobs, internships and referrals — offering or seeking.' }
   ];
-  function catLabel(id) { var c = CATS.filter(function (x) { return x.id === id; })[0]; return c ? c.label : id; }
+  // Introductions has its own composer (introCard) — it's never a "+ New thread" target.
+  var POSTABLE = CATS.filter(function (c) { return c.id !== 'introductions'; });
+  function catLabel(id) {
+    if (id === 'all') return 'the board';
+    // esc() the fallthrough: `id` can be a DB `category`, which is client-supplied
+    // (RLS doesn't constrain it) and lands unescaped in emptyState/renderCompose.
+    // Don't make the CHECK constraint the only thing standing between us and HTML.
+    var c = CATS.filter(function (x) { return x.id === id; })[0]; return c ? c.label : esc(id);
+  }
   function catMeta(id) { return CATS.filter(function (x) { return x.id === id; })[0] || null; }
 
   /* ---------- unread tracking (per browser) ---------- */
@@ -52,7 +61,7 @@
 
   var me = null, dir = {}, threads = [], META = {}, isAdmin = false;
   var MY_COMMITTEES = [], POLLS = [], VOTES = [];
-  var state = { cat: 'chapter', thread: null, sort: 'active' };
+  var state = { cat: 'all', thread: null, sort: 'active' };
 
   // Paint the skeleton NOW for a likely-signed-in brother: the auth checks below
   // take ~200ms, twice as long as the data fetch, and used to be a blank screen.
@@ -60,6 +69,7 @@
   if (Z.hasSessionHint && Z.hasSessionHint()) root.innerHTML = boardSkeleton();
 
   function committeeOf(id) { return MY_COMMITTEES.filter(function (c) { return c.id === id; })[0]; }
+  function feedThreads() { return threads.filter(function (t) { return !t.committee_id; }); }
 
   function author(uid) { return dir[uid] || { full_name: 'A brother', photo_url: null }; }
   function chip(uid) {
@@ -71,10 +81,16 @@
 
   /* ---------- thread list ---------- */
   function tabsHtml() {
+    var feed = feedThreads();
+    var allUnread = feed.filter(isUnread).length;
+    var all = '<button class="bt bt--all' + (state.cat === 'all' ? ' on' : '') + '" data-cat="all">' +
+      '✦ All <i' + (allUnread ? ' class="bt__new"' : '') + '>' + feed.length + '</i></button>';
     var std = CATS.map(function (c) {
-      var unread = threads.filter(function (t) { return t.category === c.id && !t.committee_id && isUnread(t); }).length;
-      return '<button class="bt bt--' + c.id + (state.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">' +
-        c.ic + ' ' + c.label + (unread ? ' <i class="bt__new">' + unread + '</i>' : '') + '</button>';
+      var inCat = feed.filter(function (t) { return t.category === c.id; });
+      var unread = inCat.filter(isUnread).length;
+      return '<button class="bt bt--' + c.id + (state.cat === c.id ? ' on' : '') +
+        (inCat.length ? '' : ' bt--empty') + '" data-cat="' + c.id + '">' +
+        c.ic + ' ' + c.label + ' <i' + (unread ? ' class="bt__new"' : '') + '>' + inCat.length + '</i></button>';
     }).join('');
     var polls = '<button class="bt bt--polls' + (state.cat === 'polls' ? ' on' : '') + '" data-cat="polls">🗳️ Polls' +
       (POLLS.length ? ' <i>' + POLLS.length + '</i>' : '') + '</button>';
@@ -82,7 +98,7 @@
       var n = threads.filter(function (t) { return t.committee_id === c.id; }).length;
       return '<button class="bt board-tabs__comm' + (state.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">🔒 ' + esc(c.name) + (n ? ' <i>' + n + '</i>' : '') + '</button>';
     }).join('');
-    return '<div class="board-tabs">' + std + polls + comms +
+    return '<div class="board-tabs">' + all + std + polls + comms +
       '<button class="bt bt--help" id="boardHelp" title="How the board works">❓</button></div>';
   }
 
@@ -93,9 +109,11 @@
   }
 
   function emptyState(label) {
+    // label is null on the feed, where "Nothing in the board yet" reads wrong.
+    var head = label ? 'Nothing in ' + label + ' yet.' : 'Nothing here yet.';
     return '<div class="board-empty">' +
       '<img src="assets/img/crest-mark.png" alt="" />' +
-      '<p><b>Nothing in ' + label + ' yet.</b><br>Be the brother who starts the first thread.</p></div>';
+      '<p><b>' + head + '</b><br>Be the brother who starts the first thread.</p></div>';
   }
 
   function threadCard(t) {
@@ -126,15 +144,64 @@
     });
   }
 
-  function sidebarHtml() {
-    var recent = threads.slice().sort(function (a, z) { return new Date(lastActivity(z)) - new Date(lastActivity(a)); }).slice(0, 5);
-    if (!recent.length) return '';
-    return '<aside class="board-aside"><h4>⚡ Latest activity</h4>' + recent.map(function (t) {
-      var a = author(t.author_user);
-      return '<button class="board-aside__row" data-thr="' + t.id + '">' +
-        '<b>' + (isUnread(t) ? '<i class="thr-dot"></i>' : '') + esc(t.title) + '</b>' +
-        '<span>' + esc(a.full_name.split(' ')[0]) + ' · ' + when(lastActivity(t)) + '</span></button>';
-    }).join('') + '</aside>';
+  /* ---------- introductions composer ---------- */
+  // Deliberately not the generic composer: one textarea, no title field. The title
+  // is generated, because every extra field is a brother who doesn't post.
+  function hasIntro() {
+    return !!(me && threads.some(function (t) {
+      return t.category === 'introductions' && t.author_user === me.id;
+    }));
+  }
+  function introTitle() {
+    var p = dir[me.id] || {};
+    var name = String(p.full_name || 'A brother').trim();
+    return p.pledge_class ? (name + ' · ' + p.pledge_class) : name;
+  }
+  function introCard() {
+    var p = dir[me.id] || {};
+    var first = String(p.full_name || '').trim().split(' ')[0];
+    var cls = p.pledge_class ? '<span class="intro-card__class">' + esc(p.pledge_class) + '</span>' : '';
+    return '<div class="intro-card">' +
+      '<div class="intro-card__head"><b>👋 Welcome home' + (first ? ', ' + esc(first) : '') + '.</b>' + cls + '</div>' +
+      '<form id="introForm" novalidate>' +
+        '<textarea id="introText" maxlength="2000" required ' +
+          'placeholder="Where’d you land, what are you doing now, and what do you miss most?"></textarea>' +
+        '<div class="intro-card__foot">' +
+          '<span class="intro-card__hint">Posts to 👋 Introductions, where every brother can find you.</span>' +
+          '<button class="btn btn--gold" type="submit">Post my intro →</button>' +
+        '</div>' +
+        '<p class="form-status" id="introStatus" role="status"></p>' +
+      '</form></div>';
+  }
+  function wireIntroCard() {
+    var f = document.getElementById('introForm');
+    if (!f) return;
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      var ta = document.getElementById('introText');
+      var st = document.getElementById('introStatus');
+      var body = ta.value.trim();
+      if (!body) { ta.focus(); return; }
+      var btn = f.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Posting…';
+      // Promise.resolve(): threadCreate returns a Supabase query builder (a thenable),
+      // which has no .catch of its own.
+      Promise.resolve(Z.threadCreate({
+        author_user: me.id, category: 'introductions', committee_id: null,
+        tag: null, title: introTitle(), body: body, image_path: null
+      })).then(function (r) {
+        if (r.error) throw r.error;
+        return loadAll().then(function () {
+          state.cat = 'all';           // land him back on a board that now has his post in it
+          renderList();
+          window.scrollTo(0, 0);
+        });
+      }).catch(function (err) {
+        st.className = 'form-status err';
+        st.textContent = (err && err.message) || 'Could not post your intro.';
+        btn.disabled = false; btn.textContent = 'Post my intro →';   // his text is never cleared
+      });
+    };
   }
 
   function renderList() {
@@ -142,17 +209,20 @@
     if (state.cat === 'polls') return renderPolls();
     var comm = committeeOf(state.cat);
     var meta = catMeta(state.cat);
+    var isAll = state.cat === 'all';
     var mine = comm
       ? threads.filter(function (t) { return t.committee_id === state.cat; })
-      : threads.filter(function (t) { return t.category === state.cat && !t.committee_id; });
+      : (isAll ? feedThreads() : feedThreads().filter(function (t) { return t.category === state.cat; }));
     mine = sortThreads(mine);
 
     var band = comm
       ? '<div class="cat-band cat-band--comm">🔒 <div><b>' + esc(comm.name) + '</b><span>Private — only committee members and the webmaster can see this space.</span></div></div>'
-      : (meta ? '<div class="cat-band cat-band--' + meta.id + '">' + meta.ic + ' <div><b>' + meta.label + '</b><span>' + meta.desc + '</span></div></div>' : '');
+      : ((!isAll && meta) ? '<div class="cat-band cat-band--' + meta.id + '">' + meta.ic + ' <div><b>' + meta.label + '</b><span>' + meta.desc + '</span></div></div>' : '');
 
+    // Introductions is composer-only: no "+ New thread" there, which also stops second intros.
     var controls = '<div class="board-controls">' +
-      '<button class="btn btn--gold" id="newThread">+ New ' + (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button>' +
+      (state.cat === 'introductions' ? '' :
+        '<button class="btn btn--gold" id="newThread">+ New ' + (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button>') +
       (mine.length > 1 ? '<select class="page-filter" id="threadSort">' +
         [['active', 'Recently active'], ['newest', 'Newest'], ['replies', 'Most replies'], ['oldest', 'Oldest']].map(function (o) {
           return '<option value="' + o[0] + '"' + (state.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
@@ -160,14 +230,17 @@
       '</div>';
 
     var list = mine.length ? '<div class="thread-list">' + mine.map(threadCard).join('') + '</div>'
-      : emptyState(comm ? esc(comm.name) : catLabel(state.cat));
+      : emptyState(isAll ? null : (comm ? esc(comm.name) : catLabel(state.cat)));
 
-    root.innerHTML = suggestionCard() + tabsHtml() +
-      '<div class="board-layout"><div>' + band + controls + list + '</div>' + sidebarHtml() + '</div>';
+    var intro = (!hasIntro() && (isAll || state.cat === 'introductions')) ? introCard() : '';
+
+    root.innerHTML = intro + tabsHtml() + band + controls + list + suggestionCard();
     wireTabs();
+    wireIntroCard();
     wireSuggestionCard();
     wireHelp();
-    document.getElementById('newThread').onclick = function () { renderCompose(); };
+    var nt = document.getElementById('newThread');
+    if (nt) nt.onclick = function () { renderCompose(); };
     var sortSel = document.getElementById('threadSort');
     if (sortSel) sortSel.onchange = function () { state.sort = sortSel.value; renderList(); };
     root.querySelectorAll('[data-thr]').forEach(function (b) {
@@ -231,7 +304,7 @@
         (isAdmin ? ' · <a href="#" data-delpoll>delete</a>' : '') + '</div></div>';
     }).join('') : '<p class="page-empty">No polls yet' + (isAdmin ? ' — post the first one.' : '.') + '</p>';
 
-    root.innerHTML = suggestionCard() + tabsHtml() + newBtn + cards;
+    root.innerHTML = tabsHtml() + newBtn + cards + suggestionCard();
     wireTabs();
     wireSuggestionCard();
     wireHelp();
@@ -337,18 +410,26 @@
   /* ---------- new thread ---------- */
   function renderCompose(prefillTitle) {
     var comm = committeeOf(state.cat);
-    var isOpp = state.cat === 'opportunities';
+    var isAll = state.cat === 'all';
     var where = comm ? esc(comm.name) : catLabel(state.cat);
+    // From the feed there's no implied category, so ask — 'all' isn't a valid
+    // category and would fail the CHECK constraint.
+    var catField = isAll
+      ? '<div class="field"><label>Where should this go? *</label><select name="cat" id="thrCat">' +
+          POSTABLE.map(function (c) {
+            return '<option value="' + c.id + '"' + (c.id === 'social' ? ' selected' : '') + '>' + c.ic + ' ' + c.label + '</option>';
+          }).join('') + '</select></div>'
+      : '';
+    var oppNow = isAll ? false : state.cat === 'opportunities';   // 'social' is the default pick
     root.innerHTML =
       '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
       '<div class="card-form" style="max-width:680px">' +
-        '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (isOpp ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
+        '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (oppNow ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
         '<form id="thrForm" novalidate>' +
-          (isOpp
-            ? '<div class="field"><label>Type</label><select name="tag">' +
-                '<option value="offering">💼 Offering — I have a job/internship/referral</option>' +
-                '<option value="seeking">🔎 Seeking — I\'m looking for opportunities</option></select></div>'
-            : '') +
+          catField +
+          '<div class="field" id="tagField"' + (oppNow ? '' : ' style="display:none"') + '><label>Type</label><select name="tag">' +
+            '<option value="offering">💼 Offering — I have a job/internship/referral</option>' +
+            '<option value="seeking">🔎 Seeking — I\'m looking for opportunities</option></select></div>' +
           '<div class="field"><label>Title *</label><input name="title" required maxlength="140" value="' + esc(prefillTitle || '') + '"></div>' +
           '<div class="field"><label>Post *</label><textarea name="body" required></textarea></div>' +
           '<div class="field"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*"></div>' +
@@ -356,10 +437,20 @@
           '<p class="form-status" id="thrStatus" role="status"></p>' +
         '</form></div>';
     document.getElementById('backList').onclick = renderList;
+
+    // Same show/hide pattern as the profile pledge-class picker in portal.js.
+    var catSel = document.getElementById('thrCat');
+    if (catSel) {
+      var tagField = document.getElementById('tagField');
+      var syncTag = function () { tagField.style.display = catSel.value === 'opportunities' ? '' : 'none'; };
+      catSel.onchange = syncTag;
+      syncTag();
+    }
     document.getElementById('thrForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = document.getElementById('thrStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
+      var chosen = comm ? 'chapter' : (isAll ? f.cat.value : state.cat);
       var btn = f.querySelector('button[type=submit]');
       btn.disabled = true; btn.textContent = 'Posting…';
       var file = f.photo.files[0];
@@ -369,9 +460,9 @@
       photoP.then(function (imagePath) {
         return Z.threadCreate({
           author_user: me.id,
-          category: comm ? 'chapter' : state.cat,
+          category: chosen,
           committee_id: comm ? comm.id : null,
-          tag: isOpp ? f.tag.value : null,
+          tag: chosen === 'opportunities' ? f.tag.value : null,
           title: f.title.value.trim(),
           body: f.body.value.trim(),
           image_path: imagePath
