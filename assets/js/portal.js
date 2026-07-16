@@ -666,11 +666,11 @@
   function renderForm(pr, showBack) {
     pr = pr || {};
     var host = mbody.querySelector('#portalTabBody') || mbody;
-    var bigOpts = ['<option value="">— none / I\'m a founder —</option>'].concat(
+    var bigOpts = ['<option value="">— select your big brother —</option>'].concat(
       state.verified.filter(function (b) { return b.id !== pr.id; })
         .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); })
         .map(function (b) { return '<option value="' + b.id + '"' + (pr.big_id === b.id ? ' selected' : '') + '>' + esc(b.full_name) + ' (' + esc(b.pledge_class || '') + ')</option>'; })
-    ).join('');
+    ).concat(['<option value="__founder__">⭐ I\'m a founder — no big brother</option>']).join('');
     var prefs = String(pr.contact_prefs || '').split(',');
     function prefBox(key, label) {
       return '<label class="pref-box"><input type="checkbox" name="pref_' + key + '"' +
@@ -729,7 +729,8 @@
             })() +
             '<div id="titleReqBox"></div>' +
           '</div>' +
-          '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select></div>' +
+          '<div class="field"><label>Big brother</label><select name="big_id">' + bigOpts + '</select>' +
+            '<p class="form-note" style="margin:.4rem 0 0">Choosing your big connects you into the family tree. Founders can pick “I’m a founder.”</p></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Where you are now</legend>' +
           '<div class="form-row">' +
@@ -777,6 +778,12 @@
       var f = e.target, st = host.querySelector('#profStatus');
       st.className = 'form-status'; st.textContent = '';
       if (!f.checkValidity()) { f.reportValidity(); return; }
+      // Nudge: a blank big means this brother floats as a disconnected root on the
+      // family tree. Founders pick the explicit option (below) and skip this.
+      var bigVal = f.big_id.value;
+      if (!bigVal && !confirm("You haven't chosen your big brother. Picking your big is what links you into "
+        + "the family tree — without it you'll show up as your own separate line. If you're a founder or truly "
+        + "don't know your big, that's fine. Save without linking to the tree?")) return;
       var btn = f.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Saving…';
 
       var chosen = ['email', 'phone', 'linkedin'].filter(function (k) { return f['pref_' + k].checked; });
@@ -801,7 +808,7 @@
           // role / role_scope are intentionally NOT sent — chapter titles are
           // admin-assigned (E-Board console) and the DB guard would ignore them
           // from a brother anyway. See upgrade13.sql.
-          big_id: f.big_id.value || null,
+          big_id: bigVal === '__founder__' ? null : (bigVal || null),
           city: f.city.value.trim() || null,
           occupation: f.occupation.value.trim() || null,
           hometown: f.hometown.value.trim() || null,
