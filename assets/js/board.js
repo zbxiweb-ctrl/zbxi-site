@@ -155,13 +155,17 @@
 
   function threadCard(t) {
     var m = META[t.id] || { count: 0 };
-    var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
+    // esc() in the class attrs below: category/tag are plain `text` columns and RLS
+    // doesn't constrain them, so their CHECK enums are the only thing keeping HTML
+    // out of here. esc() is a no-op on every legal value — it just stops the
+    // constraint from being load-bearing.
+    var tag = t.tag ? '<span class="thr-tag thr-tag--' + esc(t.tag) + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
     var preview = String(t.body || '').replace(/\s+/g, ' ').slice(0, 92);
     if ((t.body || '').length > 92) preview += '…';
     var flags = (isHot(t) ? ' <i class="thr-hot" title="Active in the last 48h">🔥</i>' : '') +
                 (t.image_path ? ' <i title="Has a photo">📷</i>' : '');
     var a = author(t.author_user);
-    return '<button class="thread-row thread-row--' + (t.committee_id ? 'comm' : t.category) + (isUnread(t) ? ' unread' : '') + '" data-thr="' + t.id + '">' +
+    return '<button class="thread-row thread-row--' + (t.committee_id ? 'comm' : esc(t.category)) + (isUnread(t) ? ' unread' : '') + '" data-thr="' + t.id + '">' +
       '<span class="thread-row__av">' + avatarOf(t.author_user) + '</span>' +
       '<div class="thread-row__main">' +
         '<b>' + (isUnread(t) ? '<i class="thr-dot"></i>' : '') + tag + esc(t.title) + flags + '</b>' +
@@ -553,7 +557,7 @@
     markSeen(t.id);
     var comm = committeeOf(t.committee_id);
     var backLabel = comm ? esc(comm.name) : catLabel(t.category);
-    var tag = t.tag ? '<span class="thr-tag thr-tag--' + t.tag + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
+    var tag = t.tag ? '<span class="thr-tag thr-tag--' + esc(t.tag) + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
     var canDel = me && (t.author_user === me.id || isAdmin);
     root.innerHTML =
       '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + backLabel + '</button>' +

@@ -98,7 +98,7 @@
       var date = new Date(cal.y, cal.m, day);
       var evs = evsOn(date);
       var chips = evs.slice(0, 2).map(function (e) {
-        return '<span class="cal-chip cal-chip--' + e.category + '">' + esc(e.title) + '</span>';
+        return '<span class="cal-chip cal-chip--' + esc(e.category) + '">' + esc(e.title) + '</span>';
       }).join('') + (evs.length > 2 ? '<span class="cal-more">+' + (evs.length - 2) + '</span>' : '');
       var canClick = evs.length || IS_ADMIN;
       cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') +
