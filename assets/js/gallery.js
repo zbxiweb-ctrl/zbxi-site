@@ -33,6 +33,11 @@
   // insert/delete policies check officer_can); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
 
+  // Paint the skeleton NOW for a likely-signed-in brother — the auth checks below
+  // take ~200ms and used to be a blank screen. Signed-out visitors skip it and go
+  // straight to the lock, never teased with tiles they can't open.
+  if (Z.hasSessionHint && Z.hasSessionHint()) root.innerHTML = gallerySkeleton();
+
   function likeCount(pid) { return likes.filter(function (l) { return l.post_id === pid; }).length; }
   function iLike(pid) { return me && likes.some(function (l) { return l.post_id === pid && l.user_id === me.id; }); }
   function author(uid) { return dir[uid] || { full_name: 'A brother', photo_url: null }; }
@@ -217,7 +222,7 @@
       ]).then(function (r) {
         canMod = isAdmin || r[0];
         canPost = isAdmin || r[1];
-        root.innerHTML = gallerySkeleton();     // shimmer tiles while photos load
+        if (!root.querySelector('.sk')) root.innerHTML = gallerySkeleton();  // unless already painted above
         loadAll().catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
         });

@@ -58,6 +58,19 @@
     },
 
     /* ---- auth ---- */
+    // SYNCHRONOUS hint: does a session probably exist? (supabase-js keeps it in
+    // localStorage under sb-<ref>-auth-token). Lets a gated page paint its skeleton
+    // instantly instead of sitting blank through the ~200ms async auth check —
+    // while signed-out visitors still go straight to the lock, never teased with
+    // a skeleton for content they can't see. A hint only: getUser() is the truth.
+    hasSessionHint: function () {
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          if (/^sb-.+-auth-token$/.test(localStorage.key(i))) return true;
+        }
+      } catch (e) {}
+      return false;
+    },
     getUser: function () {
       if (!configured) return Promise.resolve(null);
       return client.auth.getUser().then(function (r) { return r.data ? r.data.user : null; });

@@ -54,6 +54,11 @@
   var MY_COMMITTEES = [], POLLS = [], VOTES = [];
   var state = { cat: 'chapter', thread: null, sort: 'active' };
 
+  // Paint the skeleton NOW for a likely-signed-in brother: the auth checks below
+  // take ~200ms, twice as long as the data fetch, and used to be a blank screen.
+  // Signed-out visitors skip this and go straight to the lock (no false promise).
+  if (Z.hasSessionHint && Z.hasSessionHint()) root.innerHTML = boardSkeleton();
+
   function committeeOf(id) { return MY_COMMITTEES.filter(function (c) { return c.id === id; })[0]; }
 
   function author(uid) { return dir[uid] || { full_name: 'A brother', photo_url: null }; }
@@ -499,7 +504,7 @@
     isAdmin = Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail;
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
-      root.innerHTML = boardSkeleton();        // shimmer while threads load
+      if (!root.querySelector('.sk')) root.innerHTML = boardSkeleton();  // unless already painted below
       loadAll().then(function () {
         // Deep links: #thread=<id> (notifications), #compose=<title> (class pages)
         var m = location.hash.match(/thread=([\w-]+)/);
