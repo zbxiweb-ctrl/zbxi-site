@@ -80,26 +80,63 @@
   }
 
   /* ---------- thread list ---------- */
-  function tabsHtml() {
+  /* ---------- spaces nav: one row model, two controls ----------
+     The rail (desktop) and the select (mobile) are BOTH rendered every time;
+     CSS decides which is visible. No resize listener, no breakpoint detection. */
+  function spaceRows() {
     var feed = feedThreads();
-    var allUnread = feed.filter(isUnread).length;
-    var all = '<button class="bt bt--all' + (state.cat === 'all' ? ' on' : '') + '" data-cat="all">' +
-      '✦ All <i' + (allUnread ? ' class="bt__new"' : '') + '>' + feed.length + '</i></button>';
-    var std = CATS.map(function (c) {
+    var rows = [{ id: 'all', ic: '✦', label: 'All', n: feed.length,
+                  unread: feed.filter(isUnread).length > 0, group: 'SPACES', dim: false }];
+    CATS.forEach(function (c) {
       var inCat = feed.filter(function (t) { return t.category === c.id; });
-      var unread = inCat.filter(isUnread).length;
-      return '<button class="bt bt--' + c.id + (state.cat === c.id ? ' on' : '') +
-        (inCat.length ? '' : ' bt--empty') + '" data-cat="' + c.id + '">' +
-        c.ic + ' ' + c.label + ' <i' + (unread ? ' class="bt__new"' : '') + '>' + inCat.length + '</i></button>';
-    }).join('');
-    var polls = '<button class="bt bt--polls' + (state.cat === 'polls' ? ' on' : '') + '" data-cat="polls">🗳️ Polls' +
-      (POLLS.length ? ' <i>' + POLLS.length + '</i>' : '') + '</button>';
-    var comms = MY_COMMITTEES.map(function (c) {
-      var n = threads.filter(function (t) { return t.committee_id === c.id; }).length;
-      return '<button class="bt board-tabs__comm' + (state.cat === c.id ? ' on' : '') + '" data-cat="' + c.id + '">🔒 ' + esc(c.name) + (n ? ' <i>' + n + '</i>' : '') + '</button>';
-    }).join('');
-    return '<div class="board-tabs">' + all + std + polls + comms +
-      '<button class="bt bt--help" id="boardHelp" title="How the board works">❓</button></div>';
+      rows.push({ id: c.id, ic: c.ic, label: c.label, n: inCat.length,
+                  unread: inCat.filter(isUnread).length > 0, group: 'SPACES', dim: inCat.length === 0 });
+    });
+    rows.push({ id: 'polls', ic: '🗳️', label: 'Polls', n: POLLS.length,
+                unread: false, group: 'CHAPTER', dim: false });
+    MY_COMMITTEES.forEach(function (c) {
+      rows.push({ id: c.id, ic: '🔒', label: c.name,
+                  n: threads.filter(function (t) { return t.committee_id === c.id; }).length,
+                  unread: false, group: 'PRIVATE', dim: false });
+    });
+    // FOOT: not a space brothers post in — a line to the webmaster. n:null = no count badge.
+    rows.push({ id: 'suggestions', ic: '💡', label: 'Suggestion box', n: null,
+                unread: false, group: 'FOOT', dim: false });
+    return rows;
+  }
+
+  function railBtn(r) {
+    return '<button class="admin-navbtn' + (state.cat === r.id ? ' on' : '') +
+      (r.dim ? ' admin-navbtn--empty' : '') + '" data-cat="' + esc(r.id) + '">' +
+      '<i>' + r.ic + '</i><span>' + esc(r.label) + '</span>' +
+      (r.n === null ? '' :
+        '<span class="tab-count' + (r.unread ? ' tab-count--new' : '') + '">' + r.n + '</span>') +
+      '</button>';
+  }
+
+  function railHtml() {
+    var rows = spaceRows();
+    var group = function (name) {
+      var mine = rows.filter(function (r) { return r.group === name; });
+      if (!mine.length) return '';                    // no committees -> no empty heading
+      return '<div class="admin-navgroup"><span class="admin-navgroup__label">' + name + '</span>' +
+        mine.map(railBtn).join('') + '</div>';
+    };
+    // The foot holds the two things that aren't places to post: a line to the
+    // webmaster, and help. No heading — the hairline says enough.
+    var foot = rows.filter(function (r) { return r.group === 'FOOT'; }).map(railBtn).join('') +
+      '<button class="admin-navbtn board-help" title="How the board works">' +
+        '<i>❓</i><span>How the board works</span></button>';
+    return '<aside class="board-rail">' + group('SPACES') + group('CHAPTER') + group('PRIVATE') +
+      '<div class="board-rail__foot">' + foot + '</div></aside>';
+  }
+
+  function spacesSelect() {
+    return '<select class="zselect board-spaces" id="spacesSel" aria-label="Filter by space">' +
+      spaceRows().map(function (r) {
+        return '<option value="' + esc(r.id) + '"' + (state.cat === r.id ? ' selected' : '') + '>' +
+          r.ic + ' ' + esc(r.label) + (r.n === null ? '' : ' (' + r.n + ')') + '</option>';
+      }).join('') + '</select>';
   }
 
   function avatarOf(uid) {
@@ -207,6 +244,7 @@
   function renderList() {
     state.thread = null;
     if (state.cat === 'polls') return renderPolls();
+    if (state.cat === 'suggestions') return renderSuggestions();
     var comm = committeeOf(state.cat);
     var meta = catMeta(state.cat);
     var isAll = state.cat === 'all';
@@ -223,18 +261,21 @@
     var controls = '<div class="board-controls">' +
       (state.cat === 'introductions' ? '' :
         '<button class="btn btn--gold" id="newThread">+ New ' + (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button>') +
+      '<span class="board-controls__right">' + spacesSelect() +
       (mine.length > 1 ? '<select class="page-filter" id="threadSort">' +
         [['active', 'Recently active'], ['newest', 'Newest'], ['replies', 'Most replies'], ['oldest', 'Oldest']].map(function (o) {
           return '<option value="' + o[0] + '"' + (state.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select>' : '') +
-      '</div>';
+      '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
+      '</span></div>';
 
     var list = mine.length ? '<div class="thread-list">' + mine.map(threadCard).join('') + '</div>'
       : emptyState(isAll ? null : (comm ? esc(comm.name) : catLabel(state.cat)));
 
     var intro = (!hasIntro() && (isAll || state.cat === 'introductions')) ? introCard() : '';
 
-    root.innerHTML = intro + tabsHtml() + band + controls + list + suggestionCard();
+    root.innerHTML = '<div class="board-shell">' + railHtml() +
+      '<div class="board-main">' + intro + band + controls + list + '</div></div>';
     wireTabs();
     wireIntroCard();
     wireSuggestionCard();
@@ -253,29 +294,35 @@
 
   /* ---------- member help popup ---------- */
   function wireHelp() {
-    var h = document.getElementById('boardHelp');
-    if (h) h.onclick = function () {
+    var open = function () {
       var wrap = document.createElement('div');
       wrap.className = 'admin-modal open';
       wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
         '<h3>❓ How the board works</h3><div class="treeed-help">' +
-        '<p><b>Post a thread.</b> Pick the space that fits (⚖️ Chapter, 🧭 Advice, 🎉 Social, 💼 Opportunities), hit <b>+ New thread</b>, write it, optionally attach a photo.</p>' +
+        '<p><b>👋 Say hi first.</b> Your intro tells 300+ brothers your class, where you landed and what you\'re up to. It\'s the one post everyone can write, and it\'s how brothers find each other.</p>' +
+        '<p><b>Post a thread.</b> Hit <b>+ New thread</b>, pick the space that fits (⚖️ Chapter, 🧭 Advice, 🎉 Social, 💼 Opportunities), write it, optionally attach a photo.</p>' +
         '<p><b>Jobs &amp; referrals.</b> In 💼 Opportunities, mark your post <i>Offering</i> (you have something) or <i>Seeking</i> (you\'re looking).</p>' +
         '<p><b>Reply &amp; react.</b> Open any thread to reply. Tap 👍 ❤️ 😂 under a reply to react — tap again to take it back.</p>' +
-        '<p><b>Gold dots = new.</b> A gold dot means there\'s activity you haven\'t seen yet. It clears when you open the thread.</p>' +
+        '<p><b>Gold = new.</b> A gold dot or count means there\'s activity you haven\'t seen yet. It clears when you open the thread.</p>' +
         '<p><b>🗳️ Polls.</b> Vote once per poll; you can change your vote until it closes.</p>' +
-        '<p><b>🔒 Locked tabs</b> are private committee spaces — you only see the ones you belong to.</p>' +
-        '<p><b>💡 Suggestion box</b> (top of the page) goes straight to the webmaster — you\'ll get a 🔔 when he responds.</p>' +
+        '<p><b>🔒 Locked spaces</b> are private committee rooms — you only see the ones you belong to.</p>' +
+        '<p><b>💡 Suggestion box</b> (bottom of the page) goes straight to the webmaster — you\'ll get a 🔔 when he responds.</p>' +
         '</div></div>';
       document.body.appendChild(wrap);
       wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) wrap.remove(); });
     };
+    // Two help buttons (rail + mobile) share a CLASS — a duplicate id would be
+    // invalid HTML and getElementById would only ever find the first.
+    root.querySelectorAll('.board-help').forEach(function (b) { b.onclick = open; });
   }
 
   function wireTabs() {
     root.querySelectorAll('[data-cat]').forEach(function (b) {
       b.onclick = function () { state.cat = b.dataset.cat; renderList(); };
     });
+    // The mobile select is the same control as the rail — one code path.
+    var sel = document.getElementById('spacesSel');
+    if (sel) sel.onchange = function () { state.cat = sel.value; renderList(); };
   }
 
   /* ---------- polls ---------- */
@@ -304,7 +351,13 @@
         (isAdmin ? ' · <a href="#" data-delpoll>delete</a>' : '') + '</div></div>';
     }).join('') : '<p class="page-empty">No polls yet' + (isAdmin ? ' — post the first one.' : '.') + '</p>';
 
-    root.innerHTML = tabsHtml() + newBtn + cards + suggestionCard();
+    root.innerHTML = '<div class="board-shell">' + railHtml() +
+      '<div class="board-main">' +
+        '<div class="board-controls"><span class="board-controls__right">' + spacesSelect() +
+          '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
+        '</span></div>' +
+        newBtn + cards +
+      '</div></div>';
     wireTabs();
     wireSuggestionCard();
     wireHelp();
@@ -369,6 +422,22 @@
   }
 
   /* ---------- suggestion box ---------- */
+  // Its own space in the rail. It used to render at the foot of every view — the
+  // same box eight times over — which is noise, not availability.
+  function renderSuggestions() {
+    state.thread = null;
+    root.innerHTML = '<div class="board-shell">' + railHtml() +
+      '<div class="board-main">' +
+        '<div class="board-controls"><span class="board-controls__right">' + spacesSelect() +
+          '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
+        '</span></div>' +
+        suggestionCard() +
+      '</div></div>';
+    wireTabs();
+    wireSuggestionCard();
+    wireHelp();
+  }
+
   var MY_SUGS = null;
   function suggestionCard() {
     return '<div class="sug-box" id="sugBox">' +

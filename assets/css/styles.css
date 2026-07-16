@@ -1110,10 +1110,6 @@ body.modal-open { overflow: hidden; }
 .give-tile__soon { display: inline-block; color: var(--muted); font-size: .82rem; border: 1.5px dashed var(--hairline); border-radius: 999px; padding: .45rem 1rem; }
 
 /* ---------- Discussion board ---------- */
-.board-tabs { display: flex; gap: .5rem; flex-wrap: wrap; }
-.board-tabs button { border: 1.5px solid var(--navy-2); background: var(--surface); color: var(--heading); border-radius: 999px; padding: .5rem 1.1rem; font-size: .88rem; font-weight: 600; cursor: pointer; }
-.board-tabs button i { font-style: normal; opacity: .55; font-size: .78rem; }
-.board-tabs button.on { background: var(--navy); color: var(--gold-bright); border-color: var(--heading); }
 .thread-list { display: grid; gap: .7rem; }
 .thread-row { display: flex; align-items: center; gap: 1rem; text-align: left; background: var(--surface); border: 0; border-radius: 12px; padding: 1rem 1.2rem; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .15s; }
 .thread-row:hover { transform: translateY(-2px); }
@@ -1404,7 +1400,6 @@ body.modal-open { overflow: hidden; }
 .poll-closed { color: #b54848; }
 
 /* ---------- Board: committee tabs + suggestion box ---------- */
-.board-tabs__comm { border-style: dashed !important; }
 .sug-box { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1.4rem; }
 .sug-box__head b { color: var(--heading); font-family: var(--display); }
 .sug-box__head span { color: var(--muted); font-size: .85rem; margin-left: .5rem; }
@@ -1447,33 +1442,52 @@ input, select, textarea { background: var(--surface-2); }
 }
 
 /* ---------- board redesign ---------- */
-.board-tabs .bt { border: 1.5px solid var(--navy-2); background: var(--surface); color: var(--heading); border-radius: 999px; padding: .5rem 1.05rem; font-size: .88rem; font-weight: 600; cursor: pointer; }
-.board-tabs .bt.on { color: #fff; border-color: transparent; }
-.bt--chapter.on { background: var(--navy); color: var(--gold-bright) !important; }
-.bt--advice.on { background: #1f6f6b; }
-.bt--social.on { background: var(--gold-deep); }
-.bt--opportunities.on { background: #2c6e2c; }
-.bt--polls.on { background: #5b3ea8; }
-.board-tabs__comm.on { background: var(--navy); color: var(--gold-bright) !important; }
-/* Gold, not red: the board's own unread language is the gold .thr-dot, and the
-   help modal tells brothers "Gold dots = new". Every chip carries this badge now,
-   so red would put a wall of alarm-red on a board we want to feel inviting. */
-.bt__new { font-style: normal; background: var(--gold); color: var(--navy-deep); font-weight: 700; border-radius: 999px; font-size: .66rem; padding: .05rem .4rem; vertical-align: 1px; opacity: 1 !important; }
-.bt--help { padding: .5rem .8rem !important; }
 
-/* Feed filter chips — 'All' and 'Introductions' need their own .on colour; the
-   other four already have one. Introductions gets brand gold: it's the ask. */
-.bt--all.on { background: var(--navy-deep); }
-.bt--introductions.on { background: var(--gold); color: var(--navy-deep) !important; }
+/* Board shell — nav rail left, feed right. Mirrors .admin-shell's 250px so the
+   two rails line up across the site. */
+.board-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+.board-main { min-width: 0; }
+
+/* Deliberately simpler than .admin-side: that panel carries flex + max-height +
+   an internal scroller because the console has 15+ tabs and overflows the
+   viewport. This rail has ~10 rows and never will. The BUTTONS are shared
+   (.admin-navbtn / .tab-count) — a fix there fixes the console and the board.
+   --on-dark is defined in BOTH themes for exactly this (navy panel) case. */
+.board-rail {
+  position: sticky; top: 90px;
+  background: var(--navy); border: 1px solid rgba(200,162,75,.32);
+  border-radius: var(--radius); padding: 1rem .75rem;
+  box-shadow: var(--shadow-sm);
+}
+/* The foot holds what isn't a place to post — the suggestion box and help. */
+.board-rail__foot { margin-top: .5rem; padding-top: .6rem; border-top: 1px solid rgba(200,162,75,.22); }
 /* An empty room stays visible but honest — never hidden, so Opportunities keeps its door. */
-.bt--empty { opacity: .5; }
-.bt--empty.on { opacity: 1; }
-@media (max-width: 640px) {
-  .board-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .3rem; }
-  .board-tabs::-webkit-scrollbar { display: none; }
-  /* 40px min: the chips are 37px by default, and now that they live in a
-     drag-scrollable strip an undersized target turns taps into accidental drags. */
-  .board-tabs .bt { flex: 0 0 auto; min-height: 40px; }
+.admin-navbtn--empty { opacity: .45; }
+.admin-navbtn--empty.on { opacity: 1; }
+/* Unread = solid gold, matching the gold .thr-dot and the help modal's "Gold = new".
+   No override for the active row on purpose: the console's existing
+   `.admin-navbtn.on .tab-count` (0,3,0) already outranks this (0,1,0) and renders
+   the badge correctly on gold. An override here measured 4.19 contrast in light —
+   below AA — while letting the existing rule win measures 4.93. */
+.tab-count--new { background: var(--gold); color: var(--navy-deep); font-weight: 700; }
+
+.board-controls__right { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.board-spaces { display: none; }                     /* desktop: the rail IS the control */
+.board-help--mobile { display: none; width: auto; padding: .5rem .7rem; border: 1px solid rgba(200,162,75,.5); border-radius: 9px; color: var(--heading); }
+
+@media (max-width: 900px) {
+  .board-shell { grid-template-columns: 1fr; }
+  .board-rail { display: none; }
+  /* 40px: the touch-target floor website-qa demands. */
+  .board-spaces { display: block; min-height: 40px; }
+  .board-help--mobile { display: inline-flex; min-height: 40px; }
+  /* A <select> sizes to its LONGEST option ("Chapter Business (0)" -> 205px), so
+     spaces+sort+help wanted 420px in a 359px row and wrapped to three lines.
+     Let the two selects share the row instead; the closed state ellipsises, and
+     the open state is a full-screen native picker anyway. */
+  .board-controls__right { width: 100%; }
+  .board-controls__right .board-spaces,
+  .board-controls__right .page-filter { flex: 1 1 0; min-width: 0; }
 }
 
 /* Introductions composer — the one place on the board that spends boldness.
@@ -2101,7 +2115,6 @@ body.tree-lock { overflow: hidden; }
 
 /* Controls that borrowed navy for their border would vanish on a black card. */
 :root[data-theme="dark"] .fam-chip,
-:root[data-theme="dark"] .board-tabs button,
 :root[data-theme="dark"] .ev-toggle button,
 :root[data-theme="dark"] .ev-rsvp__btn,
 :root[data-theme="dark"] .tree-controls button,
