@@ -1,7 +1,8 @@
-/* Alumni map (members only). Waits for brothers-page.js to hydrate member
-   data (zbxi:hydrated), then lazily loads Leaflet + OpenStreetMap tiles and
-   pins each unique "current city" (geocoded via Nominatim, cached in
-   localStorage so each browser geocodes a city only once). */
+/* The Brotherhood Worldwide map (members only, map.html). Waits for
+   map-page.js to hydrate member data (zbxi:hydrated), then lazily loads
+   Leaflet + OpenStreetMap tiles and pins each unique "current city" —
+   actives and alumni alike (geocoded via Nominatim, cached in localStorage
+   so each browser geocodes a city only once). */
 (function () {
   'use strict';
   var sec = document.getElementById('alumniMapSec');

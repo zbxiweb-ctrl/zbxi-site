@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alumni Brothers · Zeta Beta Xi</title>
-  <meta name="description" content="The alumni brotherhood of Zeta Beta Xi — graduates of SUNY Geneseo spanning three decades." />
-    <link rel="canonical" href="https://zetabetaxi.com/alumni.html" />
+  <title>The Brotherhood Worldwide · Zeta Beta Xi</title>
+  <meta name="description" content="Every Zeta Beta Xi brother's city, on one map — members only." />
+  <link rel="canonical" href="https://zetabetaxi.com/map.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Alumni Brothers · Zeta Beta Xi" />
-  <meta property="og:description" content="Three decades of Zeta Beta Xi alumni — the lifelong network of the brotherhood." />
-  <meta property="og:url" content="https://zetabetaxi.com/alumni.html" />
+  <meta property="og:title" content="The Brotherhood Worldwide · Zeta Beta Xi" />
+  <meta property="og:description" content="Every Zeta Beta Xi brother's city, on one map — members only." />
+  <meta property="og:url" content="https://zetabetaxi.com/map.html" />
   <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest-main.jpg" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="assets/img/favicon.png" />
@@ -22,7 +22,7 @@
   <script>try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: no-preference)").matches)document.documentElement.classList.add("fx");}catch(e){}</script>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
-<body data-mode="alumni" class="page-body">
+<body class="page-body">
 
   <header class="nav">
     <div class="wrap nav__inner">
@@ -33,7 +33,7 @@
       <nav class="nav__links" id="navLinks">
         <a href="index.html#about">About</a>
         <a href="active.html">Active</a>
-        <a href="alumni.html" class="on">Alumni</a>
+        <a href="alumni.html">Alumni</a>
         <a href="family-tree.html">Family Tree</a>
         <a href="events.html">Events</a>
         <a href="gallery.html">Gallery</a>
@@ -50,42 +50,20 @@
   <main class="page-main">
     <section class="page-hero">
       <div class="wrap center">
-        <p class="eyebrow">Once a Brother, Always a Brother</p>
-        <h1 class="section-title" style="color:var(--gold-bright)">Alumni Brothers</h1>
+        <p class="eyebrow">Brothers Only</p>
+        <h1 class="section-title" style="color:var(--gold-bright)">The Brotherhood Worldwide</h1>
         <hr class="rule" />
-        <p class="lede">Brothers who completed their degrees at SUNY Geneseo — three decades strong, around the world. <span id="pageCount"></span></p>
+        <p class="lede">From Geneseo to wherever the brotherhood took us — every brother's city, on one map.</p>
       </div>
     </section>
 
     <section class="section" style="padding-top:3rem">
       <div class="wrap">
-        <div id="discoverRail" style="display:none;margin-bottom:3rem"></div>
-
-        <div id="mentorFinder" style="display:none">
-          <p class="eyebrow">🎓 Find a Mentor</p>
-          <p class="lede" style="margin-bottom:1rem">Search alumni by skill, field, or profession. <button type="button" class="net-help" id="netHelpBtn">❓ How networking works</button></p>
-          <div class="mentor-bar">
-            <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
-            <button type="button" class="btn btn--gold" id="mentorReqBtn" style="display:none">🎓 Request a mentor</button>
-          </div>
-          <div class="mentor-chips" id="mentorChips"></div>
-          <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
+        <div id="mapGate"></div>
+        <div id="alumniMapSec" style="display:none">
+          <div id="alumniMap" class="alumni-map"></div>
+          <p class="form-note" style="margin:.5rem 0 3rem">Pins come from the “current city” on brother profiles — actives and alumni alike. Update yours to appear on the map.</p>
         </div>
-
-        <div id="classIndex" style="display:none;margin-bottom:3rem"></div>
-        <p class="eyebrow">Alumni Executive Board</p>
-        <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
-
-        <div id="prevEboard" style="display:none">
-          <p class="eyebrow" style="margin-top:3rem">Previous Executive Board</p>
-          <div class="fam-bar" id="prevChips" style="justify-content:flex-start;margin:.6rem 0 1rem"></div>
-          <div class="eb-grid" id="prevGrid"></div>
-        </div>
-
-        <p class="eyebrow" style="margin-top:3rem">All Alumni Brothers</p>
-        <input class="admin-search" id="pageSearch" type="search" placeholder="Search by name or pledge class…" />
-        <div class="page-filters" id="pageFilters"></div>
-        <div class="bro-grid" id="pageGrid"><p class="page-empty">Loading…</p></div>
       </div>
     </section>
   </main>
@@ -103,7 +81,7 @@
     </div>
   </footer>
 
-  <!-- Brother profile modal -->
+  <!-- Brother profile modal (map pins open it) -->
   <div class="bmodal" id="brotherModal" aria-hidden="true">
     <div class="bmodal__card">
       <button class="bmodal__close" data-close aria-label="Close">✕</button>
@@ -138,7 +116,8 @@
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/notify.js"></script>
   <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/brothers-page.js"></script>
+  <script src="assets/js/map-page.js"></script>
+  <script src="assets/js/worldwide-map.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>
 </html>

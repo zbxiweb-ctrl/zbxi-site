@@ -80,7 +80,8 @@ function body(first: string | null, activity: string) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 2px">
       ${STEP("1", "Polish your profile", "Add a photo, your city and occupation — the directory is how brothers find you for referrals and mentoring.")}
       ${STEP("2", "Find yourself in the family tree", "Every brother since 1993, big to little. Open your line and see where you fit.")}
-      ${STEP("3", "Say hello on the board", "Introduce yourself in Introductions — name, class, and where the brotherhood took you.")}
+      ${STEP("3", "Put yourself on the map", "The Brotherhood Worldwide is a live map of every brother's city. Add your current city and your pin appears.")}
+      ${STEP("4", "Say hello on the board", "Introduce yourself in Introductions — name, class, and where the brotherhood took you.")}
     </table>
     <p style="text-align:center;margin:24px 0 8px">
       <a href="${SITE}/welcome.html" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:13px 28px;border-radius:999px;display:inline-block">Start your orientation →</a>

@@ -26,7 +26,8 @@
     { ic: '💬', label: 'Board',       href: 'board.html' },
     { ic: '📅', label: 'Events',      href: 'events.html' },
     { ic: '🌳', label: 'Family Tree', href: 'family-tree.html' },
-    { ic: '🖼', label: 'Gallery',     href: 'gallery.html' }
+    { ic: '🖼', label: 'Gallery',     href: 'gallery.html' },
+    { ic: '🗺', label: 'Worldwide Map', href: 'map.html' }
   ];
 
   /* Reload onto a CLEAN url after a sign-in/out: no #hash and no ?auth=/?invite=
