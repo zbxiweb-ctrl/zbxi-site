@@ -204,12 +204,15 @@
           .then(function (x) { return x.data || []; });
       });
     },
-    // Full detail of ALL verified brothers — RLS only returns data to an
-    // approved brother / admin. Used to hydrate the roster for signed-in brothers.
+    // All verified brothers — read through the roster_detail VIEW, not the raw
+    // table. The view self-gates to approved brothers / admin, drops the
+    // unsubscribe_token entirely, and only returns a brother's email/phone if HE
+    // chose to share them (contact_prefs) — so the raw contact info never reaches
+    // another brother's browser. Used to hydrate the roster/tree for signed-in brothers.
     listVerifiedDetail: function () {
       if (!configured) return Promise.resolve([]);
       var self = this;
-      return client.from('brothers').select('*').eq('status', 'verified')
+      return client.from('roster_detail').select('*').eq('status', 'verified')
         .then(function (r) { return self._signPhotos(r.data || []); });
     },
     // Unregistered (claimable) tree entries, alphabetical — for the claim picker.
@@ -223,12 +226,22 @@
     claimProfile: function (targetId) {
       return client.rpc('claim_profile', { target_id: targetId });
     },
-    // One brother's full detail (RLS-gated: approved brother / admin / owner).
+    // One brother's full detail for the profile card. Read the row from the
+    // PII-safe roster_detail view (email/phone gated by his own contact_prefs, no
+    // unsubscribe_token) and his positions history from brother_titles (its own
+    // approved-brother read policy), then merge to the shape profile-card.js expects.
     brotherDetail: function (id) {
       if (!configured) return Promise.resolve(null);
       var self = this;
-      return client.from('brothers').select('*, brother_titles(title,term,scope,sort)').eq('id', id).maybeSingle()
-        .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
+      return Promise.all([
+        client.from('roster_detail').select('*').eq('id', id).maybeSingle(),
+        client.from('brother_titles').select('title,term,scope,sort').eq('brother_id', id).order('sort', { ascending: true })
+      ]).then(function (res) {
+        var d = res[0].data;
+        if (!d) return null;
+        d.brother_titles = res[1].data || [];
+        return self._signPhotos(d);
+      });
     },
     // Is the currently signed-in user an approved (verified) brother? (cached)
     amApprovedBrother: function () {
