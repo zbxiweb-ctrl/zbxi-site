@@ -531,6 +531,24 @@ p { margin: 0 0 1em; }
 }
 .admin-modal__card--wide h3 { color: var(--gold-bright); }
 .admin-modal__card--wide .admin-modal__close { color: var(--cream); }
+/* The one-line-of-text ask modal (ask-modal.js): a narrow navy card. */
+.admin-modal__card--ask {
+  width: min(460px, 96vw);
+  background: linear-gradient(180deg, var(--navy), var(--navy-deep));
+  color: var(--cream);
+  border: 1px solid rgba(200,162,75,.28);
+}
+.admin-modal__card--ask h3 { color: var(--gold-bright); }
+.admin-modal__card--ask .admin-modal__close { color: var(--cream); }
+.ask-rows { margin: 0 0 1rem; font-size: .9rem; }
+.ask-rows div { display: flex; gap: .6rem; }
+.ask-rows span { min-width: 7.5em; color: var(--on-dark); }
+.ask-rows b { color: var(--cream); font-weight: 600; }
+.ask-input { width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(200,162,75,.4); border-radius: 10px; padding: .65rem .8rem; color: var(--cream); font: inherit; }
+.ask-input:focus { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.22); }
+.ask-warn { margin: .7rem 0 0; font-size: .85rem; color: var(--gold-bright); }
+.ask-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.2rem; }
+
 .imp-list { max-height: 46vh; overflow-y: auto; margin: .5rem 0 1rem; }
 /* A decided conflict quiets down so the undecided ones stand out. */
 .admin-row--decided { opacity: .6; }

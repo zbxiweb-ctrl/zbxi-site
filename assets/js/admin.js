@@ -1278,9 +1278,9 @@
         }).join('') : '<p class="admin-empty">No committees yet.</p>');
 
       document.getElementById('commNew').onclick = function () {
-        var name = prompt('Committee name (e.g. Rush Committee):');
-        if (!name || !name.trim()) return;
-        Z.committeeCreate(name.trim()).then(function () { renderList(); });
+        ZBXIAsk.text({ title: 'New committee', placeholder: 'e.g. Rush Committee', ok: 'Create' }, function (name) {
+          Z.committeeCreate(name).then(function () { renderList(); });
+        });
       };
       q.querySelectorAll('[data-comm]').forEach(function (el) {
         var c = cs.filter(function (x) { return x.id === el.dataset.comm; })[0];
@@ -1397,13 +1397,19 @@
   }
 
   // Free text is only ever accepted here, for a genuinely new class — and it's
-  // validated + warned about, so a typo can't slip in silently.
-  function newClassPrompt() {
-    var v = (prompt('New class name.\n\nHouse format:  Greek · Season \'YY\nExample:      Gamma Sigma · Spring \'26') || '').trim();
-    if (!v) return null;
-    if (!CLASS_CANON.test(v) &&
-        !confirm('“' + v + '” doesn’t match the house format (Greek · Season ’YY).\n\nIt will show a ⚠️ in this list. Use it anyway?')) return null;
-    return v;
+  // validated + warned about, so a typo can't slip in silently. cb(name) runs
+  // only when a name is accepted; cancelling never calls it.
+  function askNewClass(cb) {
+    ZBXIAsk.text({
+      title: 'New class name',
+      rows: [['House format', 'Greek · Season ’YY'], ['Example', 'Gamma Sigma · Spring ’26']],
+      placeholder: 'Gamma Sigma · Spring ’26',
+      ok: 'Create',
+      validate: function (v) {
+        return CLASS_CANON.test(v) ? null
+          : '“' + v + '” doesn’t match the house format (Greek · Season ’YY). It will show a ⚠️ in this list.';
+      }
+    }, cb);
   }
 
   /* ---------------- CSV import ------------------------------------------------
@@ -1939,25 +1945,29 @@
     merge.onchange = function () {
       var dest = merge.value; merge.value = '';
       if (!dest) return;
-      if (dest === '__new__' && !(dest = newClassPrompt())) return;
-      if (!confirm('Move all ' + g.n + ' brother' + (g.n === 1 ? '' : 's') + ' from “' + (g.name || '— blank —') +
-                   '” into “' + dest + '”?\n\nThis updates them on the roster, the family tree and their profiles.')) return;
-      Z.renamePledgeClass(g.name, dest).then(function (r) {
-        if (r && r.error) { alert(r.error.message || 'Could not merge.'); return; }
-        state.classDrill = null;
-        loadAll();
-      });
+      var go = function (name) {
+        if (!confirm('Move all ' + g.n + ' brother' + (g.n === 1 ? '' : 's') + ' from “' + (g.name || '— blank —') +
+                     '” into “' + name + '”?\n\nThis updates them on the roster, the family tree and their profiles.')) return;
+        Z.renamePledgeClass(g.name, name).then(function (r) {
+          if (r && r.error) { alert(r.error.message || 'Could not merge.'); return; }
+          state.classDrill = null;
+          loadAll();
+        });
+      };
+      if (dest === '__new__') askNewClass(go); else go(dest);
     };
 
     q.querySelectorAll('[data-move]').forEach(function (sel) {
       sel.onchange = function () {
         var dest = sel.value; sel.value = '';
         if (!dest) return;
-        if (dest === '__new__' && !(dest = newClassPrompt())) return;
-        Z.setPledgeClass(sel.dataset.move, dest).then(function (r) {
-          if (r && r.error) { alert(r.error.message || 'Could not move him.'); return; }
-          loadAll();
-        });
+        var go = function (name) {
+          Z.setPledgeClass(sel.dataset.move, name).then(function (r) {
+            if (r && r.error) { alert(r.error.message || 'Could not move him.'); return; }
+            loadAll();
+          });
+        };
+        if (dest === '__new__') askNewClass(go); else go(dest);
       };
     });
   }

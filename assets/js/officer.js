@@ -336,9 +336,9 @@
         }).join('') : '<p class="admin-empty">No committees yet.</p>');
 
       document.getElementById('commNew').onclick = function () {
-        var name = prompt('Committee name (e.g. Rush Committee):');
-        if (!name || !name.trim()) return;
-        Z.committeeCreate(name.trim()).then(function () { renderTab(); });
+        ZBXIAsk.text({ title: 'New committee', placeholder: 'e.g. Rush Committee', ok: 'Create' }, function (name) {
+          Z.committeeCreate(name).then(function () { renderTab(); });
+        });
       };
       q.querySelectorAll('[data-comm]').forEach(function (el) {
         var c = cs.filter(function (x) { return x.id === el.dataset.comm; })[0];
