@@ -1901,9 +1901,23 @@
     if (ex) ex.onclick = exportFamilies;
   }
 
+  // "Gamma Theta · Spring '20" -> ΓΘ. Words before the · map through the Greek
+  // alphabet; anything non-Greek (Founding Father, junk values) falls back to
+  // plain initials. The circle used to show the member count, which the row
+  // text beside it already prints.
+  var GREEK = { alpha:'Α', beta:'Β', gamma:'Γ', delta:'Δ', epsilon:'Ε', zeta:'Ζ',
+    eta:'Η', theta:'Θ', iota:'Ι', kappa:'Κ', lambda:'Λ', mu:'Μ', nu:'Ν', xi:'Ξ',
+    omicron:'Ο', pi:'Π', rho:'Ρ', sigma:'Σ', tau:'Τ', upsilon:'Υ', phi:'Φ',
+    chi:'Χ', psi:'Ψ', omega:'Ω' };
+  function greekInitials(name) {
+    var words = String(name || '').split('·')[0].trim().split(/\s+/);
+    var letters = words.map(function (w) { return GREEK[w.toLowerCase()] || ''; }).join('');
+    return letters || initials(String(name || '').split('·')[0]);
+  }
+
   function classRow(g) {
     return '<div class="admin-row" data-cls="' + esc(g.name) + '" style="cursor:pointer">' +
-      '<div class="admin-row__ph">' + g.n + '</div>' +
+      '<div class="admin-row__ph">' + esc(greekInitials(g.name)) + '</div>' +
       '<div class="admin-row__info"><b>' + esc(g.name || '— blank —') +
         (g.warn ? ' <span class="cls-warn">⚠️</span>' : '') + '</b>' +
         '<span>' + g.n + (g.n === 1 ? ' brother' : ' brothers') +
