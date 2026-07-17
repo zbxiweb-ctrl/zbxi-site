@@ -677,6 +677,18 @@
       return client.from('invites').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });
     },
+    // Console email composer (admin / granted officers) -> zbxi-email fn.
+    // Returns the raw fetch Response: ?dry=1 reads text, everything else json.
+    sendEmail: function (payload, qs) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-email') + (qs || ''), {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      });
+    },
     // One-time "you're approved" welcome email (admin console, right after an
     // approve). Fire-and-forget at the call site — an email hiccup must never
     // block the approval itself.

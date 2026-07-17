@@ -102,6 +102,7 @@
       { id: 'classes',    ic: '🎓', label: 'Pledge Classes' },
       { id: 'committees', ic: '👥', label: 'Committees' },
       { id: 'eboard',     ic: '👑', label: 'E-Board'    },
+      { id: 'email',      ic: '📧', label: 'Email'      },
       { id: 'events',     ic: '📅', label: 'Events'     },
       { id: 'guide',      ic: '📖', label: 'Guide'      },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
@@ -328,6 +329,7 @@
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
+    if (state.tab === 'email') return window.ZBXIEmailTab.render(q);
     if (state.tab === 'invite') return renderInviteTab(q);
     if (state.tab === 'suggest') return renderSuggestTab(q);
     if (state.tab === 'officers') return renderOfficersTab(q);
@@ -2188,6 +2190,7 @@
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
     { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
     { key: 'gallery.post',        label: 'Post to the gallery',    desc: 'Create new gallery posts (otherwise only the admin can).', seats: ['alumni_president'] },
+    { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['active_president', 'alumni_president'] },
     { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] }
   ];
 

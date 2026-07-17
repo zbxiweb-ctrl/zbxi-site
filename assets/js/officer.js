@@ -38,7 +38,10 @@
     { perm: 'committees.manage',   id: 'committees', ic: '👥', label: 'Committees',  render: renderCommitteesTab },
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },
     { perm: 'suggestions.respond', id: 'suggest',    ic: '💡', label: 'Suggestions', render: renderSuggestTab },
-    { perm: 'gallery.moderate',    id: 'gallery',    ic: '🖼', label: 'Gallery',     render: renderGalleryTab }
+    { perm: 'gallery.moderate',    id: 'gallery',    ic: '🖼', label: 'Gallery',     render: renderGalleryTab },
+    // Shared composer (email-tab.js); the zbxi-email fn re-checks the grant
+    // server-side, so this entry only decides whether the tab is visible.
+    { perm: 'email.send',          id: 'email',      ic: '📧', label: 'Email',       render: function (q) { window.ZBXIEmailTab.render(q); } }
   ];
 
   var state = { seat: null, seatLabel: '', grants: {}, tools: [], tab: null, events: [], verified: [] };
