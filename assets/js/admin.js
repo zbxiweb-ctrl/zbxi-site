@@ -383,11 +383,14 @@
       var emailLine = state.tab === 'pending'
         ? '<span class="admin-row__email">✉️ ' + esc((b.user_id && state.emailById[b.user_id]) || 'no email on file') + '</span>'
         : '';
+      // Pending only: flag a typed name the chapter roster doesn't recognize.
+      var flagLine = state.tab === 'pending' ? pendingNameFlag(b) : '';
       return '<div class="admin-row" data-id="' + b.id + '">' +
         '<div class="admin-row__ph">' + (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(b.full_name) + ' ' + statusChip(b) + '</b><span>' + meta + '</span>' +
           whenLine +
           emailLine +
+          flagLine +
           (b.quote ? '<em>“' + esc(b.quote) + '”</em>' : '') + '</div>' +
         '<div class="admin-row__act">' + actionsFor(state.tab) + '</div></div>';
     }).join('');
@@ -1503,6 +1506,35 @@
     if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
     if (a.length < b.length) return a.slice(i) === b.slice(i + 1);
     return a.slice(i + 1) === b.slice(i);
+  }
+  // Same rule as the portal's claim guard: first initial matches and the
+  // surname is within one edit (nicknames + typos), or the whole name matches.
+  function looksLikeSame(typed, cand) {
+    if (nameKey(typed) === nameKey(cand)) return true;
+    var p = nameParts(typed), q = nameParts(cand);
+    if (!p.length || !q.length) return false;
+    return p[0].charAt(0) === q[0].charAt(0) && ed1(p[p.length - 1], q[q.length - 1]);
+  }
+
+  /* Pending vet: is this signup a name the chapter knows? A brother who CLAIMED
+     a roster row is expected by definition. A self-created profile is fuzzy-
+     checked against every roster row (any status) so the admin can tell an
+     expected brother from a stranger — or spot a would-be duplicate. */
+  function pendingNameFlag(b) {
+    if (b.roster_name) return '';
+    var hit = null, hitClaimed = false;
+    for (var i = 0; i < state.data.all.length; i++) {
+      var x = state.data.all[i];
+      if (x.id === b.id) continue;
+      if (looksLikeSame(b.full_name, x.roster_name || x.full_name) ||
+          (x.roster_name && looksLikeSame(b.full_name, x.full_name))) {
+        hit = x; hitClaimed = !!x.user_id;
+        if (!hitClaimed) break;   // an unclaimed roster hit is the best answer
+      }
+    }
+    if (!hit) return '<span class="admin-row__when admin-flag">🚩 Name not found on the chapter roster — verify before approving.</span>';
+    if (!hitClaimed) return '<span class="admin-row__when cls-warn">≈ Roster has “' + esc(hit.full_name) + '” (unclaimed) — same man? He should claim that profile instead.</span>';
+    return '<span class="admin-row__when cls-warn">≈ Close to existing brother “' + esc(hit.full_name) + '” — possible duplicate.</span>';
   }
 
   // Header synonyms. Require a header row — guessing headerless eats brother #1.

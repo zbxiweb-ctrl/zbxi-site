@@ -2283,6 +2283,8 @@ body.tree-lock { overflow: hidden; }
 .cls-sum { color: var(--on-dark); font-size: .9rem; margin: 0 0 .9rem; }
 .cls-warn { color: #ffcf6b; }
 .admin-row__when.cls-warn { color: #ffcf6b; }
+/* Pending vet: a signup name the chapter roster doesn't recognize. */
+.admin-row__when.admin-flag { color: #e59a9a; font-weight: 600; }
 .cls-bulk {
   display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
   margin: .6rem 0 1.2rem; padding: .7rem .8rem;
