@@ -628,10 +628,20 @@
       listEl.innerHTML = '<p class="form-note">' + all.length + ' unclaimed brothers. Type to search.</p>';
     });
 
+    // Apostrophe-, punctuation- AND space-blind search. The old raw indexOf missed
+    // the roster "O'Sullivan" (straight quote) when an iPhone typed "O’Sullivan"
+    // (curly) — and the "no match" copy below then pushed him to create a brand-new
+    // profile, which is exactly how a duplicate brother got made. Collapsing to
+    // bare letters/digits also lets "osullivan" and "o sullivan" find him. A claim
+    // is confirm-gated, so over-forgiving search costs nothing; missing him costs a
+    // duplicate.
+    var claimNorm = function (s) {
+      return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    };
     input.oninput = function () {
-      var q = input.value.trim().toLowerCase();
+      var q = claimNorm(input.value);
       if (q.length < 2) { listEl.innerHTML = '<p class="form-note">Keep typing…</p>'; return; }
-      var hits = all.filter(function (b) { return b.full_name.toLowerCase().indexOf(q) !== -1; }).slice(0, 12);
+      var hits = all.filter(function (b) { return claimNorm(b.full_name).indexOf(q) !== -1; }).slice(0, 12);
       if (!hits.length) { listEl.innerHTML = '<p class="form-note">No match — use "I\'m not in the tree yet" instead.</p>'; return; }
       listEl.innerHTML = hits.map(function (b) {
         return '<button class="claim-row" data-id="' + b.id + '"><b>' + esc(b.full_name) + '</b><span>' + esc(b.pledge_class || '') + '</span></button>';
