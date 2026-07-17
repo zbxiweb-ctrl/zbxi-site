@@ -1649,6 +1649,32 @@ input, select, textarea { background: var(--surface-2); }
    leftovers that reset the gold ledger-spine — removed. */
 .admin-body .admin-search { border: 1.5px solid rgba(200,162,75,.30); background: rgba(10,23,48,.72); color: var(--cream); }
 .admin-body .admin-search::placeholder { color: #7f90ad; }
+
+/* Email composer tab (email-tab.js) reuses the generic .field / .pref-box form
+   classes, but it mounts on the NAVY console where --heading/--text/--muted
+   resolve to dark ink and vanish. Re-point them to the console's gold+cream-on-
+   navy palette, and restore the navy .zselect that ".field select" was
+   overpainting cream (0,1,1 > 0,1,0). Scoped to .email-tab so the cream
+   edit-modal .field labels stay untouched. */
+.email-tab .field label { color: var(--gold-bright); }
+.email-tab .field input,
+.email-tab .field textarea {
+  background: rgba(10,23,48,.72); border-color: rgba(200,162,75,.30); color: var(--cream);
+}
+.email-tab .field input::placeholder,
+.email-tab .field textarea::placeholder { color: #7f90ad; }
+.email-tab .zselect {
+  background-color: #0f2143; color: var(--cream);
+  border-color: rgba(200,162,75,.5); padding: .7rem 1.9rem .7rem .8rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E8C766' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right .65rem center;
+}
+.email-tab .pref-box { color: var(--cream); }
+.email-tab .pref-box small { color: var(--on-dark); }
+.email-tab input[type="checkbox"] { accent-color: var(--gold); width: 1.05rem; height: 1.05rem; }
+.email-tab input[type="file"] { color: var(--on-dark); font-size: .9rem; }
+.email-tab .form-note { color: var(--on-dark); }
+.email-tab .form-status { display: block; color: var(--cream); }
 .stat-card { border-top: 3px solid var(--gold); }
 .stat-h { display: flex; align-items: center; gap: .6rem; }
 .stat-h::after { content: ''; flex: 1; height: 1px; background: rgba(200,162,75,.3); }

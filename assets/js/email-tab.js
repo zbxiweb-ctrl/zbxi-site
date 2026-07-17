@@ -21,6 +21,7 @@
         .map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
 
       q.innerHTML =
+        '<div class="email-tab">' +
         '<p class="admin-hint">📧 Sends from the site\'s address in the navy ΖΒΞ shell. Recipients are brothers ' +
           'with accounts; anyone who unsubscribed is skipped automatically. Always send yourself a test first.</p>' +
         '<div class="field"><label>To</label><select id="emTo" class="zselect">' +
@@ -44,7 +45,8 @@
           '<button class="btn btn--ghost" id="emTest">Send a test to me</button>' +
           '<button class="btn btn--gold" id="emSend">Send</button>' +
         '</div>' +
-        '<p class="form-status" id="emStatus" role="status"></p>';
+        '<p class="form-status" id="emStatus" role="status"></p>' +
+        '</div>';
 
       var picked = {};
       var files = [];          // [{filename, content(base64), type, size}]
