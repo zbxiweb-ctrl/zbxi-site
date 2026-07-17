@@ -1,4 +1,11 @@
-# ZBXi roster — transcribed from the 10 family-line docs.
+# ZBXi roster — transcribed from the 11 family-line docs.
+#
+# ⚠ HISTORICAL RECORD ONLY. The LIVE DATABASE is the source of truth, and this
+# file is behind it (355 brothers live vs the rows here). Read it, don't run it:
+# build-import.mjs emits `delete from public.brothers where user_id is null`,
+# which would wipe every unclaimed brother AND orphan the claimed ones into bogus
+# new family lines. It has not been safe to re-run since the first import.
+#
 # Format:  Full Name | Pledge Class | Big
 #   - Big empty     => big is the PREVIOUS person in this family (linear chain)
 #   - Big = "-"     => root (founding father, no big)
@@ -53,6 +60,34 @@ Jake Arbeitman | Gamma Alpha · Fall '16 |
 Cameron Haberberger | Gamma Delta · Spring '18 | Jake Arbeitman
 Nicholas Santora | Gamma Epsilon · Fall '18 | Jake Arbeitman
 Matthew Perez | Gamma Theta · Spring '20 |
+
+@FAMILY Gorman
+Matthew Gorman | Founding Father · Spring 1993 | -
+Paul Lackovic | Beta · Spring '94 |
+Eleftherious Stefas | Delta · Spring '95 |
+Alexander Globerson | Epsilon · Fall '95 |
+Darmendra Ramcharran | Eta · Fall '96 |
+Scott Wrighter | Iota · Fall '97 |
+Phillip Lamanna | Kappa · Spring '98 |
+Brian Spigel | Mu · Spring '99 |
+Mark Sunheimer | Sigma · Spring '02 |
+Matthew Drouin | Phi · Fall '03 |
+Joshua McElwain | Beta Gamma · Spring '06 |
+Jason Bailey | Beta Epsilon · Spring '07 |
+Taylor James Newell | Beta Theta · Fall '08 |
+Zain Habib | Beta Mu · Fall '10 |
+Mark Buchholz | Beta Xi · Fall '11 |
+Dillon Goetz | Beta Pi · Fall '12 |
+Jonathan Harwood | Beta Tau · Spring '14 |
+Erick Herrera | Beta Chi · Fall '15 |
+Gianni Castellano | Gamma Beta · Spring '17 |
+Justin Hammond | Gamma Delta · Spring '18 |
+Patrick O'Sullivan | Gamma Eta · Fall '19 |
+George Amigdalos | Gamma Kappa · Fall '21 |
+Gurkirat Gill | Gamma Nu · Fall '23 |
+Gregory Patrick | Kappa · Spring '98 | Eleftherious Stefas
+Marc MacLaughlin | Omicron · Fall '00 |
+Jason Marrero | Rho · Fall '01 |
 
 @FAMILY Kelly
 Keith Kelly | Founding Father · Spring 1993 | -
