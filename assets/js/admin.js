@@ -124,7 +124,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
   }
 
-  var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, clsScroll: 0, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -303,6 +303,18 @@
   // flagging them would be 13 permanent false alarms in the worklist.
   // classYear (not pledgeYear) because it is the null-safe one of the two.
   function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
+
+  // Instant scroll. html{scroll-behavior:smooth} is site-wide and animates every
+  // programmatic scroll — and after a re-render the inline override is invisible
+  // to scrollTo unless a style recalc is forced first. Same trap, same fix as
+  // board.js go(); the getComputedStyle read is load-bearing.
+  function jumpTo(y) {
+    var h = document.documentElement, prev = h.style.scrollBehavior;
+    h.style.scrollBehavior = 'auto';
+    void getComputedStyle(h).scrollBehavior;
+    window.scrollTo(0, y);
+    h.style.scrollBehavior = prev;
+  }
 
   function renderList() {
     var q = document.getElementById('q');
@@ -1423,6 +1435,43 @@
       return r.some(function (x) { return String(x).trim() !== ''; });   // drop spacer rows
     });
   }
+  // One field, CSV-quoted. csvParse is its inverse; both exports use it.
+  function csvEsc(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+  // The family line is derived, never stored: walk big_id up to the root; the
+  // line is the root's LAST NAME — the same rule the public tree uses. A rootless
+  // brother is his own line, which is exactly how the tree draws him.
+  function familyOf(b, byId) {
+    var cur = b, hops = 0;
+    while (cur && cur.big_id && byId[cur.big_id] && hops < 100) { cur = byId[cur.big_id]; hops++; }
+    var parts = String((cur && cur.full_name) || '').trim().split(/\s+/);
+    return parts.length ? parts[parts.length - 1] : '';
+  }
+
+  // Name · Family Line · Pledge Class — the owner's Google Sheet's exact shape,
+  // with headers the importer's synonym table accepts. So the file round-trips:
+  // export, edit in Sheets, import back.
+  function exportFamilies() {
+    var all = state.data.all || [];
+    var byId = {};
+    all.forEach(function (b) { byId[b.id] = b; });
+    var rows = all.map(function (b) {
+      return { name: b.full_name || '', fam: familyOf(b, byId), cls: b.pledge_class || '' };
+    }).sort(function (a, z) {
+      return a.fam.localeCompare(z.fam) ||
+             ((classYear(a.cls) || 9999) - (classYear(z.cls) || 9999)) ||
+             a.name.localeCompare(z.name);
+    });
+    var lines = ['Name,Family Line,Pledge Class'].concat(rows.map(function (r) {
+      return [csvEsc(r.name), csvEsc(r.fam), csvEsc(r.cls)].join(',');
+    }));
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'zbxi-families-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
   // Match key. Curly apostrophe and punctuation are noise; case and spacing vary.
   function nameKey(s) {
@@ -1683,71 +1732,115 @@
   }
 
   // Every conflict must be decided before Apply lights up. Decisions live on the
-  // item itself (it.pick) so a re-render can't lose them.
+  // item itself (it.pick), and deciding re-renders ONLY that row — a full redraw
+  // would destroy .imp-list and dump the scroll back to the top of the list,
+  // which is exactly what the owner hit while walking 24 of these.
   function renderImportPreview(plan, fileName) {
     var wrap = treeModal('Import preview — ' + esc(fileName), '<div id="impBody"></div>');
     wrap.querySelector('.admin-modal__card').classList.add('admin-modal__card--wide');
     var body = wrap.querySelector('#impBody');
+    var confl = plan.items.filter(function (i) { return i.verdict === 'conflict'; });
 
     function unresolved() {
-      return plan.items.filter(function (i) { return i.verdict === 'conflict' && !i.pick; }).length;
+      return confl.filter(function (i) { return !i.pick; }).length;
     }
     function effective(i) {
       if (i.verdict !== 'conflict') return i.verdict;
-      if (i.pick === 'skip' || !i.pick) return 'skip';
       if (i.pick === 'new') return 'create';
-      return 'same';                       // picked an existing brother => same man, nothing to write
+      if (i.pick === 'same') return 'same';    // same man => nothing to write
+      return 'skip';                           // skipped, or not decided yet
     }
-    function draw() {
+    function counts() {
       var c = { create: 0, update: 0, same: 0, skip: 0 };
       plan.items.forEach(function (i) { c[effective(i)]++; });
-      var left = unresolved();
-      var confl = plan.items.filter(function (i) { return i.verdict === 'conflict'; });
-
-      body.innerHTML =
-        '<div class="cls-sum"><b>' + c.create + '</b> new profiles · <b>' + c.update + '</b> corrections · ' +
-          '<b>' + c.same + '</b> already right · <b>' + c.skip + '</b> skipped' +
-          (left ? ' · <b class="cls-warn">⚠️ ' + left + ' need your decision</b>' : ' · ✅ all decided') +
-        '</div>' +
-        (confl.length ? '<h4 class="stat-h">Is this the same man?</h4>' +
-          '<p class="admin-hint">These names aren’t on the site exactly, but look like someone who is. ' +
-          'Say <b>Same man</b> and nothing is created. Say <b>New brother</b> only if he’s genuinely different — ' +
-          'getting this wrong puts him on the roster and the tree twice.</p>' +
-          '<div class="imp-list">' + confl.map(conflictRow).join('') + '</div>' : '') +
-        (c.create ? '<h4 class="stat-h">New profiles (' + c.create + ')</h4><div class="imp-list">' +
-          plan.items.filter(function (i) { return effective(i) === 'create'; }).map(newRow).join('') + '</div>' : '') +
-        (c.update ? '<h4 class="stat-h">Pledge-class corrections (' + c.update + ')</h4>' +
-          '<p class="admin-hint">Your file disagrees with the site. Applying takes your file’s version.</p>' +
-          '<div class="imp-list">' + plan.items.filter(function (i) { return i.verdict === 'update'; }).map(updRow).join('') + '</div>' : '') +
-        '<p class="admin-hint" style="margin-top:1rem">Never touched: names of existing brothers, anyone’s big, ' +
-          'anyone’s status, and every brother not in your file.</p>' +
-        '<p><button class="btn btn--gold" id="impApply"' + (left ? ' disabled' : '') + '>' +
-          (left ? 'Decide the ' + left + ' above first' : 'Apply — ' + c.create + ' new, ' + c.update + ' corrected') +
-        '</button></p>';
-
-      body.querySelectorAll('[data-pick]').forEach(function (b) {
-        b.onclick = function () {
-          plan.items[+b.dataset.i].pick = b.dataset.pick;
-          draw();
-        };
-      });
-      var ap = body.querySelector('#impApply');
-      if (ap && !left) ap.onclick = function () { applyImport(plan, wrap, ap); };
+      return c;
+    }
+    function summaryInner() {
+      var c = counts(), left = unresolved();
+      return '<b>' + c.create + '</b> new · <b>' + c.update + '</b> corrections · ' +
+        '<b>' + c.same + '</b> already right · <b>' + c.skip + '</b> skipped' +
+        (confl.length
+          ? (left ? ' · <b class="cls-warn">⚠️ ' + (confl.length - left) + ' of ' + confl.length + ' decided</b>'
+                  : ' · ✅ all ' + confl.length + ' decided')
+          : '');
     }
 
     function conflictRow(i) {
       var n = plan.items.indexOf(i);
-      var pick = i.pick || '';
-      var btn2 = function (v, label) {
-        return '<button class="btn ' + (pick === v ? 'btn--gold' : 'btn--ghost') + '" data-pick="' + v + '" data-i="' + n + '">' + label + '</button>';
-      };
-      return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
+      if (i.pick) {
+        // Decided: quiet down to one line so the remaining ones stand out.
+        var what = i.pick === 'same'
+          ? '✓ Same man — <b>' + i.near.map(function (b) { return esc(b.full_name); }).join('</b> / <b>') + '</b>'
+          : i.pick === 'new' ? '✓ New brother — a profile will be created' : '— Skipped';
+        return '<div class="admin-row admin-row--decided" data-row="' + n + '">' +
+          '<div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
+          '<div class="admin-row__info"><b>' + esc(i.name) + '</b><span>' + what + '</span></div>' +
+          '<div class="admin-row__act"><button class="btn btn--ghost" data-pick="">Change</button></div></div>';
+      }
+      return '<div class="admin-row" data-row="' + n + '">' +
+        '<div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(i.name) + '</b>' +
           '<span>' + (i.near ? 'looks like <b>' + i.near.map(function (b) { return esc(b.full_name); }).join('</b> or <b>') + '</b>' : esc(i.why)) + '</span>' +
           (i.near ? '<span class="admin-row__when">' + i.near.map(function (b) { return esc(b.pledge_class || 'no class'); }).join(' · ') + '</span>' : '') +
         '</div>' +
-        '<div class="admin-row__act">' + (i.near ? btn2('same', 'Same man') : '') + btn2('new', 'New brother') + btn2('skip', 'Skip') + '</div></div>';
+        '<div class="admin-row__act">' +
+          (i.near ? '<button class="btn btn--ghost" data-pick="same">Same man</button>' : '') +
+          '<button class="btn btn--ghost" data-pick="new">New brother</button>' +
+          '<button class="btn btn--ghost" data-pick="skip">Skip</button>' +
+        '</div></div>';
     }
+
+    function wireRow(node) {
+      node.querySelectorAll('[data-pick]').forEach(function (b) {
+        b.onclick = function () { decide(+node.dataset.row, b.dataset.pick || null); };
+      });
+    }
+    function decide(n, pick) {
+      plan.items[n].pick = pick;
+      var node = body.querySelector('[data-row="' + n + '"]');
+      if (node) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = conflictRow(plan.items[n]);
+        var fresh = tmp.firstChild;
+        node.replaceWith(fresh);
+        wireRow(fresh);
+      }
+      var sum = body.querySelector('#impSum');
+      if (sum) sum.innerHTML = summaryInner();
+      var ap = body.querySelector('#impApply'), left = unresolved(), c = counts();
+      if (ap) {
+        ap.disabled = !!left;
+        ap.textContent = left ? 'Decide the ' + left + ' above first'
+                              : 'Apply — ' + c.create + ' new, ' + c.update + ' corrected';
+      }
+    }
+
+    // Initial render happens exactly once; the create/update sections are the
+    // file's own verdicts and never rebuild. The live numbers live in #impSum.
+    var creates = plan.items.filter(function (i) { return i.verdict === 'create'; });
+    var updates = plan.items.filter(function (i) { return i.verdict === 'update'; });
+    var left0 = unresolved(), c0 = counts();
+    body.innerHTML =
+      '<div class="cls-sum" id="impSum">' + summaryInner() + '</div>' +
+      (confl.length ? '<h4 class="stat-h">Is this the same man? (' + confl.length + ')</h4>' +
+        '<p class="admin-hint"><b>Same man</b> writes nothing. <b>New brother</b> creates a profile — ' +
+        'a wrong pick puts one man on the roster and the tree twice.</p>' +
+        '<div class="imp-list">' + confl.map(conflictRow).join('') + '</div>' : '') +
+      (creates.length ? '<h4 class="stat-h">New profiles (' + creates.length + ')</h4><div class="imp-list">' +
+        creates.map(newRow).join('') + '</div>' : '') +
+      (updates.length ? '<h4 class="stat-h">Pledge-class corrections (' + updates.length + ')</h4>' +
+        '<p class="admin-hint">Your file disagrees with the site. Applying takes your file’s version.</p>' +
+        '<div class="imp-list">' + updates.map(updRow).join('') + '</div>' : '') +
+      '<p class="admin-hint" style="margin-top:1rem">Never touched: names of existing brothers, anyone’s big, ' +
+        'anyone’s status, and every brother not in your file.</p>' +
+      '<p><button class="btn btn--gold" id="impApply"' + (left0 ? ' disabled' : '') + '>' +
+        (left0 ? 'Decide the ' + left0 + ' above first' : 'Apply — ' + c0.create + ' new, ' + c0.update + ' corrected') +
+      '</button></p>';
+
+    body.querySelectorAll('.imp-list [data-row]').forEach(wireRow);
+    body.querySelector('#impApply').onclick = function () {
+      if (!unresolved()) applyImport(plan, wrap, body.querySelector('#impApply'));
+    };
     function newRow(i) {
       return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(i.name) + '</b><span>' +
@@ -1760,7 +1853,6 @@
         '<div class="admin-row__info"><b>' + esc(i.name) + (i.b && i.b.user_id ? ' <span class="schip schip--active">has an account</span>' : '') + '</b>' +
           '<span>' + esc(i.clsFrom) + ' → <b>' + esc(i.cls) + '</b></span></div></div>';
     }
-    draw();
   }
 
   function renderClassesTab(q) {
@@ -1778,15 +1870,23 @@
       '<div class="cls-sum"><b>' + groups.length + '</b> classes · <b>' + total + '</b> brothers' +
         (flagged.length ? ' · <b class="cls-warn">⚠️ ' + flagged.length + ' need attention</b>' : ' · ✅ all match the house format') +
       '</div>' +
-      '<div class="admin-addbar"><button class="btn btn--ghost" id="impCsv">⬆ Import a class from CSV</button></div>' +
+      '<div class="admin-addbar"><button class="btn btn--ghost" id="impCsv">⬆ Import a class from CSV</button>' +
+      '<button class="btn btn--ghost" id="expFam">⬇ Export (name · family · class)</button></div>' +
       (shown.length ? shown.map(classRow).join('')
                     : '<p class="admin-empty">No classes match “' + esc(state.q) + '”.</p>');
 
     q.querySelectorAll('[data-cls]').forEach(function (el) {
-      el.onclick = function () { state.classDrill = el.dataset.cls; renderList(); };
+      el.onclick = function () {
+        // Remember where he was in this 65-class list, so ← All classes can put
+        // him back instead of dumping him at the top.
+        state.clsScroll = window.scrollY;
+        state.classDrill = el.dataset.cls; renderList(); jumpTo(0);
+      };
     });
     var imp = q.querySelector('#impCsv');
     if (imp) imp.onclick = openImportCsv;
+    var ex = q.querySelector('#expFam');
+    if (ex) ex.onclick = exportFamilies;
   }
 
   function classRow(g) {
@@ -1803,7 +1903,7 @@
 
   function renderClassDrill(q, groups) {
     var g = groups.filter(function (x) { return x.name === state.classDrill; })[0];
-    if (!g) { state.classDrill = null; return renderClassesTab(q); }   // it was merged away
+    if (!g) { state.classDrill = null; renderClassesTab(q); jumpTo(state.clsScroll || 0); return; }   // it was merged away
 
     var others = groups.filter(function (x) { return x.name !== g.name; });
     function opts(placeholder) {
@@ -1830,7 +1930,10 @@
           '</div>';
         }).join('');
 
-    q.querySelector('#clsBack').onclick = function () { state.classDrill = null; renderList(); };
+    q.querySelector('#clsBack').onclick = function () {
+      state.classDrill = null; renderList();
+      jumpTo(state.clsScroll || 0);   // back to where he was in the long list
+    };
 
     var merge = q.querySelector('#clsMerge');
     merge.onchange = function () {
@@ -2212,7 +2315,6 @@
       if (exp) exp.onclick = function () {
         var all = state.data.pending.concat(state.data.verified, state.data.rejected);
         var cols = ['full_name', 'pledge_class', 'grad_year', 'big', 'status', 'registered', 'role', 'role_term', 'major', 'city', 'occupation', 'hometown', 'email', 'phone', 'skills'];
-        var csvEsc = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
         var lines = [cols.join(',')].concat(all.map(function (b) {
           return cols.map(function (c) {
             if (c === 'big') return csvEsc(b.big_id && bigName(b.big_id) || '');

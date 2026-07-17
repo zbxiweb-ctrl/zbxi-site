@@ -519,9 +519,22 @@ p { margin: 0 0 1em; }
 .admin-modal__card { background: var(--bg); color: var(--text); border-radius: 16px; width: min(560px, 96vw); padding: 2rem; position: relative; border-top: 6px solid var(--gold); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
 .admin-modal__card h3 { color: var(--heading); margin-top: 0; }
 /* Import preview: the default 560px card puts Apply off-screen behind 300+ rows,
-   and the backdrop is the scroller, so the list needs its own. */
-.admin-modal__card--wide { width: min(860px, 96vw); }
+   and the backdrop is the scroller, so the list needs its own.
+   Navy, not the default cream: the preview's body copy (.admin-hint, .cls-sum) is
+   --on-dark text designed for the navy console and disappears on a light card.
+   Same committed navy+gold in both themes as the rest of the console. */
+.admin-modal__card--wide {
+  width: min(860px, 96vw);
+  background: linear-gradient(180deg, var(--navy), var(--navy-deep));
+  color: var(--cream);
+  border: 1px solid rgba(200,162,75,.28);
+}
+.admin-modal__card--wide h3 { color: var(--gold-bright); }
+.admin-modal__card--wide .admin-modal__close { color: var(--cream); }
 .imp-list { max-height: 46vh; overflow-y: auto; margin: .5rem 0 1rem; }
+/* A decided conflict quiets down so the undecided ones stand out. */
+.admin-row--decided { opacity: .6; }
+.admin-row--decided .admin-row__info span b { color: var(--gold-bright); }
 .admin-modal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
 .admin-modal__card .field label { color: var(--heading); }
 
