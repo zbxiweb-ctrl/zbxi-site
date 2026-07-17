@@ -2010,9 +2010,19 @@
       }
       function row(r) {
         var decided = r.status !== 'pending';
-        return '<div class="admin-row" data-tr="' + esc(r.id) + '">' +
+        var b = state.verifiedById[r.brother_id];
+        // The brother's face + name open his admin editor — approving a title
+        // often means fixing his class/big/scope in the same breath.
+        var av = b
+          ? '<div class="admin-row__ph" data-tr-open style="cursor:pointer" title="Open ' + esc(b.full_name) + '">' +
+              (b.photo_url ? '<img src="' + esc(b.photo_url) + '" alt="">' : esc(initials(b.full_name))) + '</div>'
+          : '';
+        var name = b
+          ? '<b data-tr-open style="cursor:pointer" title="Open his profile editor">' + esc(who(r)) + '</b>'
+          : '<b>' + esc(who(r)) + '</b>';
+        return '<div class="admin-row" data-tr="' + esc(r.id) + '">' + av +
           '<div style="flex:1;min-width:0">' +
-            '<b>' + esc(who(r)) + '</b> requests <b>' + esc(r.title) + ' · ' + esc(r.term) + '</b>' +
+            name + ' requests <b>' + esc(r.title) + ' · ' + esc(r.term) + '</b>' +
             (r.note ? '<div class="form-note" style="margin:.3rem 0 0">“' + esc(r.note) + '”</div>' : '') +
             '<div class="admin-row__when">Requested ' + stamp(r.created_at) +
               (decided ? ' · ' + (r.status === 'approved' ? '✅ approved' : '✖ rejected') + ' ' + stamp(r.decided_at) : '') + '</div>' +
@@ -2035,6 +2045,12 @@
       list.querySelectorAll('[data-tr]').forEach(function (el) {
         var id = el.dataset.tr;
         var r = rows.filter(function (x) { return x.id === id; })[0];
+        el.querySelectorAll('[data-tr-open]').forEach(function (t) {
+          t.onclick = function () {
+            var b = state.verifiedById[r.brother_id];
+            if (b) openEdit(b);
+          };
+        });
         var ok = el.querySelector('[data-ok]'), no = el.querySelector('[data-no]');
         if (ok) ok.onclick = function () {
           ok.disabled = true; ok.textContent = 'Approving…';
