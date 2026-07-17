@@ -677,6 +677,19 @@
       return client.from('invites').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });
     },
+    // One-time "you're approved" welcome email (admin console, right after an
+    // approve). Fire-and-forget at the call site — an email hiccup must never
+    // block the approval itself.
+    notifyApproved: function (brotherId) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-approved'), {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brother_id: brotherId })
+        });
+      }).then(function (r) { return r.json(); });
+    },
     setEmailOptOut: function (userId, optOut) {
       return client.from('brothers').update({ email_opt_out: optOut }).eq('user_id', userId);
     },

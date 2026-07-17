@@ -396,7 +396,13 @@
     q.querySelectorAll('.admin-row').forEach(function (el) {
       var id = el.dataset.id;
       var find = function (b) { return state.data[state.tab].filter(function (x) { return x.id === id; })[0]; };
-      each(el, '[data-approve]', function () { setStatus(id, 'verified'); });
+      each(el, '[data-approve]', function () {
+        Z.setStatus(id, 'verified').then(function (r) {
+          // Welcome email rides behind a successful approval, never blocks it.
+          if (!r || !r.error) Z.notifyApproved(id).catch(function () {});
+          afterChange();
+        });
+      });
       each(el, '[data-reject]',  function () { if (confirm('Reject this profile?')) setStatus(id, 'rejected'); });
       each(el, '[data-revoke]',  function () { if (confirm('Move this brother back to Pending?')) setStatus(id, 'pending'); });
       each(el, '[data-restore]', function () { setStatus(id, 'pending'); });
