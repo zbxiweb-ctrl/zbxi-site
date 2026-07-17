@@ -1394,6 +1394,375 @@
     return v;
   }
 
+  /* ---------------- CSV import ------------------------------------------------
+     A pledge class arrives as a spreadsheet every Fall and Spring. openAddClass()
+     already bulk-inserts from a textarea; this is the same thing with a file and,
+     crucially, a preview — because `brothers` has no unique constraint on name, so
+     an unpreviewed import silently duplicates every man it fails to recognise.
+     Everything below is pure: parse/plan compute, nothing writes. ---------------- */
+
+  // RFC 4180 scanner. Not split(',') — quoted fields carry commas and newlines,
+  // and Google Sheets exports both. Reverses csvEsc() in renderStatsTab.
+  function csvParse(text) {
+    var s = String(text || '').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    var rows = [], row = [], val = '', i = 0, inQ = false, c;
+    while (i < s.length) {
+      c = s.charAt(i);
+      if (inQ) {
+        if (c !== '"') { val += c; i++; continue; }
+        if (s.charAt(i + 1) === '"') { val += '"'; i += 2; continue; }   // "" -> literal quote
+        inQ = false; i++; continue;
+      }
+      if (c === '"') { inQ = true; i++; continue; }
+      if (c === ',') { row.push(val); val = ''; i++; continue; }
+      if (c === '\n') { row.push(val); rows.push(row); row = []; val = ''; i++; continue; }
+      val += c; i++;
+    }
+    if (val !== '' || row.length) { row.push(val); rows.push(row); }
+    return rows.filter(function (r) {
+      return r.some(function (x) { return String(x).trim() !== ''; });   // drop spacer rows
+    });
+  }
+
+  // Match key. Curly apostrophe and punctuation are noise; case and spacing vary.
+  function nameKey(s) {
+    return String(s == null ? '' : s).replace(/’/g, "'").replace(/[.,]/g, ' ')
+      .replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  var NAME_SUFFIX = { jr: 1, sr: 1, ii: 1, iii: 1, iv: 1 };
+  function nameParts(s) {
+    return nameKey(s).split(' ').filter(function (t) { return t && !NAME_SUFFIX[t]; });
+  }
+  // One-edit distance — catches Hrisodoulou/Hristodoulou, Ramcharran/Ramcharren.
+  function ed1(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    if (a === b) return true;
+    var i = 0;
+    while (i < Math.min(a.length, b.length) && a.charAt(i) === b.charAt(i)) i++;
+    if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+    if (a.length < b.length) return a.slice(i) === b.slice(i + 1);
+    return a.slice(i + 1) === b.slice(i);
+  }
+
+  // Header synonyms. Require a header row — guessing headerless eats brother #1.
+  var CSV_COLS = {
+    name:   ['name', 'fullname', 'brothername', 'brother'],
+    cls:    ['pledgeclass', 'class', 'pledgeclassyear', 'classyear', 'pledgeyear'],
+    big:    ['big', 'bigbrother', 'bigname'],
+    family: ['familyline', 'family', 'line', 'treename']
+  };
+  function csvHeaderMap(hdr) {
+    var norm = hdr.map(function (h) { return String(h).toLowerCase().replace(/[^a-z0-9]/g, ''); });
+    var out = {};
+    Object.keys(CSV_COLS).forEach(function (k) {
+      out[k] = -1;
+      CSV_COLS[k].forEach(function (syn) {
+        if (out[k] === -1) out[k] = norm.indexOf(syn);
+      });
+    });
+    return out;
+  }
+
+  // His sheets use "Beta Alpha - Spring '05"; the house format is "Beta Alpha · Spring '05".
+  // Try exact, then the separator swap, then Greek prefix, then season+year — and
+  // report ambiguity rather than guessing. Two live collisions make that real:
+  // Spring '24 is BOTH Gamma Xi and Gamma Lambda; Fall '25 is Gamma Rho and Gamma Omicron.
+  // The class NAME in a cell, with the semester stripped: "Founding Father - Fall
+  // '93" -> "founding father"; a bare "Fall 2001" -> "". Needed because a cell that
+  // names its class must never be matched to a differently-named one.
+  function cellPrefix(s) {
+    var t = String(s == null ? '' : s).split(/\s*[·\-–—]\s*/)[0];
+    t = t.replace(/\b(Spring|Summer|Fall|Winter)\b[\s\S]*$/i, '');
+    t = t.replace(/['’]?\d{2,4}\s*$/, '');
+    return t.trim().toLowerCase();
+  }
+  function mapClass(cell, canon) {
+    var raw = String(cell == null ? '' : cell).trim();
+    if (!raw) return { ok: false, why: 'no class given' };
+    if (canon.indexOf(raw) !== -1) return { ok: true, cls: raw, how: 'exact' };
+    var swapped = raw.replace(/\s*[-–—]\s*/, ' · ');
+    if (canon.indexOf(swapped) !== -1) return { ok: true, cls: swapped, how: 'matched on the separator' };
+    var pre = cellPrefix(raw);
+    if (pre) {
+      var byPrefix = canon.filter(function (c) { return classPrefix(c) === pre; });
+      if (byPrefix.length === 1) return { ok: true, cls: byPrefix[0], how: 'matched on the class name' };
+      if (byPrefix.length > 1) return { ok: false, why: '“' + pre + '” matches ' + byPrefix.length + ' classes — pick one', opts: byPrefix };
+      // Named a class we don't have. Do NOT fall through to semester matching:
+      // "Founding Father - Fall '93" would land on "Alpha Class · Fall 1993" —
+      // the only other class that semester — and move all 9 founders into it.
+      return CLASS_CANON.test(swapped)
+        ? { ok: false, why: 'looks like a new class', propose: swapped }
+        : { ok: false, why: 'no class called “' + pre + '”' };
+    }
+    // No class name in the cell (e.g. "Fall 2001") — the semester is all we have.
+    var se = classSeason(raw), yr = classYear(raw);
+    if (se && yr) {
+      var bySE = canon.filter(function (c) { return classSeason(c) === se && classYear(c) === yr; });
+      if (bySE.length === 1) return { ok: true, cls: bySE[0], how: 'matched on the semester' };
+      if (bySE.length > 1) return { ok: false, why: se + ' ' + yr + ' has ' + bySE.length + ' classes — pick one', opts: bySE };
+      return { ok: false, why: 'no class in ' + se + ' ' + yr };
+    }
+    return { ok: false, why: 'unrecognised — a year alone can’t identify a class' };
+  }
+
+  // Turn parsed rows into a verdict per row. Pure — call it as often as you like.
+  // Verdicts: create | update | same | conflict (needs a human) | skip.
+  function buildImportPlan(rows) {
+    var hdr = csvHeaderMap(rows[0] || []);
+    if (hdr.name === -1) {
+      return { fatal: 'No “Name” column. Found: ' + (rows[0] || []).join(', '), items: [] };
+    }
+    var canon = classGroups().map(function (g) { return g.name; }).filter(Boolean);
+    var live = state.data.all || [];
+
+    // Index on BOTH names: a claimed brother may have renamed himself to "Mike
+    // Roach" while roster_name stays "Michael Roach". Matching full_name alone
+    // misses him and creates the duplicate this whole screen exists to prevent.
+    var byName = {}, bySurname = {};
+    live.forEach(function (b) {
+      [b.full_name, b.roster_name].forEach(function (n) {
+        if (n && !byName[nameKey(n)]) byName[nameKey(n)] = b;
+      });
+      var p = nameParts(b.full_name);
+      if (p.length) (bySurname[p[p.length - 1]] = bySurname[p[p.length - 1]] || []).push(b);
+    });
+
+    var seen = {}, items = [];
+    rows.slice(1).forEach(function (r, i) {
+      var name = String(r[hdr.name] == null ? '' : r[hdr.name]).trim();
+      if (!name) return;
+      var it = { line: i + 2, name: name, verdict: 'create', why: '', b: null,
+                 cls: null, clsFrom: null, bigName: hdr.big === -1 ? '' : String(r[hdr.big] || '').trim(),
+                 family: hdr.family === -1 ? '' : String(r[hdr.family] || '').trim() };
+
+      // The sheet carries placeholder rows; they are not men.
+      if (/^debrothered$/i.test(name)) { it.verdict = 'skip'; it.why = 'placeholder row, not a brother'; items.push(it); return; }
+
+      var k = nameKey(name);
+      if (seen[k]) { it.verdict = 'conflict'; it.why = 'this name appears twice in the file'; items.push(it); return; }
+      seen[k] = true;
+
+      var b = byName[k];
+      if (b) {
+        it.b = b;
+        var m = hdr.cls === -1 ? { ok: false, why: 'no class column' } : mapClass(r[hdr.cls], canon);
+        if (m.ok && (b.pledge_class || '') !== m.cls) {
+          it.verdict = 'update'; it.cls = m.cls; it.clsFrom = b.pledge_class || '(none)'; it.why = m.how;
+        } else if (m.ok) {
+          it.verdict = 'same';
+        } else {
+          it.verdict = 'same'; it.why = m.why;   // can't map his class -> leave the live one alone
+        }
+        items.push(it); return;
+      }
+
+      // No exact match. Before calling him new, check he isn't an existing brother
+      // under a nickname — that is 22 of the 51 in the owner's own sheet.
+      var p = nameParts(name);
+      var near = [];
+      if (p.length) {
+        Object.keys(bySurname).forEach(function (sn) {
+          if (!ed1(p[p.length - 1], sn)) return;
+          bySurname[sn].forEach(function (cand) {
+            var cp = nameParts(cand.full_name);
+            if (cp.length && cp[0].charAt(0) === p[0].charAt(0)) near.push(cand);
+          });
+        });
+      }
+      var mm = hdr.cls === -1 ? { ok: false, why: 'no class column' } : mapClass(r[hdr.cls], canon);
+      it.cls = mm.ok ? mm.cls : null;
+      it.clsErr = mm.ok ? null : mm;
+      if (near.length) { it.verdict = 'conflict'; it.near = near; it.why = 'might already be on the site'; }
+      else if (!mm.ok) { it.verdict = 'conflict'; it.why = mm.why; }
+      items.push(it);
+    });
+    return { fatal: null, items: items, hdr: hdr };
+  }
+
+  function planCounts(items) {
+    var c = { create: 0, update: 0, same: 0, conflict: 0, skip: 0 };
+    items.forEach(function (i) { c[i.verdict]++; });
+    return c;
+  }
+
+  // The only function here that writes. Runs in the browser as the admin, so
+  // is_admin() is true and tg_guard_status lets status:'verified' through — that
+  // is NOT true over the Management API, where the same insert lands 'pending'.
+  function applyImport(plan, wrap, btn) {
+    btn.disabled = true; btn.textContent = 'Applying…';
+    var st = wrap.querySelector('[data-status]');
+    st.className = 'form-status'; st.textContent = '';
+
+    // Recompute against live data at the moment of the click: the plan may be
+    // minutes old, and a name inserted since would otherwise duplicate. Also makes
+    // a double-click a no-op.
+    var liveKeys = {};
+    (state.data.all || []).forEach(function (b) {
+      [b.full_name, b.roster_name].forEach(function (n) { if (n) liveKeys[nameKey(n)] = 1; });
+    });
+    var bigByName = {};
+    (state.data.verified || []).forEach(function (b) { bigByName[nameKey(b.full_name)] = b.id; });
+
+    var inserts = [], missBig = [];
+    plan.items.forEach(function (i) {
+      var eff = i.verdict === 'conflict' ? (i.pick === 'new' ? 'create' : 'skip') : i.verdict;
+      if (eff !== 'create') return;
+      if (liveKeys[nameKey(i.name)]) return;             // appeared since the preview
+      var bid = i.bigName ? bigByName[nameKey(i.bigName)] : null;
+      if (i.bigName && !bid) missBig.push(i.name + ' (big “' + i.bigName + '” not found)');
+      inserts.push({ full_name: i.name, roster_name: i.name, pledge_class: i.cls || null,
+                     big_id: bid || null, status: 'verified', user_id: null });
+    });
+    var updates = {};   // class -> [id]
+    plan.items.filter(function (i) { return i.verdict === 'update'; })
+      .forEach(function (i) { (updates[i.cls] = updates[i.cls] || []).push(i.b.id); });
+
+    var undo = { ids: [], classes: [] };
+    plan.items.filter(function (i) { return i.verdict === 'update'; })
+      .forEach(function (i) { undo.classes.push({ id: i.b.id, was: i.b.pledge_class }); });
+
+    var jobs = [];
+    if (inserts.length) {
+      jobs.push(Promise.resolve(Z.addBrothers(inserts)).then(function (r) {
+        if (r.error) throw r.error;
+        (r.data || []).forEach(function (b) { undo.ids.push(b.id); });
+      }));
+    }
+    Object.keys(updates).forEach(function (cls) {
+      // Chunk: ids ride in the query string and ~50 uuids is already ~2KB.
+      for (var s = 0; s < updates[cls].length; s += 50) {
+        (function (slice) {
+          jobs.push(Promise.resolve(Z.updateBrothersIn(slice, { pledge_class: cls })).then(function (r) {
+            if (r && r.error) throw r.error;
+          }));
+        })(updates[cls].slice(s, s + 50));
+      }
+    });
+
+    Promise.all(jobs).then(function () {
+      state.lastImport = undo;
+      st.className = 'form-status ok';
+      st.textContent = '✅ ' + inserts.length + ' added, ' +
+        Object.keys(updates).reduce(function (n, k) { return n + updates[k].length; }, 0) + ' corrected.' +
+        (missBig.length ? '  ⚠️ No big set for: ' + missBig.join(', ') : '');
+      btn.textContent = 'Done';
+      loadAll();
+    }).catch(function (e) {
+      st.className = 'form-status err';
+      st.textContent = 'Failed: ' + (e.message || e) + '  — some rows may have been written. Check 🗂 All Brothers.';
+      btn.disabled = false; btn.textContent = 'Retry';
+    });
+  }
+
+  /* ---- the preview. Reads only; nothing here writes. ---- */
+  function openImportCsv() {
+    var wrap = treeModal('Import brothers from a CSV',
+      '<p class="admin-hint">Pick your spreadsheet. <b>Nothing is written until you press Apply</b> — ' +
+      'the next screen shows exactly what would change, and you decide every unclear row yourself.<br>' +
+      'Needs a <b>Name</b> column. <b>Pledge Class</b> and <b>Big</b> are used if present. ' +
+      'Anyone missing from the file is left alone — this never deletes.</p>' +
+      '<p><input type="file" id="impFile" accept=".csv,text/csv"></p>' +
+      '<p class="admin-hint">Back up first: <b>📊 Stats → ⬇ Export roster (CSV)</b>. That export is the only real undo.</p>');
+    wrap.querySelector('.admin-modal__card').classList.add('admin-modal__card--wide');
+    var st = wrap.querySelector('[data-status]');
+    wrap.querySelector('#impFile').onchange = function (e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      st.className = 'form-status'; st.textContent = 'Reading ' + f.name + '…';
+      f.text().then(function (txt) {
+        var rows = csvParse(txt);
+        if (rows.length > 501) { st.className = 'form-status err'; st.textContent = 'That file has ' + rows.length + ' rows. Over 500 looks like the wrong file — import refused.'; return; }
+        var plan = buildImportPlan(rows);
+        if (plan.fatal) { st.className = 'form-status err'; st.textContent = plan.fatal; return; }
+        wrap.close();
+        renderImportPreview(plan, f.name);
+      }).catch(function (err) {
+        st.className = 'form-status err'; st.textContent = 'Could not read that file: ' + (err.message || err);
+      });
+    };
+  }
+
+  // Every conflict must be decided before Apply lights up. Decisions live on the
+  // item itself (it.pick) so a re-render can't lose them.
+  function renderImportPreview(plan, fileName) {
+    var wrap = treeModal('Import preview — ' + esc(fileName), '<div id="impBody"></div>');
+    wrap.querySelector('.admin-modal__card').classList.add('admin-modal__card--wide');
+    var body = wrap.querySelector('#impBody');
+
+    function unresolved() {
+      return plan.items.filter(function (i) { return i.verdict === 'conflict' && !i.pick; }).length;
+    }
+    function effective(i) {
+      if (i.verdict !== 'conflict') return i.verdict;
+      if (i.pick === 'skip' || !i.pick) return 'skip';
+      if (i.pick === 'new') return 'create';
+      return 'same';                       // picked an existing brother => same man, nothing to write
+    }
+    function draw() {
+      var c = { create: 0, update: 0, same: 0, skip: 0 };
+      plan.items.forEach(function (i) { c[effective(i)]++; });
+      var left = unresolved();
+      var confl = plan.items.filter(function (i) { return i.verdict === 'conflict'; });
+
+      body.innerHTML =
+        '<div class="cls-sum"><b>' + c.create + '</b> new profiles · <b>' + c.update + '</b> corrections · ' +
+          '<b>' + c.same + '</b> already right · <b>' + c.skip + '</b> skipped' +
+          (left ? ' · <b class="cls-warn">⚠️ ' + left + ' need your decision</b>' : ' · ✅ all decided') +
+        '</div>' +
+        (confl.length ? '<h4 class="stat-h">Is this the same man?</h4>' +
+          '<p class="admin-hint">These names aren’t on the site exactly, but look like someone who is. ' +
+          'Say <b>Same man</b> and nothing is created. Say <b>New brother</b> only if he’s genuinely different — ' +
+          'getting this wrong puts him on the roster and the tree twice.</p>' +
+          '<div class="imp-list">' + confl.map(conflictRow).join('') + '</div>' : '') +
+        (c.create ? '<h4 class="stat-h">New profiles (' + c.create + ')</h4><div class="imp-list">' +
+          plan.items.filter(function (i) { return effective(i) === 'create'; }).map(newRow).join('') + '</div>' : '') +
+        (c.update ? '<h4 class="stat-h">Pledge-class corrections (' + c.update + ')</h4>' +
+          '<p class="admin-hint">Your file disagrees with the site. Applying takes your file’s version.</p>' +
+          '<div class="imp-list">' + plan.items.filter(function (i) { return i.verdict === 'update'; }).map(updRow).join('') + '</div>' : '') +
+        '<p class="admin-hint" style="margin-top:1rem">Never touched: names of existing brothers, anyone’s big, ' +
+          'anyone’s status, and every brother not in your file.</p>' +
+        '<p><button class="btn btn--gold" id="impApply"' + (left ? ' disabled' : '') + '>' +
+          (left ? 'Decide the ' + left + ' above first' : 'Apply — ' + c.create + ' new, ' + c.update + ' corrected') +
+        '</button></p>';
+
+      body.querySelectorAll('[data-pick]').forEach(function (b) {
+        b.onclick = function () {
+          plan.items[+b.dataset.i].pick = b.dataset.pick;
+          draw();
+        };
+      });
+      var ap = body.querySelector('#impApply');
+      if (ap && !left) ap.onclick = function () { applyImport(plan, wrap, ap); };
+    }
+
+    function conflictRow(i) {
+      var n = plan.items.indexOf(i);
+      var pick = i.pick || '';
+      var btn2 = function (v, label) {
+        return '<button class="btn ' + (pick === v ? 'btn--gold' : 'btn--ghost') + '" data-pick="' + v + '" data-i="' + n + '">' + label + '</button>';
+      };
+      return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
+        '<div class="admin-row__info"><b>' + esc(i.name) + '</b>' +
+          '<span>' + (i.near ? 'looks like <b>' + i.near.map(function (b) { return esc(b.full_name); }).join('</b> or <b>') + '</b>' : esc(i.why)) + '</span>' +
+          (i.near ? '<span class="admin-row__when">' + i.near.map(function (b) { return esc(b.pledge_class || 'no class'); }).join(' · ') + '</span>' : '') +
+        '</div>' +
+        '<div class="admin-row__act">' + (i.near ? btn2('same', 'Same man') : '') + btn2('new', 'New brother') + btn2('skip', 'Skip') + '</div></div>';
+    }
+    function newRow(i) {
+      return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
+        '<div class="admin-row__info"><b>' + esc(i.name) + '</b><span>' +
+          esc(i.cls || '⚠️ no class — ' + ((i.clsErr && i.clsErr.why) || 'unmapped')) +
+          (i.bigName ? ' · Big: ' + esc(i.bigName) : ' · <b class="cls-warn">no big — he’ll show as his own family line</b>') +
+        '</span></div></div>';
+    }
+    function updRow(i) {
+      return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
+        '<div class="admin-row__info"><b>' + esc(i.name) + (i.b && i.b.user_id ? ' <span class="schip schip--active">has an account</span>' : '') + '</b>' +
+          '<span>' + esc(i.clsFrom) + ' → <b>' + esc(i.cls) + '</b></span></div></div>';
+    }
+    draw();
+  }
+
   function renderClassesTab(q) {
     var groups = classGroups();
     if (state.classDrill != null) return renderClassDrill(q, groups);
@@ -1409,12 +1778,15 @@
       '<div class="cls-sum"><b>' + groups.length + '</b> classes · <b>' + total + '</b> brothers' +
         (flagged.length ? ' · <b class="cls-warn">⚠️ ' + flagged.length + ' need attention</b>' : ' · ✅ all match the house format') +
       '</div>' +
+      '<div class="admin-addbar"><button class="btn btn--ghost" id="impCsv">⬆ Import a class from CSV</button></div>' +
       (shown.length ? shown.map(classRow).join('')
                     : '<p class="admin-empty">No classes match “' + esc(state.q) + '”.</p>');
 
     q.querySelectorAll('[data-cls]').forEach(function (el) {
       el.onclick = function () { state.classDrill = el.dataset.cls; renderList(); };
     });
+    var imp = q.querySelector('#impCsv');
+    if (imp) imp.onclick = openImportCsv;
   }
 
   function classRow(g) {

@@ -287,6 +287,14 @@
     updateBrother: function (id, fields) {
       return client.from('brothers').update(fields).eq('id', id);
     },
+    // Admin: the same fields on many brothers in one request (CSV import). RLS
+    // brothers_admin_update still gates it server-side. Caller chunks the ids —
+    // they ride in the query string, and a few hundred uuids overflows it.
+    // NOT upsertProfile: that keys on user_id, which is null on roster rows, so it
+    // would INSERT duplicates rather than update.
+    updateBrothersIn: function (ids, fields) {
+      return client.from('brothers').update(fields).in('id', ids);
+    },
     deleteBrother: function (id) {
       return client.from('brothers').delete().eq('id', id);
     },

@@ -518,6 +518,10 @@ p { margin: 0 0 1em; }
 .admin-modal.open { display: flex; }
 .admin-modal__card { background: var(--bg); color: var(--text); border-radius: 16px; width: min(560px, 96vw); padding: 2rem; position: relative; border-top: 6px solid var(--gold); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
 .admin-modal__card h3 { color: var(--heading); margin-top: 0; }
+/* Import preview: the default 560px card puts Apply off-screen behind 300+ rows,
+   and the backdrop is the scroller, so the list needs its own. */
+.admin-modal__card--wide { width: min(860px, 96vw); }
+.imp-list { max-height: 46vh; overflow-y: auto; margin: .5rem 0 1rem; }
 .admin-modal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
 .admin-modal__card .field label { color: var(--heading); }
 
