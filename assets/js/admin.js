@@ -1913,7 +1913,7 @@
     }
 
     q.innerHTML =
-      '<button class="btn btn--ghost" id="clsBack">← All classes</button>' +
+      '<button class="back-pill" id="clsBack">← All classes</button>' +
       '<h4 style="margin:1rem 0 .2rem">' + esc(g.name || '— blank —') + '</h4>' +
       '<p class="admin-hint" style="margin-top:0">' + g.n + (g.n === 1 ? ' brother' : ' brothers') +
         (g.warn ? ' · <b class="cls-warn">⚠️ ' + esc(g.warn) + '</b>' : '') + '</p>' +

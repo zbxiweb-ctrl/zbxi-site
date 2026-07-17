@@ -776,12 +776,25 @@ body.modal-open { overflow: hidden; }
 .portal-live { color: #1c7a41; font-weight: 600; font-size: .9rem; margin-bottom: 1rem; }
 .portal-signout { display: block; margin: 1rem auto 0; background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: .85rem; }
 
+/* Shared back-navigation pill — the consoles' "← Back to site", the admin
+   class drill, the board's "← Back to …" and the portal's back/cancel steps.
+   Navy + gold hairline reads on both cream pages and the navy consoles. */
+.back-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  background: var(--navy); color: var(--gold-bright);
+  border: 1px solid rgba(200,162,75,.5); border-radius: 999px;
+  padding: .5rem 1.1rem; font-size: .85rem; font-weight: 600;
+  cursor: pointer; text-decoration: none; line-height: 1;
+  transition: border-color .15s, transform .15s;
+}
+.back-pill:hover { border-color: var(--gold-bright); transform: translateY(-1px); }
+.back-pill--center { display: flex; width: max-content; margin: 1.1rem auto 0; }
+
 /* ---------- Admin page ---------- */
 .admin-body { background: var(--navy-deep); color: var(--cream); min-height: 100vh; }
 .admin-topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem clamp(1rem,5vw,3rem); border-bottom: 1px solid rgba(200,162,75,.3);
   position: sticky; top: 0; z-index: 50; background: var(--navy-deep); }
 .admin-topbar .brand img { height: 40px; }
-.admin-back { color: var(--gold-bright); font-size: .9rem; }
 .admin-wrap { width: min(1180px, 96vw); margin: 2.5rem auto; }
 
 /* ============================================================================

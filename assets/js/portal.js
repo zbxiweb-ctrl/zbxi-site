@@ -402,7 +402,7 @@
         '<button class="btn btn--navy" style="width:100%" type="submit">Send reset link</button>' +
         '<p class="form-status" id="resetStatus" role="status"></p>' +
       '</form>' +
-      '<button class="portal-signout" id="resetBack" type="button">← Back to log in</button></div>');
+      '<button class="back-pill back-pill--center" id="resetBack" type="button">← Back to log in</button></div>');
     card.querySelector('#resetBack').onclick = function () { state.mode = 'signin'; renderAuth(); };
     var capReset = window.ZBXITurnstile ? ZBXITurnstile.render(card.querySelector('#tsReset')) : null;
     card.querySelector('#resetForm').onsubmit = function (e) {
@@ -436,7 +436,7 @@
         '<button class="btn btn--navy" style="width:100%" type="submit">Verify</button>' +
         '<p class="form-status" id="mfaStatus" role="status"></p>' +
       '</form>' +
-      '<button class="portal-signout" id="mfaCancel" type="button">← Cancel and sign out</button></div>');
+      '<button class="back-pill back-pill--center" id="mfaCancel" type="button">← Cancel and sign out</button></div>');
     card.querySelector('#mfaCancel').onclick = function () {
       // Don't leave them stranded at aal1 — sign out fully and reload to the login card.
       Z.signOut().then(function () { location.reload(); });
@@ -643,7 +643,7 @@
       '<div class="field"><label>Search the brotherhood</label><input id="claimSearch" placeholder="Start typing your name…" autocomplete="off"></div>' +
       '<div id="claimList" class="claim-list"></div>' +
       '<p class="form-status" id="claimStatus" role="status"></p>' +
-      '<button class="portal-signout" id="claimBack" type="button">← Back</button></div>');
+      '<button class="back-pill back-pill--center" id="claimBack" type="button">← Back</button></div>');
     mbody.querySelector('#claimBack').onclick = renderChooser;
 
     var listEl = mbody.querySelector('#claimList');
@@ -816,7 +816,7 @@
         '</fieldset>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (pr.id ? 'Save profile' : 'Submit for verification') + '</button>' +
         '<p class="form-status" id="profStatus" role="status"></p>' +
-      '</form>' + (showBack ? '<button class="portal-signout" id="formBack" type="button">← Back</button>' : '');
+      '</form>' + (showBack ? '<button class="back-pill back-pill--center" id="formBack" type="button">← Back</button>' : '');
 
     var back = host.querySelector('#formBack');
     if (back) back.onclick = renderChooser;

@@ -417,7 +417,7 @@
 
   function renderNewPoll() {
     root.innerHTML =
-      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
+      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
       '<div class="card-form" style="max-width:640px">' +
         '<h3 style="color:var(--navy);font-family:var(--display)">New poll</h3>' +
         '<form id="pollForm" novalidate>' +
@@ -516,7 +516,7 @@
       : '';
     var oppNow = isAll ? false : state.cat === 'opportunities';   // 'social' is the default pick
     root.innerHTML =
-      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
+      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
       '<div class="card-form" style="max-width:680px">' +
         '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (oppNow ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
         '<form id="thrForm" novalidate>' +
@@ -581,7 +581,7 @@
     var tag = t.tag ? '<span class="thr-tag thr-tag--' + esc(t.tag) + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
     var canDel = me && (t.author_user === me.id || isAdmin);
     root.innerHTML =
-      '<button class="portal-signout" id="backList" style="margin-bottom:1rem">← Back to ' + backLabel + '</button>' +
+      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to ' + backLabel + '</button>' +
       '<article class="thread-view">' +
         '<h2>' + tag + esc(t.title) + '</h2>' +
         '<div class="thread-view__meta">' + chip(t.author_user) + ' · ' + when(t.created_at) +
