@@ -82,12 +82,16 @@
   // "Approved" = verified AND has a linked account (user_id). "Unclaimed" =
   // verified roster names nobody has claimed yet. state.data.verified keeps
   // the combined set (feeds big-brother dropdowns + the tree editor).
-  var BRO_TABS = ['pending', 'approved', 'unclaimed', 'rejected'];
+  // 'all' is every brother in one list, whatever his status. It rides the same
+  // generic renderer as the four status tabs, so it needs its own actionsFor()
+  // case — see the comment there before adding another tab here.
+  var BRO_TABS = ['all', 'pending', 'approved', 'unclaimed', 'rejected'];
 
   /* Tabs live in a left sidebar and are sorted A→Z inside each group, so the
      webmaster can always find one by name instead of hunting a pill cloud. */
   var TAB_GROUPS = [
     { label: 'Brothers', tabs: [
+      { id: 'all',       ic: '🗂', label: 'All Brothers' },
       { id: 'approved',  ic: '✅', label: 'Approved'  },
       { id: 'pending',   ic: '⏳', label: 'Pending'   },
       { id: 'rejected',  ic: '✖',  label: 'Rejected'  },
@@ -120,7 +124,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
   }
 
-  var state = { tab: tabFromHash(), data: { pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, q: '', events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
 
   // Active/Alumni logic — same rule the public pages use: grad year in the
   // future (or this academic year) = Active. Grad year comes from the profile
@@ -265,6 +269,12 @@
         // Split the verified set: real approved accounts vs unclaimed roster names.
         state.data.approved  = state.data.verified.filter(function (b) { return b.user_id; });
         state.data.unclaimed = state.data.verified.filter(function (b) { return !b.user_id; });
+        // Every brother, one list. verified already holds approved + unclaimed, so
+        // this is the whole roster with nobody counted twice. concat is shallow —
+        // these are the same row objects the status tabs hold, which is what lets
+        // openEdit() save from here and have the other tabs agree.
+        state.data.all = state.data.verified.concat(state.data.pending, state.data.rejected)
+          .sort(function (a, z) { return String(a.full_name || '').localeCompare(String(z.full_name || '')); });
         state.verifiedById = {};
         state.data.verified.forEach(function (b) { state.verifiedById[b.id] = b; });
         BRO_TABS.forEach(function (t) {
@@ -286,6 +296,13 @@
   }
 
   function bigName(id) { var b = state.verifiedById[id]; return b ? b.full_name : null; }
+
+  // A brother with no big is his own root, and the family tree draws every root as
+  // a family card — so a missing big isn't a blank field, it's a fake family line
+  // on a page brothers actually read. The 1993 founders ARE roots, legitimately;
+  // flagging them would be 13 permanent false alarms in the worklist.
+  // classYear (not pledgeYear) because it is the null-safe one of the two.
+  function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
 
   function renderList() {
     var q = document.getElementById('q');
@@ -310,12 +327,26 @@
         return (b.full_name + ' ' + (b.major || '') + ' ' + (b.pledge_class || '')).toLowerCase().indexOf(state.q) !== -1;
       });
     }
+    var noBig = state.tab === 'all' ? state.data.all.filter(needsBig).length : 0;
+    // When the worklist empties its toggle disappears, so a filter left on would
+    // strand you in an empty list with no button to turn it off.
+    if (!noBig) state.allNeedsBig = false;
+    if (state.tab === 'all' && state.allNeedsBig) rows = rows.filter(needsBig);
     // Roster additions live on the Unclaimed tab (new rows are unclaimed names).
     var addBar = state.tab === 'unclaimed'
       ? '<div class="admin-addbar"><button class="btn btn--gold" id="addOne">+ Add brother</button>' +
         '<button class="btn btn--ghost" id="addClass">+ Add pledge class</button></div>'
       : '';
+    // The worklist: a brother with no big is a fake family line on the tree, so
+    // this is a to-do list, not a report. Hidden entirely when there's nothing to do.
+    if (state.tab === 'all' && noBig) {
+      addBar = '<div class="admin-addbar"><button class="btn ' +
+        (state.allNeedsBig ? 'btn--gold' : 'btn--ghost') + '" id="allNeedsBig">' +
+        (state.allNeedsBig ? '← Show all brothers' : '⚠️ ' + noBig + ' need a big') + '</button></div>';
+    }
     var intro = '';
+    if (state.tab === 'all' && !state.q) intro = '<p class="admin-hint">Every brother, whatever his status — the whole roster in one place. Use <b>Edit</b> to change anyone\'s big, class or status.' +
+      (noBig ? ' <b>' + noBig + '</b> have no big set, so the tree draws each as his own family line.' : '') + '</p>';
     if (state.tab === 'approved' && !state.q) intro = '<p class="admin-hint">Brothers with a linked email account, approved by you. Everyone else from the chapter records lives in <b>📋 Unclaimed</b>.</p>';
     if (state.tab === 'unclaimed' && !state.q) intro = '<p class="admin-hint">Roster names from the chapter records — in the tree and rosters, but no account linked yet. When a brother signs up and claims his name, he moves to <b>Pending</b> for your approval.</p>';
 
@@ -325,7 +356,12 @@
       return;
     }
     q.innerHTML = addBar + intro + rows.map(function (b) {
-      var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null), (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null)].filter(Boolean).map(esc).join(' · ');
+      // On All Brothers the status isn't implied by the tab you're standing on, so
+      // it has to be in the row; and a missing big is the thing worth spotting.
+      var meta = [b.pledge_class, b.major, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null),
+                  (b.big_id && bigName(b.big_id) ? 'Big: ' + bigName(b.big_id) : null),
+                  (state.tab === 'all' && needsBig(b) ? '⚠️ no big' : null),
+                  (state.tab === 'all' ? b.status : null)].filter(Boolean).map(esc).join(' · ');
       var wt = state.tab === 'pending' ? ['Signed up', (b.user_id && state.signupById[b.user_id]) || b.created_at]
              : state.tab === 'rejected' ? ['Rejected', b.decided_at || b.created_at]
              : state.tab === 'approved' ? [b.decided_at ? 'Approved' : 'Added', b.decided_at || b.created_at]
@@ -358,10 +394,18 @@
   }
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
 
+  // NOTE: the last line is an UNGUARDED fall-through — any tab without a case
+  // above gets Restore + Delete. A new tab must be added here in the same commit
+  // that adds it to BRO_TABS, or every row on it grows a Delete button wired to
+  // del(id) on a real brother.
   function actionsFor(tab) {
     if (tab === 'pending') return btn('approve', 'Approve', 'gold') + btn('reject', 'Reject', 'danger') + btn('edit', 'Edit', 'ghost');
     if (tab === 'approved') return btn('revoke', 'Revoke', 'ghost') + btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
     if (tab === 'unclaimed') return btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
+    // All Brothers is a mixed-status list, so a single verb can't be right for
+    // every row. Edit only — openEdit carries the Big and Status selects, and the
+    // status-specific verbs stay on the tab where they're unambiguous.
+    if (tab === 'all') return btn('edit', 'Edit', 'ghost');
     return btn('restore', 'Restore', 'gold') + btn('delete', 'Delete', 'danger'); // rejected
   }
   function btn(action, label, kind) {
@@ -778,6 +822,8 @@
     var a = q.querySelector('#addOne'), c = q.querySelector('#addClass');
     if (a) a.onclick = openAddOne;
     if (c) c.onclick = openAddClass;
+    var nb = q.querySelector('#allNeedsBig');
+    if (nb) nb.onclick = function () { state.allNeedsBig = !state.allNeedsBig; renderList(); };
   }
 
   function bigOptions(selectedId) {
@@ -1307,8 +1353,8 @@
   function classPrefix(cls) { return String(cls || '').split('·')[0].trim().toLowerCase(); }
 
   function classGroups() {
-    // verified already contains approved + unclaimed; add the other two buckets.
-    var all = (state.data.verified || []).concat(state.data.pending || [], state.data.rejected || []);
+    // state.data.all is this same union, built once in loadAll().
+    var all = state.data.all || [];
     var by = {};
     all.forEach(function (b) {
       var k = b.pledge_class == null ? '' : String(b.pledge_class);
@@ -1664,6 +1710,7 @@
         '<li><b>Anyone with an account</b> (even before you approve them) can see names and the real tree — they need that to claim their own name.</li>' +
         '<li><b>Approved brothers</b> see everything: full profiles, photos, gallery, board, directory.</li></ul>') +
       sec('🗂️ What the tabs mean', '<ul>' +
+        '<li><b>🗂 All Brothers</b> — every brother in one list, whatever his status, with his big and class. Start here when you just want to find someone. It also flags anyone with <b>no big</b>: the family tree draws a brother with no big as his own family line, so those are worth fixing — click <b>Edit</b> to set one.</li>' +
         '<li><b>Pending</b> — brothers who signed up (or claimed a name) and are waiting for your approval.</li>' +
         '<li><b>Approved</b> — brothers with a real account, approved by you. These are your active members.</li>' +
         '<li><b>📋 Unclaimed</b> — every roster name from the chapter records that nobody has claimed yet. They show on the public tree/rosters, just without an account behind them.</li>' +
