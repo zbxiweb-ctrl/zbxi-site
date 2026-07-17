@@ -22,6 +22,33 @@
   function h(html) { target.innerHTML = html; }
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
 
+  // Name matching for the two anti-duplicate guards (claim search + create guard).
+  // claimNorm collapses a name to bare letters/digits so apostrophe style, spaces
+  // and case never matter. looksLikeSame also catches nicknames (same surname
+  // ±1 edit + same first initial) — Jake/Jacob, Chris/Christopher — which is how
+  // the real duplicate brothers differed.
+  function claimNorm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  var NAME_SUFFIX = { jr: 1, sr: 1, ii: 1, iii: 1, iv: 1 };
+  function nameToks(s) {
+    return String(s == null ? '' : s).toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9 ]/g, ' ')
+      .split(/\s+/).filter(function (t) { return t && !NAME_SUFFIX[t]; });
+  }
+  function ed1(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    if (a === b) return true;
+    var i = 0;
+    while (i < Math.min(a.length, b.length) && a.charAt(i) === b.charAt(i)) i++;
+    if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+    if (a.length < b.length) return a.slice(i) === b.slice(i + 1);
+    return a.slice(i + 1) === b.slice(i);
+  }
+  function looksLikeSame(typed, cand) {
+    if (claimNorm(typed) === claimNorm(cand)) return true;          // same name, any punctuation
+    var p = nameToks(typed), q = nameToks(cand);
+    if (!p.length || !q.length) return false;
+    return p[0].charAt(0) === q[0].charAt(0) && ed1(p[p.length - 1], q[q.length - 1]);
+  }
+
   if (!Z || !Z.configured) {
     if (card) card.innerHTML = '<div class="portal-msg"><div class="portal-msg__ic">🔒</div>' +
       '<h3>Brother sign-in is coming soon</h3>' +
@@ -628,16 +655,10 @@
       listEl.innerHTML = '<p class="form-note">' + all.length + ' unclaimed brothers. Type to search.</p>';
     });
 
-    // Apostrophe-, punctuation- AND space-blind search. The old raw indexOf missed
-    // the roster "O'Sullivan" (straight quote) when an iPhone typed "O’Sullivan"
-    // (curly) — and the "no match" copy below then pushed him to create a brand-new
-    // profile, which is exactly how a duplicate brother got made. Collapsing to
-    // bare letters/digits also lets "osullivan" and "o sullivan" find him. A claim
-    // is confirm-gated, so over-forgiving search costs nothing; missing him costs a
-    // duplicate.
-    var claimNorm = function (s) {
-      return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
-    };
+    // claimNorm (module scope) is apostrophe-, punctuation- and space-blind, so an
+    // iPhone typing "O’Sullivan" (curly) still finds the roster's "O'Sullivan"
+    // (straight). The old raw indexOf missed it, and the "no match" copy then
+    // pushed the brother to create a duplicate profile.
     input.oninput = function () {
       var q = claimNorm(input.value);
       if (q.length < 2) { listEl.innerHTML = '<p class="form-note">Keep typing…</p>'; return; }
@@ -822,6 +843,27 @@
       var f = e.target, st = host.querySelector('#profStatus');
       st.className = 'form-status'; st.textContent = '';
       if (!f.checkValidity()) { f.reportValidity(); return; }
+      // Duplicate guard — only on CREATE (no pr.id), the "I'm not in the tree yet"
+      // path. If the typed name matches an unclaimed roster brother, he is almost
+      // certainly already in the tree and about to make a second row (this is how
+      // Matthew O'Sullivan got two). Send him to claim instead. registered=false
+      // is the unclaimed set; state.verified is already loaded, so no extra call.
+      if (!pr.id) {
+        var typed = f.full_name.value.trim();
+        var maybe = state.verified.filter(function (b) {
+          return !b.registered && looksLikeSame(typed, b.full_name);
+        }).slice(0, 6);
+        if (maybe.length) {
+          var lst = maybe.map(function (b) {
+            return '• ' + b.full_name + (b.pledge_class ? ' (' + b.pledge_class + ')' : '');
+          }).join('\n');
+          if (confirm('You may already be in the family tree:\n\n' + lst + '\n\n' +
+            'Making a new profile would create a duplicate. Click OK to find and claim your ' +
+            'existing name instead — or Cancel if you are genuinely a different, new brother.')) {
+            renderClaim(); return;
+          }
+        }
+      }
       // Nudge: a blank big means this brother floats as a disconnected root on the
       // family tree. Founders pick the explicit option (below) and skip this.
       var bigVal = f.big_id.value;
