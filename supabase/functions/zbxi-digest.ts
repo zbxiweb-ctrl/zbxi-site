@@ -171,7 +171,18 @@ async function send(to: string, subject: string, html: string, unsubUrl: string)
   return r.ok ? { ok: true } : { ok: false, error: await r.text() };
 }
 
+// Browser calls (the admin console's Preview/Send buttons) carry an
+// Authorization header, which makes the browser send a CORS preflight FIRST.
+// Without this OPTIONS branch the preflight fell through to the auth check,
+// got a bare 403, and every console call died as "TypeError: Failed to fetch".
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const url = new URL(req.url);
   const test = url.searchParams.get("test") === "1";
   const dry = url.searchParams.get("dry") === "1";
