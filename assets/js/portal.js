@@ -717,6 +717,21 @@
         .map(function (c) { return '<option value="' + esc(c) + '"' + (pr.pledge_class === c ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') +
       '<option value="__other__"' + (pr.pledge_class && !knownClass ? ' selected' : '') + '>My class isn’t listed…</option>';
 
+    /* Active vs Alumni: the brother's own choice. Preselect what the roster
+       currently infers (grad year, else pledge-class year + 4, vs the academic
+       cutoff — the same rule as brothers-page.js isActive) so saving without
+       touching this never flips anyone between the two pages. */
+    var standingVal = pr.standing || (function () {
+      var cls = String(pr.pledge_class || '');
+      var m4 = cls.match(/(19|20)\d{2}/), m2 = cls.match(/'(\d{2})/);
+      var y = m4 ? parseInt(m4[0], 10)
+            : m2 ? (parseInt(m2[1], 10) >= 93 ? 1900 : 2000) + parseInt(m2[1], 10) : null;
+      var grad = pr.grad_year || (y != null ? y + 4 : null);
+      if (grad == null) return '';
+      var now = new Date();
+      return grad >= now.getFullYear() + (now.getMonth() >= 5 ? 1 : 0) ? 'active' : 'alumni';
+    })();
+
     var prefs = String(pr.contact_prefs || '').split(',');
     function prefBox(key, label) {
       return '<label class="pref-box"><input type="checkbox" name="pref_' + key + '"' +
@@ -766,6 +781,12 @@
             fld('Grad year', 'grad_year', pr.grad_year, 'number') +
             fld('Major', 'major', pr.major) +
           '</div>' +
+          '<div class="field"><label>I am an… *</label><select name="standing" required>' +
+            '<option value=""' + (standingVal ? '' : ' selected') + '>— select —</option>' +
+            '<option value="active"' + (standingVal === 'active' ? ' selected' : '') + '>🎓 Active brother — still at Geneseo</option>' +
+            '<option value="alumni"' + (standingVal === 'alumni' ? ' selected' : '') + '>🏛 Alumni brother</option>' +
+          '</select>' +
+          '<p class="form-note" style="margin:.4rem 0 0">Controls which roster you appear on — Active Brothers or Alumni.</p></div>' +
           '<div class="field"><label>Leadership record</label>' +
             (function () {
               // Full positions history (brother_titles); fall back to the single
@@ -891,6 +912,7 @@
           pledge_class: (f.pledge_class.value === '__other__' ? f.pledge_class_other.value.trim() : f.pledge_class.value),
           grad_year: f.grad_year.value ? parseInt(f.grad_year.value, 10) : null,
           major: f.major.value.trim() || null,
+          standing: f.standing.value || null,
           // role / role_scope are intentionally NOT sent — chapter titles are
           // admin-assigned (E-Board console) and the DB guard would ignore them
           // from a brother anyway. See upgrade13.sql.

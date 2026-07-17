@@ -35,6 +35,7 @@
   }
 
   function isActive(b) {
+    if (b.standing) return b.standing === 'active';  // the brother's own say wins
     var grad = b.registered && b.grad_year ? b.grad_year
              : (b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null));
     if (grad == null) return false; // unknown -> alumni (safest for a 30-yr-old chapter)
@@ -202,7 +203,7 @@
           b.photo_url = d.photo_url; b.city = d.city; b.occupation = d.occupation;
           b.role_term = d.role_term; b.skills = d.skills; b.major = d.major;
           b.company = d.company; b.industry = d.industry; b.open_to = d.open_to;
-          b.user_id = d.user_id;
+          b.user_id = d.user_id; b.standing = d.standing;
         });
         ME = user ? (rows || []).filter(function (d) { return d.user_id === user.id; })[0] || null : null;
         APPROVED = true;
