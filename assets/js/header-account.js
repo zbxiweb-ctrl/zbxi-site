@@ -44,6 +44,15 @@
     } catch (e) { location.reload(); }
   }
 
+  /* A sign-OUT always lands on the homepage: reloading in place would strand
+     the brother on the locked shell of whatever members-only page he was on
+     (orientation, board, gallery…). Every page lives at the site root, so a
+     relative index.html works from all of them. */
+  function goHome() {
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    location.replace('index.html');
+  }
+
   function renderLogin() {
     // Gold CTA that opens a small dropdown: Log in / Create account. On the
     // homepage each choice jumps the inline auth card straight to that mode; on
@@ -190,7 +199,7 @@
     var out = document.getElementById('navSignOut');
     if (out) out.addEventListener('click', function () {
       out.textContent = 'Signing out…';
-      Z.signOut().then(reloadClean).catch(reloadClean);
+      Z.signOut().then(goHome).catch(goHome);
     });
   }
 
@@ -258,7 +267,8 @@
       }
       if (uid === lastUid) return;                                // token refresh / tab focus
       lastUid = uid;
-      reloadClean();   // lands at the TOP of a clean url, not mid-page on the login card
+      if (!uid) { goHome(); return; }  // signed out (any path, incl. the profile popup)
+      reloadClean();   // signed IN: stay on this page — lands at the TOP of a clean url
     });
   }
 
