@@ -223,6 +223,15 @@
     }
     if (rush) rush.style.display = signedIn ? 'none' : '';
 
+    // Alumni "Update Your Info" button: when signed in, #brothers-portal is hidden
+    // (below), so link it straight to the profile editor instead of a dead scroll.
+    var alum = document.getElementById('alumniUpdateCta');
+    if (alum) {
+      alum.onclick = (signedIn && window.ZBXIPortal)
+        ? function (e) { e.preventDefault(); window.ZBXIPortal.open('profile'); }
+        : null;
+    }
+
     var sec = document.getElementById('brothers-portal');
     if (sec) sec.style.display = signedIn ? 'none' : '';
     // ONLY the nav + footer links — scoping matters: an unscoped selector also hid

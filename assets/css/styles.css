@@ -244,7 +244,7 @@ p { margin: 0 0 1em; }
 }
 .nav__chip:hover { background: rgba(200,162,75,.2); border-color: var(--gold); }
 .nav__avatar {
-  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  position: relative; width: 30px; height: 30px; flex: none; border-radius: 50%;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep);
   display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem;
 }
@@ -363,7 +363,7 @@ p { margin: 0 0 1em; }
 .hero__rule { border: 0; height: 3px; width: 96px; margin: 1.2rem 0 1.3rem;
   background: linear-gradient(90deg, var(--gold-bright), var(--gold-deep));
   border-radius: 3px; box-shadow: 0 0 18px rgba(232,199,102,.45); }
-.hero__tag { font-size: clamp(1.02rem, 1.7vw, 1.3rem); max-width: 46ch; margin: 0 0 2rem; color: #eef1f7; text-shadow: 0 2px 14px rgba(0,0,0,.7); }
+.hero__tag { font-size: clamp(1.02rem, 1.7vw, 1.3rem); max-width: 46ch; margin: 0 0 2rem; color: var(--on-navy-2); text-shadow: 0 2px 14px rgba(0,0,0,.7); }
 .hero__cta { display: flex; gap: 1rem; flex-wrap: wrap; }
 
 /* Stack on narrower screens: crest on top, text centered below. */
@@ -447,7 +447,7 @@ p { margin: 0 0 1em; }
 }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,162,75,.25); }
 .field textarea { min-height: 120px; resize: vertical; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 1rem; }
 .form-note { font-size: .8rem; color: var(--muted); margin-top: .4rem; }
 .form-status { margin-top: 1rem; font-weight: 600; display: none; }
 .form-status.ok { display: block; color: #1c7a41; }
@@ -498,7 +498,7 @@ p { margin: 0 0 1em; }
 .footer__nav { display: flex; gap: 1.4rem; justify-content: center; flex-wrap: wrap; margin: 1.2rem 0; }
 .footer__nav a { color: var(--on-dark); font-size: .9rem; }
 .footer__nav a:hover { color: var(--gold-bright); }
-.footer small { display: block; margin-top: 1rem; color: #7c869c; font-size: .8rem; }
+.footer small { display: block; margin-top: 1rem; color: var(--on-navy-3); font-size: .8rem; }
 .footer .motto { font-family: var(--serif); font-size: 1.3rem; color: var(--gold-bright); }
 
 /* ---------- Admin: tabs, search, edit modal ---------- */
@@ -678,7 +678,7 @@ p { margin: 0 0 1em; }
   border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .8rem; cursor: pointer; font-family: var(--sans);
   transition: border-color .15s, background .15s;
 }
-.portal-choice:hover { border-color: var(--gold); background: #fbf8ef; }
+.portal-choice:hover { border-color: var(--gold); background: var(--tint); }
 .portal-choice b { display: block; color: var(--heading); font-size: 1rem; }
 .portal-choice span { color: var(--muted); font-size: .85rem; }
 .claim-list { max-height: 300px; overflow-y: auto; }
@@ -759,8 +759,8 @@ p { margin: 0 0 1em; }
   box-shadow: var(--shadow-sm); text-align: left; transition: transform .12s, box-shadow .2s, border-color .2s;
 }
 .tree-node:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 10px 24px rgba(200,162,75,.35); z-index: 5; }
-.tree-node__av { width: 52px; height: 52px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
-.tree-node__av img { width: 100%; height: 100%; object-fit: cover; }
+.tree-node__av { position: relative; width: 52px; height: 52px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
+.tree-node__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .tree-node__meta { overflow: hidden; }
 .tree-node__meta b { display: block; font-family: var(--display); font-size: 1.04rem; color: var(--heading); line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .tree-node__meta small { color: var(--gold-deep); font-size: .8rem; }
@@ -783,8 +783,8 @@ p { margin: 0 0 1em; }
 body.modal-open { overflow: hidden; }
 .bmodal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
 .bmodal__head { display: flex; gap: 1.1rem; align-items: center; margin-bottom: 1.2rem; }
-.bmodal__avatar { width: 76px; height: 76px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.5rem; overflow: hidden; }
-.bmodal__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.bmodal__avatar { position: relative; width: 76px; height: 76px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.5rem; overflow: hidden; }
+.bmodal__avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .bmodal__head h3 { color: var(--heading); margin: 0; font-size: 1.5rem; }
 .bmodal__sub { margin: 0; color: var(--gold-deep); font-weight: 600; font-size: .9rem; }
 .bmodal__body .bm__row { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid rgba(10,31,68,.08); font-size: .95rem; }
@@ -986,9 +986,9 @@ body.modal-open { overflow: hidden; }
   border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .8rem;
   box-shadow: 0 10px 26px rgba(0,0,0,.28); transition: transform .12s, border-color .12s; }
 .admin-row:hover { transform: translateY(-1px); border-left-color: var(--gold-bright); }
-.admin-row__ph { width: 54px; height: 54px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright);
+.admin-row__ph { position: relative; width: 54px; height: 54px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright);
   border: 1px solid rgba(200,162,75,.28); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
-.admin-row__ph img { width: 100%; height: 100%; object-fit: cover; }
+.admin-row__ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .admin-row__info { flex: 1; min-width: 0; }
 .admin-row__info b { display: block; color: var(--on-navy); font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
 /* Direct child only — the meta line. Without `>` this also hit the status chip
@@ -1014,7 +1014,7 @@ body.modal-open { overflow: hidden; }
 
 /* Navy/gold dropdown for the always-navy console (title-request approval). */
 .zselect {
-  appearance: none; -webkit-appearance: none;
+  appearance: none; -webkit-appearance: none; max-width: 100%;
   background-color: var(--console-field); color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.5); border-radius: 9px;
   padding: .5rem 1.9rem .5rem .75rem; font-size: .86rem; font-weight: 600; cursor: pointer;
@@ -1106,8 +1106,8 @@ body.modal-open { overflow: hidden; }
 
 /* ---------- Author chip (gallery/board) ---------- */
 .author-chip { display: inline-flex; align-items: center; gap: .45rem; }
-.author-chip__av { width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: inline-grid; place-items: center; font-size: .75rem; font-style: normal; overflow: hidden; flex: none; }
-.author-chip__av img { width: 100%; height: 100%; object-fit: cover; }
+.author-chip__av { position: relative; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: inline-grid; place-items: center; font-size: .75rem; font-style: normal; overflow: hidden; flex: none; }
+.author-chip__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .author-chip b { font-size: .92rem; color: var(--heading); }
 
 /* ---------- Gallery ---------- */
@@ -1388,7 +1388,7 @@ body.modal-open { overflow: hidden; }
 
 /* ---------- Header avatar photo ---------- */
 .nav__avatar { overflow: hidden; }
-.nav__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.nav__avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 
 /* ---------- Announcement banner ---------- */
 .site-banner { position: fixed; top: 72px; left: 0; right: 0; z-index: 95;
@@ -1623,8 +1623,8 @@ input, select, textarea { background: var(--surface-2); }
 .thread-row--social { border-left-color: var(--gold-deep); }
 .thread-row--opportunities { border-left-color: #2c6e2c; }
 .thread-row--comm { border-left-color: var(--gold); border-left-style: dashed; }
-.thread-row__av { width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
-.thread-row__av img { width: 100%; height: 100%; object-fit: cover; }
+.thread-row__av { position: relative; width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
+.thread-row__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 /* Needs .thread-row__main to outrank `.thread-row__main span` (0,1,1), which sets
    display:inline-flex and was running the preview into the author line. */
 .thread-row__main .thread-row__prev { display: block; color: var(--muted); font-size: .84rem; margin: .1rem 0 .2rem; }
@@ -1642,7 +1642,7 @@ input, select, textarea { background: var(--surface-2); }
 .board-empty b { color: var(--heading); }
 
 .react-bar { display: inline-flex; gap: .35rem; margin-top: .35rem; }
-.react { border: 1px solid #e0dac8; background: var(--surface-2); border-radius: 999px; padding: .12rem .55rem; font-size: .8rem; cursor: pointer; transition: all .12s; }
+.react { border: 1px solid var(--hairline); background: var(--surface-2); border-radius: 999px; padding: .12rem .55rem; font-size: .8rem; cursor: pointer; transition: all .12s; }
 .react:hover { border-color: var(--gold-deep); }
 .react.on { background: var(--tint); border-color: var(--gold); }
 
@@ -1653,6 +1653,11 @@ input, select, textarea { background: var(--surface-2); }
 .admin-body { background:
   radial-gradient(90% 60% at 85% -10%, rgba(200,162,75,.14), rgba(200,162,75,0) 55%),
   radial-gradient(70% 50% at 0% 100%, rgba(18,48,95,.7), rgba(18,48,95,0) 60%),
+  var(--navy-deep); }
+/* Dark console is pure black — the navy bottom-left glow reads as an off-identity
+   blue smudge on it, so drop it and keep only the subtle gold top-right glow. */
+:root[data-theme="dark"] .admin-body { background:
+  radial-gradient(90% 60% at 85% -10%, rgba(200,162,75,.14), rgba(200,162,75,0) 55%),
   var(--navy-deep); }
 .admin-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 1.1rem; border-bottom: 1px solid rgba(200,162,75,.28); margin-bottom: 1.3rem; flex-wrap: wrap; }
 .admin-head__id { display: flex; align-items: center; gap: .9rem; }
@@ -1843,7 +1848,7 @@ body.tree-lock { overflow: hidden; }
 
 .evm-allday { display: flex; align-items: center; gap: .5rem; color: var(--heading); font-size: .92rem; font-weight: 600; margin: .2rem 0 .8rem; cursor: pointer; }
 .evm-allday input { width: auto; }
-.evm-times { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.evm-times { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: .8rem; }
 .evm-actions { display: flex; align-items: center; gap: .8rem; margin-top: .4rem; }
 .cal-helpbody p { color: var(--text); font-size: .95rem; line-height: 1.65; margin: 0 0 .9rem; }
 .cal-helpbody b { color: var(--heading); }
@@ -1933,12 +1938,12 @@ body.tree-lock { overflow: hidden; }
   border-bottom: 1px solid rgba(200,162,75,.35); margin-bottom: .4rem;
 }
 .nav__menu-av {
-  width: 46px; height: 46px; flex: none; border-radius: 50%; overflow: hidden;
+  position: relative; width: 46px; height: 46px; flex: none; border-radius: 50%; overflow: hidden;
   background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep);
   display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.25rem;
   box-shadow: 0 0 0 2px rgba(200,162,75,.6);
 }
-.nav__menu-av img { width: 100%; height: 100%; object-fit: cover; }
+.nav__menu-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .nav__menu-id { min-width: 0; }
 .nav__menu-id b { display: block; color: var(--on-navy); font-family: var(--display); font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav__menu-id > span { display: block; color: var(--on-dark); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; }
@@ -2009,7 +2014,7 @@ body.tree-lock { overflow: hidden; }
 
 /* "open to" badges on the profile card */
 .ot-chips { display: flex; gap: .45rem; flex-wrap: wrap; margin: 0 0 .9rem; }
-.ot-chip { background: linear-gradient(180deg, var(--tint), #f7ecd0); border: 1px solid rgba(200,162,75,.55); color: var(--heading); border-radius: 999px; padding: .28rem .8rem; font-size: .78rem; font-weight: 700; }
+.ot-chip { background: var(--tint); border: 1px solid rgba(200,162,75,.55); color: var(--heading); border-radius: 999px; padding: .28rem .8rem; font-size: .78rem; font-weight: 700; }
 
 /* Connect bar at the bottom of a brother card */
 .bm__connect { display: flex; align-items: center; gap: .9rem; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--hairline); flex-wrap: wrap; }
@@ -2040,7 +2045,7 @@ body.tree-lock { overflow: hidden; }
 .acct-block textarea { width: 100%; min-height: 110px; }
 
 /* invite-link greeting on the portal auth card */
-.invite-banner { background: linear-gradient(180deg,var(--tint),#f7ecd0); border: 1.5px solid var(--gold); border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; }
+.invite-banner { background: var(--tint); border: 1.5px solid var(--gold); border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; }
 .invite-banner b { display: block; color: var(--heading); font-size: .95rem; }
 .invite-banner span { display: block; color: var(--muted); font-size: .84rem; line-height: 1.5; margin-top: .2rem; }
 .invite-banner span b { display: inline; color: var(--heading); }
@@ -2100,13 +2105,13 @@ body.tree-lock { overflow: hidden; }
   .brand img { height: 38px; }
   .brand__txt { font-size: 1.25rem; }
   .brand__txt small { display: none; }
-  .theme-toggle { width: 34px; height: 34px; margin-right: .1rem; }
+  .theme-toggle { width: 40px; height: 40px; margin-right: .1rem; }
   .bell { margin-right: .15rem; }
-  .bell__btn { width: 34px; height: 34px; font-size: .95rem; }
+  .bell__btn { width: 40px; height: 40px; font-size: .95rem; }
   .bell ~ .nav__account { margin-left: .2rem; }
   .nav__chip { padding: .22rem .4rem; gap: .35rem; }
   .nav__chip .admin-badge { display: none; }
-  .nav__toggle { flex: none; padding: 8px 2px; margin-left: .25rem; }
+  .nav__toggle { flex: none; padding: 8px 7px; margin-left: .25rem; }
 }
 
 /* Roomier, easier-to-tap mobile menu rows. */
@@ -2259,7 +2264,7 @@ body.tree-lock { overflow: hidden; }
   display: grid; place-items: center; margin-right: .4rem; transition: background .15s, transform .15s;
 }
 .theme-toggle:hover { background: rgba(200,162,75,.2); transform: translateY(-1px); }
-@media (max-width: 460px) { .theme-toggle { width: 34px; height: 34px; margin-right: .25rem; } }
+@media (max-width: 460px) { .theme-toggle { width: 40px; height: 40px; margin-right: .25rem; } }
 /* Console topbar: push the toggle to the right, beside the back pill. */
 .admin-topbar .theme-toggle { margin-left: auto; margin-right: .8rem; }
 /* Pages with no header at all (404): float it in the corner. */
@@ -2293,6 +2298,12 @@ body.tree-lock { overflow: hidden; }
 .fx .reveal--left  { transform: translateX(-42px); }
 .fx .reveal--right { transform: translateX(42px); }
 .fx .reveal.in { opacity: 1; transform: none; }
+/* On phones the horizontal slide-in pokes ~30px past the right edge (a ~360px block
+   at translateX(42px)) → page-level horizontal scroll. Split halves stack vertically
+   here anyway, so drop the sideways offset and keep only the vertical rise. */
+@media (max-width: 640px) {
+  .fx .reveal--left, .fx .reveal--right { transform: translateY(20px); }
+}
 
 /* staggered group: direct children cascade in, offset by their --i index */
 .fx .stagger > * {

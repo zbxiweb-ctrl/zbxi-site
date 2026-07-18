@@ -452,14 +452,17 @@
     if (!b) return;
     var root = rootOf(id);
     selectBranch(root ? root.id : null);
-    // center + pulse the node (after render/fit)
+    // center + zoom in + pulse the node (after render/fit). selectBranch() re-fits the
+    // whole branch, often at the 0.25 minimum — too small to spot the match — so bump to
+    // a readable zoom, then centre the node in the viewport and glide there.
     var el = canvas.querySelector('.tree-node[data-id="' + id + '"]');
     if (el && currentLayout && currentLayout.byId[id]) {
       var n = currentLayout.byId[id];
       var vw = viewport.clientWidth, vh = viewport.clientHeight;
+      scale = Math.min(MAX_S, Math.max(scale, 0.7));   // readable; never zoom out below the fit
       tx = vw / 2 - (n._x + NODE_W / 2) * scale;
-      ty = Math.min(24, vh / 2 - (n._y + NODE_H / 2) * scale);
-      apply();
+      ty = vh / 2 - (n._y + NODE_H / 2) * scale;        // true centre — a focus wants the node mid-viewport
+      applySmooth();
     }
     highlightPath(id);
     if (el) {

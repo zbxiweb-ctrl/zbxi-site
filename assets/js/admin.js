@@ -203,6 +203,7 @@
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
       b.onclick = function () {
         state.tab = b.dataset.tab;
+        state.q = '';                                      // a search is per-tab; don't carry it across
         history.replaceState(null, '', '#' + state.tab);   // keeps deep-links honest + shareable
         side.classList.remove('open');                     // close the drawer on phones
         slimMasthead();                                    // ceremony on entry, efficiency once working
@@ -213,7 +214,7 @@
     window.addEventListener('hashchange', function () {
       var t = tabFromHash();
       if (t === state.tab) return;
-      state.tab = t; side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
+      state.tab = t; state.q = ''; side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
     });
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
@@ -2380,7 +2381,7 @@
         '</span><em></em></div></div>';
 
       html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
-        '<span style="color:#cdd6e6;font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>';
+        '<span style="color:var(--on-dark);font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>';
 
       html += '<h3 class="stat-h">Activity log</h3>';
       html += acts.length ? '<div class="stat-list">' + acts.map(function (a) {
