@@ -23,7 +23,7 @@
     { id: 'c5', full_name: 'Ethan Ramos',     pledge_class: 'Spring 2023', grad_year: 2026, major: 'Physics',     big_id: 'b3' }
   ];
 
-  var NODE_W = 168, NODE_H = 92, GAP_X = 28, GAP_Y = 74;
+  var NODE_W = 190, NODE_H = 106, GAP_X = 28, GAP_Y = 74;
 
   var viewport = document.getElementById('treeViewport');
   var canvas   = document.getElementById('treeCanvas');
@@ -102,12 +102,11 @@
   }
 
   // "All families" with nothing expanded: a grid of family-line cards instead of
-  // the full tree. Founding lines lay out two-across; childless roots (e.g. the
-  // admin's standalone profile) sit centered on their own row underneath.
-  // Collapses to a single column when the viewport is too narrow for two.
-  var FAM_W = 250;              // family-line card width; shrunk on phones so 2 columns always fit
+  // the full tree. All roots (founding lines first, childless roots last) flow
+  // two-across into one matrix — 12 roots = 2×6.
+  var FAM_W = 290;              // family-line card width; shrunk on phones so 2 columns always fit
   var TOP_PAD = 58;             // clears the top-right toolbar
-  var BOTTOM_PAD = 46;          // clears the bottom-left hint chip
+  var BOTTOM_PAD = 16;          // breathing room below the last row (hint chip now sits on the left edge)
   function famCard(r, left, top) {
     var initials = r.full_name.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase();
     var av = r.photo_url ? '<img src="' + esc(r.photo_url) + '" alt="" />' : '<span>' + (initials || 'ΖΒΞ') + '</span>';
@@ -122,32 +121,28 @@
   }
 
   function renderFamilyMenu() {
-    var rs = sortedRoots();
-    var lines = rs.filter(function (r) { return (descCount[r.id] || 0) > 0; });
-    var solo  = rs.filter(function (r) { return (descCount[r.id] || 0) === 0; });
+    var rs = sortedRoots();   // lines-with-descendants first, childless roots last
     var GAP = 16;
     var vw = viewport.clientWidth, vh = viewport.clientHeight;   // vh is used by the fit math below
 
-    // ALWAYS two columns (a 2×5 matrix for ten lines) — on a phone we shrink the
-    // card instead of collapsing to a single tall column.
+    // ALWAYS two columns (a 2×6 matrix for twelve roots) — on a phone we shrink
+    // the card instead of collapsing to a single tall column. Childless roots
+    // simply continue the flow, so the last row fills instead of orphaning one
+    // card centered on its own line.
     var cols = 2;
-    FAM_W = Math.max(132, Math.min(250, Math.floor((vw - GAP - 28) / cols)));
+    FAM_W = Math.max(132, Math.min(290, Math.floor((vw - GAP - 28) / cols)));
 
-    var rows = Math.ceil(lines.length / cols);
+    var rows = Math.ceil(rs.length / cols);
     var gridW = cols * FAM_W + (cols - 1) * GAP;
     var rowH = NODE_H + GAP;
 
     var html = '';
-    lines.forEach(function (r, i) {
+    rs.forEach(function (r, i) {
       html += famCard(r, (i % cols) * (FAM_W + GAP), Math.floor(i / cols) * rowH);
     });
-    // childless roots: centered under the grid, evenly spaced
-    solo.forEach(function (r, i) {
-      html += famCard(r, (gridW - FAM_W) / 2, (rows + i) * rowH);
-    });
 
-    // extra room at the bottom so the last row never hides under the hint chip
-    var height = (rows + solo.length) * rowH - GAP + BOTTOM_PAD;
+    // extra room at the bottom so the last row never crowds the viewport edge
+    var height = rows * rowH - GAP + BOTTOM_PAD;
     canvas.style.width = gridW + 'px';
     canvas.style.height = height + 'px';
     canvas.innerHTML = html;
