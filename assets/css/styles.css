@@ -988,7 +988,9 @@ body.modal-open { overflow: hidden; }
 .admin-row__ph img { width: 100%; height: 100%; object-fit: cover; }
 .admin-row__info { flex: 1; min-width: 0; }
 .admin-row__info b { display: block; color: var(--on-navy); font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
-.admin-row__info span { color: var(--on-navy-3); font-size: .85rem; }
+/* Direct child only — the meta line. Without `>` this also hit the status chip
+   nested in the name <b>, overriding its own colour. */
+.admin-row__info > span { color: var(--on-navy-3); font-size: .85rem; }
 .admin-row__info em { display: block; color: var(--gold-bright); font-size: .85rem; margin-top: .2rem; }
 .admin-row__act { display: flex; gap: .5rem; flex: none; }
 /* Refined record-row actions: hairline pills that sit quietly on the navy card
@@ -1241,11 +1243,12 @@ body.modal-open { overflow: hidden; }
 /* ---------- Admin roster management (v4.1) ---------- */
 .admin-addbar { display: flex; gap: .7rem; margin: 0 0 1.1rem; flex-wrap: wrap; }
 .admin-addbar .btn { padding: .6rem 1.2rem; font-size: .9rem; }
-/* Status chips: on-brand, not stark pale. Neutral = slate; positive(●) = gold;
-   warn = muted red. A dark-theme block below re-tints them for the black console
-   (the old hardcoded pales had no dark rule and glared white on black). */
-.schip { display: inline-block; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: .14rem .5rem; margin-left: .45rem; background: rgba(10,31,68,.07); color: #3a4a66; border: 1px solid rgba(10,31,68,.14); }
-.schip--active { background: rgba(200,162,75,.16); color: var(--gold-deep); border-color: rgba(200,162,75,.42); }
+/* Status chips: solid on-brand pills (not stark pale). Neutral = slate-navy,
+   positive(●) = gold, warn = muted red. Solid so they read on ANY background —
+   the navy console (navy in light / black in dark) AND the cream board card —
+   without needing a separate dark rule. */
+.schip { display: inline-block; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: .16rem .5rem; margin-left: .45rem; background: #33425f; color: #eef1f7; }
+.schip--active { background: var(--gold); color: var(--navy-deep); }
 .guide-intro h3 { color: var(--gold-bright); font-family: var(--display); margin: 0 0 .3rem; }
 .guide-intro p { color: var(--on-dark); margin-bottom: 1.2rem; }
 .guide-sec { background: var(--surface); border-radius: 12px; margin-bottom: .7rem; box-shadow: var(--shadow-sm); overflow: hidden; }
@@ -2030,7 +2033,7 @@ body.tree-lock { overflow: hidden; }
 @media (max-width: 620px) { .mentor-bar .btn { width: 100%; } }
 
 /* Phase C — invite status chip */
-.schip--warn { background: rgba(178,52,43,.12); color: #c0564e; border-color: rgba(178,52,43,.35); }
+.schip--warn { background: #a4392f; color: #fff; }
 .acct-block textarea { width: 100%; min-height: 110px; }
 
 /* invite-link greeting on the portal auth card */
@@ -2237,11 +2240,6 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .tree-node { border-color: rgba(200,162,75,.35); }
 :root[data-theme="dark"] .tree-links path { stroke: var(--gold); opacity: .85; }
 :root[data-theme="dark"] .cal-chip--meeting { background: #2a2410; }
-/* Status chips on the black console: the light-mode slate/gold tints go invisible,
-   so re-tint — neutral cool-slate, positive gold, warn light-red — all legible on black. */
-:root[data-theme="dark"] .schip { background: rgba(160,175,205,.12); color: #c2ccdf; border-color: rgba(160,175,205,.24); }
-:root[data-theme="dark"] .schip--active { background: rgba(200,162,75,.20); color: var(--gold-bright); border-color: rgba(200,162,75,.5); }
-:root[data-theme="dark"] .schip--warn { background: rgba(178,52,43,.22); color: #e59a9a; border-color: rgba(178,52,43,.5); }
 :root[data-theme="dark"] .gmodal, :root[data-theme="dark"] .pmodal,
 :root[data-theme="dark"] .bmodal, :root[data-theme="dark"] .admin-modal { background: rgba(0,0,0,.72); }
 /* a soft gold halo lifts the crest off the black hero */
