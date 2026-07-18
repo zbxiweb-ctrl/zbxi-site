@@ -179,7 +179,7 @@ p { margin: 0 0 1em; }
 
 .wrap { width: min(var(--wrap), 92vw); margin-inline: auto; }
 .section { padding: clamp(4rem, 9vw, 7rem) 0; }
-.section--navy { background: var(--navy); color: var(--cream); }
+.section--navy { background: var(--navy); color: var(--on-navy); }
 .section--navy .section-title { color: var(--gold-bright); }
 .section--cream2 { background: var(--bg-2); }
 .center { text-align: center; }
@@ -208,7 +208,7 @@ p { margin: 0 0 1em; }
 .btn--gold:hover { box-shadow: 0 14px 30px rgba(200,162,75,.5); transform: translateY(-2px); }
 .btn--ghost { border-color: var(--gold); color: var(--gold-bright); }
 .btn--ghost:hover { background: var(--gold); color: var(--navy-deep); }
-.btn--navy { background: var(--navy); color: var(--cream); }
+.btn--navy { background: var(--navy); color: var(--on-navy); }
 .btn--navy:hover { background: var(--navy-2); transform: translateY(-2px); }
 
 /* ---------- Header / nav ---------- */
@@ -218,12 +218,12 @@ p { margin: 0 0 1em; }
   border-bottom: 1px solid rgba(200,162,75,.28);
 }
 .nav__inner { display: flex; align-items: center; justify-content: space-between; height: 72px; }
-.brand { display: flex; align-items: center; gap: .7rem; color: var(--cream); }
+.brand { display: flex; align-items: center; gap: .7rem; color: var(--on-navy); }
 .brand img { height: 42px; width: auto; }
 .brand__txt { font-family: var(--display); font-size: 1.15rem; font-weight: 700; letter-spacing: .04em; }
 .brand__txt small { display: block; font-family: var(--sans); font-size: .6rem; letter-spacing: .25em; color: var(--gold-bright); font-weight: 600; }
 .nav__links { display: flex; align-items: center; gap: 1.6rem; }
-.nav__links a { color: #d7deec; font-size: .92rem; font-weight: 500; letter-spacing: .02em; transition: color .15s; }
+.nav__links a { color: var(--on-navy-2); font-size: .92rem; font-weight: 500; letter-spacing: .02em; transition: color .15s; }
 .nav__links a:hover { color: var(--gold-bright); }
 .nav__cta { padding: .55rem 1.2rem; font-size: .88rem; }
 .nav__toggle { display: none; background: none; border: 0; cursor: pointer; padding: 8px; }
@@ -234,7 +234,7 @@ p { margin: 0 0 1em; }
 .nav__chip {
   display: flex; align-items: center; gap: .55rem; cursor: pointer;
   background: rgba(200,162,75,.10); border: 1.5px solid rgba(200,162,75,.5);
-  color: var(--cream); border-radius: 999px; padding: .32rem .7rem .32rem .35rem;
+  color: var(--on-navy); border-radius: 999px; padding: .32rem .7rem .32rem .35rem;
   font-family: var(--sans); font-size: .9rem; transition: background .15s, border-color .15s;
 }
 .nav__chip:hover { background: rgba(200,162,75,.2); border-color: var(--gold); }
@@ -257,12 +257,12 @@ p { margin: 0 0 1em; }
 }
 .nav__menu.open { display: block; }
 .nav__menu-head { padding: .5rem .6rem .7rem; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: .4rem; }
-.nav__menu-head b { display: block; color: var(--cream); font-family: var(--display); font-size: 1rem; }
+.nav__menu-head b { display: block; color: var(--on-navy); font-family: var(--display); font-size: 1rem; }
 .nav__menu-head span { display: block; color: var(--on-dark); font-size: .74rem; overflow: hidden; text-overflow: ellipsis; }
 .nav__menu-head .admin-badge { display: inline-block; margin-top: .45rem; }
 .nav__menu a, .nav__menu button {
   display: block; width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
-  color: #d7deec; font-family: var(--sans); font-size: .9rem; padding: .6rem .6rem; border-radius: 8px; transition: background .12s, color .12s;
+  color: var(--on-navy-2); font-family: var(--sans); font-size: .9rem; padding: .6rem .6rem; border-radius: 8px; transition: background .12s, color .12s;
 }
 .nav__menu a:hover, .nav__menu button:hover { background: rgba(200,162,75,.12); color: var(--gold-bright); }
 .nav__menu-admin { color: var(--gold-bright) !important; font-weight: 600; }
@@ -300,7 +300,7 @@ p { margin: 0 0 1em; }
   transition: background .12s, border-color .12s;
 }
 .nav__login-txt { display: flex; flex-direction: column; min-width: 0; gap: .1rem; }
-.nav__login-txt b { font-family: var(--display); font-weight: 600; font-size: 1rem; color: var(--cream); letter-spacing: .01em; }
+.nav__login-txt b { font-family: var(--display); font-weight: 600; font-size: 1rem; color: var(--on-navy); letter-spacing: .01em; }
 .nav__login-txt small { font-size: .74rem; color: var(--on-dark); opacity: .72; white-space: nowrap; }
 .nav__menu--login a:hover .nav__login-ic { background: rgba(200,162,75,.28); border-color: var(--gold); }
 .nav__menu--login a:hover .nav__login-txt small { opacity: .95; }
@@ -308,7 +308,7 @@ p { margin: 0 0 1em; }
 /* ---------- Hero ---------- */
 .hero {
   position: relative; min-height: 100svh; display: flex; align-items: center;
-  color: var(--cream); padding-top: 72px; overflow: hidden;
+  color: var(--on-navy); padding-top: 72px; overflow: hidden;
 }
 /* Smooth navy field with warm gold accent glows on both sides. */
 .hero__bg {
@@ -380,7 +380,7 @@ p { margin: 0 0 1em; }
 
 /* ---------- About / values ---------- */
 .split { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
-.founding-note { background: var(--navy); color: var(--cream); border-radius: var(--radius); padding: 2rem 2.2rem; box-shadow: var(--shadow); border: 1px solid rgba(200,162,75,.3); }
+.founding-note { background: var(--navy); color: var(--on-navy); border-radius: var(--radius); padding: 2rem 2.2rem; box-shadow: var(--shadow); border: 1px solid rgba(200,162,75,.3); }
 .founding-note h3 { color: var(--gold-bright); font-size: 1.5rem; }
 .stat-row { display: flex; gap: 2.5rem; flex-wrap: wrap; margin-top: 1.4rem; }
 .stat { }
@@ -412,10 +412,10 @@ p { margin: 0 0 1em; }
 .flip__face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
 .flip__front { background: var(--navy-2); }
 .flip__front img { width: 100%; height: 100%; object-fit: cover; }
-.flip__name { position: absolute; left: 0; right: 0; bottom: 0; padding: .9rem 1rem; background: linear-gradient(transparent, rgba(var(--chrome),.92)); color: var(--cream); }
+.flip__name { position: absolute; left: 0; right: 0; bottom: 0; padding: .9rem 1rem; background: linear-gradient(transparent, rgba(var(--chrome),.92)); color: var(--on-navy); }
 .flip__name b { font-family: var(--display); font-size: 1.1rem; display: block; }
 .flip__name span { font-size: .78rem; color: var(--gold-bright); letter-spacing: .04em; }
-.flip__back { background: var(--navy); color: var(--cream); transform: rotateY(180deg); display: flex; flex-direction: column; justify-content: center; padding: 1.4rem; border: 2px solid var(--gold); }
+.flip__back { background: var(--navy); color: var(--on-navy); transform: rotateY(180deg); display: flex; flex-direction: column; justify-content: center; padding: 1.4rem; border: 2px solid var(--gold); }
 .flip__back .role { color: var(--gold-bright); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; font-size: .74rem; }
 .flip__back .quote { font-family: var(--serif); font-size: 1.15rem; line-height: 1.4; margin-top: .5rem; }
 .flip__back .meta { margin-top: auto; font-size: .82rem; color: var(--on-dark); }
@@ -482,7 +482,7 @@ p { margin: 0 0 1em; }
 /* ---------- Contact ---------- */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem,5vw,4rem); }
 .socials { display: flex; flex-direction: column; gap: .9rem; margin-top: 1.4rem; }
-.social { display: flex; align-items: center; gap: .8rem; color: var(--cream); padding: .8rem 1rem; border: 1px solid rgba(200,162,75,.35); border-radius: 12px; transition: background .15s, border .15s; }
+.social { display: flex; align-items: center; gap: .8rem; color: var(--on-navy); padding: .8rem 1rem; border: 1px solid rgba(200,162,75,.35); border-radius: 12px; transition: background .15s, border .15s; }
 .social:hover { background: rgba(200,162,75,.12); border-color: var(--gold); }
 .social .ic { width: 34px; height: 34px; display: grid; place-items: center; background: var(--gold); color: var(--navy-deep); border-radius: 8px; font-weight: 700; flex: none; }
 .social b { display: block; } .social span { font-size: .82rem; color: var(--on-dark); }
@@ -505,7 +505,7 @@ p { margin: 0 0 1em; }
   background: var(--surface); border: 1.5px solid var(--hairline); color: var(--muted);
   border-radius: 999px; padding: .5rem 1.1rem; font-weight: 600; font-size: .9rem; cursor: pointer; transition: background .15s, color .15s, border-color .15s;
 }
-.admin-tabs button.on { background: var(--navy); color: var(--cream); border-color: var(--heading); }
+.admin-tabs button.on { background: var(--navy); color: var(--on-navy); border-color: var(--heading); }
 .tab-count { display: inline-block; min-width: 1.4em; text-align: center; font-size: .75rem; background: rgba(200,162,75,.25); color: inherit; border-radius: 999px; padding: 0 .35em; margin-left: .2em; }
 .admin-tabs button.on .tab-count { background: rgba(255,255,255,.2); }
 .admin-search {
@@ -526,25 +526,25 @@ p { margin: 0 0 1em; }
 .admin-modal__card--wide {
   width: min(860px, 96vw);
   background: linear-gradient(180deg, var(--navy), var(--navy-deep));
-  color: var(--cream);
+  color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.28);
 }
 .admin-modal__card--wide h3 { color: var(--gold-bright); }
-.admin-modal__card--wide .admin-modal__close { color: var(--cream); }
+.admin-modal__card--wide .admin-modal__close { color: var(--on-navy); }
 /* The one-line-of-text ask modal (ask-modal.js): a narrow navy card. */
 .admin-modal__card--ask {
   width: min(460px, 96vw);
   background: linear-gradient(180deg, var(--navy), var(--navy-deep));
-  color: var(--cream);
+  color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.28);
 }
 .admin-modal__card--ask h3 { color: var(--gold-bright); }
-.admin-modal__card--ask .admin-modal__close { color: var(--cream); }
+.admin-modal__card--ask .admin-modal__close { color: var(--on-navy); }
 .ask-rows { margin: 0 0 1rem; font-size: .9rem; }
 .ask-rows div { display: flex; gap: .6rem; }
 .ask-rows span { min-width: 7.5em; color: var(--on-dark); }
-.ask-rows b { color: var(--cream); font-weight: 600; }
-.ask-input { width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(200,162,75,.4); border-radius: 10px; padding: .65rem .8rem; color: var(--cream); font: inherit; }
+.ask-rows b { color: var(--on-navy); font-weight: 600; }
+.ask-input { width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(200,162,75,.4); border-radius: 10px; padding: .65rem .8rem; color: var(--on-navy); font: inherit; }
 .ask-input:focus { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.22); }
 .ask-warn { margin: .7rem 0 0; font-size: .85rem; color: var(--gold-bright); }
 .ask-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.2rem; }
@@ -582,7 +582,7 @@ p { margin: 0 0 1em; }
 /* ---------- Subpages (active/alumni) ---------- */
 .page-body { background: var(--bg); }
 .page-main { padding-top: 72px; }
-.page-hero { background: var(--navy); color: var(--cream); padding: clamp(3rem, 7vw, 5rem) 0; }
+.page-hero { background: var(--navy); color: var(--on-navy); padding: clamp(3rem, 7vw, 5rem) 0; }
 .page-hero .lede { color: var(--on-dark); }
 #pageCount { color: var(--gold-bright); font-weight: 600; }
 
@@ -749,11 +749,11 @@ p { margin: 0 0 1em; }
   box-shadow: var(--shadow-sm); text-align: left; transition: transform .12s, box-shadow .2s, border-color .2s;
 }
 .tree-node:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 10px 24px rgba(200,162,75,.35); z-index: 5; }
-.tree-node__av { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem; }
+.tree-node__av { width: 52px; height: 52px; flex: none; border-radius: 50%; overflow: hidden; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
 .tree-node__av img { width: 100%; height: 100%; object-fit: cover; }
 .tree-node__meta { overflow: hidden; }
-.tree-node__meta b { display: block; font-family: var(--display); font-size: .92rem; color: var(--heading); line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.tree-node__meta small { color: var(--gold-deep); font-size: .72rem; }
+.tree-node__meta b { display: block; font-family: var(--display); font-size: 1.04rem; color: var(--heading); line-height: 1.15; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.tree-node__meta small { color: var(--gold-deep); font-size: .8rem; }
 .tree-controls { position: absolute; top: 12px; right: 12px; z-index: 10; display: flex; gap: .4rem; }
 .tree-controls button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(10,31,68,.15); background: var(--surface); color: var(--heading); font-size: 1.2rem; cursor: pointer; box-shadow: var(--shadow-sm); transition: background .15s; }
 .tree-controls button:hover { background: var(--gold); color: var(--navy-deep); }
@@ -786,7 +786,7 @@ body.modal-open { overflow: hidden; }
 .portal-wrap { max-width: 560px; margin-inline: auto; }
 .portal-tabs { display: flex; gap: .5rem; margin-bottom: 1.4rem; }
 .portal-tabs button { flex: 1; padding: .7rem; border: 1.5px solid var(--hairline); background: var(--bg); border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--muted); }
-.portal-tabs button.on { background: var(--navy); color: var(--cream); border-color: var(--heading); }
+.portal-tabs button.on { background: var(--navy); color: var(--on-navy); border-color: var(--heading); }
 .portal-msg { text-align: center; padding: 1.5rem 1rem; }
 .portal-msg__ic { font-size: 2.6rem; margin-bottom: .5rem; }
 .portal-msg h3 { color: var(--heading); }
@@ -809,7 +809,7 @@ body.modal-open { overflow: hidden; }
 .back-pill--center { display: flex; width: max-content; margin: 1.1rem auto 0; }
 
 /* ---------- Admin page ---------- */
-.admin-body { background: var(--navy-deep); color: var(--cream); min-height: 100vh; }
+.admin-body { background: var(--navy-deep); color: var(--on-navy); min-height: 100vh; }
 .admin-topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem clamp(1rem,5vw,3rem); border-bottom: 1px solid rgba(200,162,75,.3);
   position: sticky; top: 0; z-index: 50; background: var(--navy-deep); }
 .admin-topbar .brand img { height: 40px; }
@@ -833,7 +833,7 @@ body.modal-open { overflow: hidden; }
   filter: drop-shadow(0 4px 14px rgba(0,0,0,.5)); transition: width .28s ease; }
 .console-masthead__eyebrow { display: block; font-family: var(--sans); font-size: .64rem; font-weight: 700;
   letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
-.console-masthead__title { font-family: var(--display); font-weight: 700; color: var(--cream);
+.console-masthead__title { font-family: var(--display); font-weight: 700; color: var(--on-navy);
   font-size: clamp(1.9rem, 4.5vw, 2.8rem); line-height: 1; margin: .3rem 0 .5rem; }
 .console-masthead__rule { display: flex; align-items: center; justify-content: center; gap: .7rem;
   max-width: 320px; margin: .1rem auto .55rem; }
@@ -947,18 +947,18 @@ body.modal-open { overflow: hidden; }
 }
 /* Login / message card: navy to match the console (box-shadow is invisible on
    navy, so it needs a gold hairline to have an edge). */
-.admin-card, .admin-msg { background: linear-gradient(180deg, var(--navy), var(--navy-deep)); color: var(--cream);
+.admin-card, .admin-msg { background: linear-gradient(180deg, var(--navy), var(--navy-deep)); color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.28); border-radius: var(--radius); padding: 2rem; max-width: 420px; margin: 3rem auto; box-shadow: var(--shadow); }
 .admin-card h2, .admin-msg h2 { color: var(--gold-bright); }
 
 /* Officer-permissions grid (admin Officers tab + reused nowhere else). */
 .og-table { width: 100%; border-collapse: collapse; margin-top: .6rem;
-  background: linear-gradient(180deg, #16294b, #101f3b); border: 1px solid rgba(200,162,75,.22);
+  background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo)); border: 1px solid rgba(200,162,75,.22);
   border-radius: 12px; overflow: hidden; box-shadow: 0 10px 26px rgba(0,0,0,.28); }
 .og-table th, .og-table td { padding: .8rem .7rem; border-bottom: 1px solid rgba(200,162,75,.18); text-align: left; vertical-align: top; }
 .og-table tr:last-child td { border-bottom: 0; }
-.og-table th { color: var(--gold-bright); font-family: var(--sans); font-size: .95rem; background: rgba(6,13,29,.55); }
-.og-table td b { color: var(--cream); }
+.og-table th { color: var(--gold-bright); font-family: var(--sans); font-size: .95rem; background: rgba(var(--chrome),.55); }
+.og-table td b { color: var(--on-navy); }
 .og-table th small, .og-table td small { display: block; color: var(--on-dark); font-weight: 400; font-size: .78rem; margin-top: .2rem; }
 .og-table th:not(:first-child), .og-table td:not(:first-child) { text-align: center; width: 160px; }
 .og-table input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); cursor: pointer; }
@@ -971,7 +971,7 @@ body.modal-open { overflow: hidden; }
    replacing the old washed-out grey (var(--surface) is light in light mode, but
    the console body is always navy, so grey rows read as disabled). */
 .admin-row { display: flex; align-items: center; gap: 1rem;
-  background: linear-gradient(180deg, #16294b, #112240); color: var(--cream);
+  background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo)); color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold);
   border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: .8rem;
   box-shadow: 0 10px 26px rgba(0,0,0,.28); transition: transform .12s, border-color .12s; }
@@ -980,8 +980,8 @@ body.modal-open { overflow: hidden; }
   border: 1px solid rgba(200,162,75,.28); display: grid; place-items: center; font-family: var(--display); overflow: hidden; }
 .admin-row__ph img { width: 100%; height: 100%; object-fit: cover; }
 .admin-row__info { flex: 1; min-width: 0; }
-.admin-row__info b { display: block; color: var(--cream); font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
-.admin-row__info span { color: #93a4c2; font-size: .85rem; }
+.admin-row__info b { display: block; color: var(--on-navy); font-family: var(--serif); font-size: 1.2rem; font-weight: 700; }
+.admin-row__info span { color: var(--on-navy-3); font-size: .85rem; }
 .admin-row__info em { display: block; color: var(--gold-bright); font-size: .85rem; margin-top: .2rem; }
 .admin-row__act { display: flex; gap: .5rem; flex: none; }
 /* Refined record-row actions: hairline pills that sit quietly on the navy card
@@ -994,16 +994,16 @@ body.modal-open { overflow: hidden; }
 .admin-row__act .btn--gold { box-shadow: 0 6px 16px rgba(200,162,75,.28); }
 
 /* Timestamp line on record rows — its own muted line so it never collides with actions. */
-.admin-row__when { display: block; color: #8595b4; font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
+.admin-row__when { display: block; color: var(--on-navy-3); font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
 
 /* Signup email on Pending rows — its own line, a touch brighter than the timestamp so
    it reads clearly when vetting. Scoped under __info to beat `.admin-row__info span`. */
-.admin-row__info .admin-row__email { display: block; color: #b9c6e0; font-size: .8rem; margin-top: .2rem; word-break: break-all; }
+.admin-row__info .admin-row__email { display: block; color: var(--on-navy-2); font-size: .8rem; margin-top: .2rem; word-break: break-all; }
 
 /* Navy/gold dropdown for the always-navy console (title-request approval). */
 .zselect {
   appearance: none; -webkit-appearance: none;
-  background-color: #0f2143; color: var(--cream);
+  background-color: var(--console-field); color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.5); border-radius: 9px;
   padding: .5rem 1.9rem .5rem .75rem; font-size: .86rem; font-weight: 600; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E8C766' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
@@ -1011,7 +1011,7 @@ body.modal-open { overflow: hidden; }
 }
 .zselect:hover { border-color: var(--gold-bright); }
 .zselect:focus { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.25); }
-.zselect option { background: #0f2143; color: var(--cream); }
+.zselect option { background: var(--console-field); color: var(--on-navy); }
 
 /* Positions-held editor (inside the theme-aware brother edit modal). */
 .pos-editor { display: flex; flex-direction: column; gap: .4rem; }
@@ -1140,7 +1140,7 @@ body.modal-open { overflow: hidden; }
 .ev-list { display: grid; gap: 1.1rem; margin-top: 2.4rem; max-width: 860px; margin-inline: auto; }
 .ev-card { display: flex; gap: 1.2rem; background: var(--surface); border-radius: var(--radius); padding: 1.2rem 1.4rem; box-shadow: var(--shadow-sm); align-items: flex-start; }
 .ev-card--members { border: 1.5px solid var(--gold); }
-.ev-card__date { flex: none; width: 74px; text-align: center; background: var(--navy); color: var(--cream); border-radius: 12px; padding: .6rem .3rem; }
+.ev-card__date { flex: none; width: 74px; text-align: center; background: var(--navy); color: var(--on-navy); border-radius: 12px; padding: .6rem .3rem; }
 .ev-card__date b { display: block; font-size: 1.6rem; font-family: var(--display); color: var(--gold-bright); line-height: 1.1; }
 .ev-card__date span { font-size: .72rem; letter-spacing: .18em; }
 .ev-card__date small { display: block; font-size: .68rem; opacity: .7; }
@@ -1291,7 +1291,7 @@ body.modal-open { overflow: hidden; }
 .card-form--slim { max-width: 460px; }
 .perks { display: grid; gap: .9rem; align-content: start; }
 .perks__title { color: var(--gold-bright); font-family: var(--display); margin: 0 0 .2rem; font-size: 1.25rem; }
-.perk { display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,.06); border: 1px solid rgba(200,162,75,.25); border-radius: 12px; padding: .9rem 1.1rem; color: var(--cream); }
+.perk { display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,.06); border: 1px solid rgba(200,162,75,.25); border-radius: 12px; padding: .9rem 1.1rem; color: var(--on-navy); }
 .perk__ic { font-size: 1.5rem; flex: none; }
 .perk b { display: block; font-family: var(--display); font-size: 1.02rem; }
 .perk small { color: var(--on-dark); font-size: .82rem; line-height: 1.4; display: block; }
@@ -1400,7 +1400,6 @@ body.modal-open { overflow: hidden; }
 }
 
 /* ---------- Mentor finder ---------- */
-.mentor-chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: .8rem 0 1.2rem; }
 
 /* ---------- Alumni map ---------- */
 .alumni-map { position: relative; z-index: 0; isolation: isolate; height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--bg-2); } /* isolate keeps Leaflet's internal z-indexes (controls=1000) from escaping over the nav/modals */
@@ -1639,7 +1638,7 @@ input, select, textarea { background: var(--surface-2); }
 .admin-head__sub { color: var(--on-dark); font-size: .82rem; }
 .admin-tabgroup { margin-bottom: .7rem; }
 .admin-tabgroup__label { color: rgba(232,199,102,.75); }
-.admin-tabs button { border: 1px solid rgba(200,162,75,.35); background: rgba(255,255,255,.06); color: #d7deec; border-radius: 999px; padding: .5rem 1.05rem; font-size: .86rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.admin-tabs button { border: 1px solid rgba(200,162,75,.35); background: rgba(255,255,255,.06); color: var(--on-navy-2); border-radius: 999px; padding: .5rem 1.05rem; font-size: .86rem; font-weight: 600; cursor: pointer; transition: all .15s; }
 .admin-tabs button:hover { border-color: var(--gold); color: var(--gold-bright); }
 .admin-tabs button.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); border-color: transparent; box-shadow: 0 6px 18px rgba(200,162,75,.35); }
 .admin-tabs button.on .tab-count { background: rgba(var(--chrome),.25); color: var(--navy-deep); }
@@ -1647,8 +1646,8 @@ input, select, textarea { background: var(--surface-2); }
 /* Console search: navy to match (scoped to .admin-body so the light-page mentor
    bar keeps its own styling). The old .admin-row overrides here were stale
    leftovers that reset the gold ledger-spine — removed. */
-.admin-body .admin-search { border: 1.5px solid rgba(200,162,75,.30); background: rgba(10,23,48,.72); color: var(--cream); }
-.admin-body .admin-search::placeholder { color: #7f90ad; }
+.admin-body .admin-search { border: 1.5px solid rgba(200,162,75,.30); background: var(--console-field); color: var(--on-navy); }
+.admin-body .admin-search::placeholder { color: var(--on-navy-3); }
 
 /* Email composer tab (email-tab.js) reuses the generic .field / .pref-box form
    classes, but it mounts on the NAVY console where --heading/--text/--muted
@@ -1659,22 +1658,22 @@ input, select, textarea { background: var(--surface-2); }
 .email-tab .field label { color: var(--gold-bright); }
 .email-tab .field input,
 .email-tab .field textarea {
-  background: rgba(10,23,48,.72); border-color: rgba(200,162,75,.30); color: var(--cream);
+  background: var(--console-field); border-color: rgba(200,162,75,.30); color: var(--on-navy);
 }
 .email-tab .field input::placeholder,
-.email-tab .field textarea::placeholder { color: #7f90ad; }
+.email-tab .field textarea::placeholder { color: var(--on-navy-3); }
 .email-tab .zselect {
-  background-color: #0f2143; color: var(--cream);
+  background-color: var(--console-field); color: var(--on-navy);
   border-color: rgba(200,162,75,.5); padding: .7rem 1.9rem .7rem .8rem;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23E8C766' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .65rem center;
 }
-.email-tab .pref-box { color: var(--cream); }
+.email-tab .pref-box { color: var(--on-navy); }
 .email-tab .pref-box small { color: var(--on-dark); }
 .email-tab input[type="checkbox"] { accent-color: var(--gold); width: 1.05rem; height: 1.05rem; }
 .email-tab input[type="file"] { color: var(--on-dark); font-size: .9rem; }
 .email-tab .form-note { color: var(--on-dark); }
-.email-tab .form-status { display: block; color: var(--cream); }
+.email-tab .form-status { display: block; color: var(--on-navy); }
 .stat-card { border-top: 3px solid var(--gold); }
 .stat-h { display: flex; align-items: center; gap: .6rem; }
 .stat-h::after { content: ''; flex: 1; height: 1px; background: rgba(200,162,75,.3); }
@@ -1698,18 +1697,22 @@ input, select, textarea { background: var(--surface-2); }
 .tree-controls button:hover { background: rgba(200,162,75,.25); color: #fff; }
 .tree-controls__sep { width: 1px; height: 22px; background: rgba(200,162,75,.35); margin: 0 .3rem; }
 
+/* Vertical rail on the LEFT edge (reads top-to-bottom) so it never lies across
+   the cards while it waits to fade — the horizontal pill used to cover the
+   bottom row until the first drag. */
 .tree-hintchip {
-  position: absolute; bottom: 12px; left: 12px; top: auto;
-  background: rgba(var(--chrome),.85); color: #e8d9ac; font-size: .8rem;
-  padding: .45rem 1.1rem; border-radius: 999px; border: 1px solid rgba(200,162,75,.35);
-  pointer-events: none; z-index: 9; white-space: nowrap; max-width: calc(100% - 24px);
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  background: rgba(var(--chrome),.85); color: #e8d9ac; font-size: .78rem;
+  padding: 1.1rem .45rem; border-radius: 999px; border: 1px solid rgba(200,162,75,.35);
+  pointer-events: none; z-index: 9; white-space: nowrap; max-height: calc(100% - 24px);
   overflow: hidden; text-overflow: ellipsis; transition: opacity .6s;
 }
 .tree-hintchip.gone { opacity: 0; }
 /* Fullscreen: move the Close button to the top-left so the toolbar keeps the
-   top-right corner; the hint stays bottom-left. */
+   top-right corner; the hint keeps the left edge. */
 .tree-shell--full .tree-fullclose { left: 14px; right: auto; }
-.tree-shell--full .tree-hintchip { bottom: 14px; left: 14px; }
+.tree-shell--full .tree-hintchip { left: 14px; }
 
 .tree-fullclose {
   display: none; position: absolute; top: 14px; right: 14px; z-index: 12;
@@ -1780,7 +1783,7 @@ body.tree-lock { overflow: hidden; }
 .unx { display: flex; gap: .8rem; padding: .7rem 0; border-bottom: 1px solid var(--hairline); cursor: pointer; align-items: flex-start; }
 .unx:last-of-type { border-bottom: 0; }
 .unx:hover .unx__body > b { color: var(--gold-deep); }
-.unx__date { flex: none; width: 46px; text-align: center; background: var(--navy); color: var(--cream); border-radius: 10px; padding: .35rem 0; }
+.unx__date { flex: none; width: 46px; text-align: center; background: var(--navy); color: var(--on-navy); border-radius: 10px; padding: .35rem 0; }
 .unx__date b { display: block; font-size: 1.15rem; font-family: var(--display); color: var(--gold-bright); line-height: 1.05; }
 .unx__date span { font-size: .6rem; letter-spacing: .16em; }
 .unx__body { min-width: 0; }
@@ -1846,11 +1849,11 @@ body.tree-lock { overflow: hidden; }
 .medal__seal span { filter: drop-shadow(0 1px 0 rgba(255,240,190,.6)); }
 .medal > b { display: block; font-family: var(--display); font-size: 1.12rem; color: var(--gold-bright); line-height: 1.3; }
 .medal__pillar { display: block; margin-top: .3rem; font-size: .68rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--on-dark); }
-.medal p { color: #aeb9d0; font-size: .84rem; line-height: 1.55; margin: .7rem 0 0; }
+.medal p { color: var(--on-navy-3); font-size: .84rem; line-height: 1.55; margin: .7rem 0 0; }
 
 .award-years { display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap; margin-top: 1.4rem; }
 .award-years button {
-  border: 1px solid rgba(200,162,75,.4); background: transparent; color: #d7deec;
+  border: 1px solid rgba(200,162,75,.4); background: transparent; color: var(--on-navy-2);
   border-radius: 999px; padding: .4rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer;
   transition: all .15s;
 }
@@ -1900,12 +1903,12 @@ body.tree-lock { overflow: hidden; }
 }
 .nav__menu-av img { width: 100%; height: 100%; object-fit: cover; }
 .nav__menu-id { min-width: 0; }
-.nav__menu-id b { display: block; color: var(--cream); font-family: var(--display); font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav__menu-id b { display: block; color: var(--on-navy); font-family: var(--display); font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav__menu-id > span { display: block; color: var(--on-dark); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; }
 .role-pill {
   display: inline-block; margin-top: .4rem; font-size: .6rem; font-weight: 800; letter-spacing: .12em;
   text-transform: uppercase; padding: .16rem .55rem; border-radius: 999px;
-  background: rgba(255,255,255,.1); color: #d7deec; border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.1); color: var(--on-navy-2); border: 1px solid rgba(255,255,255,.18);
 }
 .role-pill--admin {
   background: linear-gradient(180deg, var(--gold-bright), var(--gold));
@@ -1986,29 +1989,12 @@ body.tree-lock { overflow: hidden; }
 .net-help:hover { color: var(--heading); }
 
 /* ============================================================================
-   Networking Phase B — discovery rails, mentor request, class index
+   Networking Phase B — mentor request, class index
    ============================================================================ */
-/* discovery rails: brothers in your field / near you */
-.disc-rail { margin-bottom: 1.6rem; }
-.disc-rail h4 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .7rem; color: var(--heading); font-family: var(--display); font-size: 1.1rem; }
-.disc-rail h4 i { font-style: normal; background: var(--gold); color: var(--navy-deep); border-radius: 999px; font-size: .68rem; font-weight: 800; padding: .1rem .5rem; }
-.disc-scroll { display: flex; gap: .9rem; overflow-x: auto; padding-bottom: .6rem; scroll-snap-type: x proximity; }
-.disc-scroll .bro-card { flex: 0 0 240px; scroll-snap-align: start; }
-.disc-none { color: var(--muted); font-size: .88rem; margin: 0; }
-.disc-empty { background: var(--surface-2); border: 1.5px dashed var(--gold); border-radius: 12px; padding: 1rem 1.2rem; color: var(--muted); font-size: .92rem; }
-.disc-empty b { color: var(--heading); }
-.disc-empty a { color: var(--gold-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
-
 /* mentor finder bar: search + request button */
 .mentor-bar { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
 .mentor-bar .admin-search { flex: 1; min-width: 240px; margin: 0; }
 .mentor-bar .btn { flex: none; font-size: .88rem; padding: .6rem 1.2rem; white-space: nowrap; }
-
-/* reunion / pledge-class index */
-.class-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
-.class-chip { display: inline-flex; align-items: center; gap: .4rem; background: var(--surface); border: 1.5px solid var(--navy-2); color: var(--heading); border-radius: 999px; padding: .45rem 1rem; font-size: .86rem; font-weight: 600; transition: all .15s; }
-.class-chip:hover { border-color: var(--gold); background: var(--tint); transform: translateY(-1px); }
-.class-chip i { font-style: normal; background: var(--navy); color: var(--gold-bright); border-radius: 999px; font-size: .68rem; font-weight: 700; padding: .05rem .45rem; }
 
 @media (max-width: 620px) { .mentor-bar .btn { width: 100%; } }
 
@@ -2128,6 +2114,16 @@ body.tree-lock { overflow: hidden; }
   --chrome:    7, 22, 52;     /* nav / modals / overlays (navy in light) */
   --on-dark:   #cdd6e6;       /* body text that sits on navy sections */
   --scroll-track: #0A1F44;   /* solid NAVY channel — a transparent/near-white track read as clunky */
+  /* Text + surfaces that sit ON navy-family backgrounds. The navy tokens go
+     BLACK in dark mode, so anything painted on them must come from these
+     tokens — never literal cream/blue-grey hex (it won't flip and reads
+     white-on-black). --on-navy strong > --on-navy-2 secondary > --on-navy-3 muted. */
+  --on-navy:   var(--cream);
+  --on-navy-2: #d7deec;
+  --on-navy-3: #93a4c2;
+  --console-card-hi: #16294b;  /* console record-row / table gradient */
+  --console-card-lo: #112240;
+  --console-field:   #0f2143;  /* console inputs + navy dropdowns */
 }
 :root[data-theme="dark"] {
   /* True neutral black. The page stays essentially dead black; the separation
@@ -2155,6 +2151,13 @@ body.tree-lock { overflow: hidden; }
   --shadow:    0 20px 55px rgba(0,0,0,.75);
   --shadow-sm: 0 8px 22px rgba(0,0,0,.6);
   --scroll-track: #14110a;   /* near-black channel in dark mode; thumb stays gold */
+  /* on-navy family -> gold text on the now-black navy surfaces */
+  --on-navy:   #ecdcaa;
+  --on-navy-2: #e8d8ab;
+  --on-navy-3: #b19b64;
+  --console-card-hi: #161616;  /* lifted blacks, matching the dark card identity */
+  --console-card-lo: #101010;
+  --console-field:   #191919;
 }
 :root[data-theme="dark"] body { background: var(--bg); color: var(--text); }
 
