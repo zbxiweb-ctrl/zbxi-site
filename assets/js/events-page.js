@@ -230,7 +230,7 @@
     var endVal = ed && !e.all_day ? pad2(ed.getHours()) + ':' + pad2(ed.getMinutes()) : '';
     m.innerHTML = '<div class="pmodal__card card-form">' +
       '<button class="pmodal__close" data-ev-close aria-label="Close">✕</button>' +
-      '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">' + (ev ? 'Edit event' : 'Add event') + '</h3>' +
+      '<h3 style="color:var(--heading);font-family:var(--display);margin-top:0">' + (ev ? 'Edit event' : 'Add event') + '</h3>' +
       '<div class="field"><label>Title *</label><input id="evmTitle" value="' + esc(e.title || '') + '" /></div>' +
       '<label class="evm-allday"><input type="checkbox" id="evmAllDay"' + (e.all_day ? ' checked' : '') + ' /> All-day event</label>' +
       '<div class="field"><label>Date *</label><input id="evmDate" type="date" value="' + dateVal + '" /></div>' +
@@ -293,7 +293,7 @@
     if (!m) { m = document.createElement('div'); m.id = 'calHelpModal'; m.className = 'pmodal'; document.body.appendChild(m); }
     m.innerHTML = '<div class="pmodal__card card-form">' +
       '<button class="pmodal__close" data-hc aria-label="Close">✕</button>' +
-      '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">How the calendar works</h3>' +
+      '<h3 style="color:var(--heading);font-family:var(--display);margin-top:0">How the calendar works</h3>' +
       '<div class="cal-helpbody">' +
       '<p><b>📅 Reading it.</b> Days with a colored chip have something happening. Click the day to see the details — time, place, and what it is. The colors are just categories (gold = social, green = philanthropy, and so on).</p>' +
       '<p><b>✋ RSVP.</b> Press “I\'m going” on any event so the chapter knows to expect you. Press it again to change your mind — no harm done.</p>' +

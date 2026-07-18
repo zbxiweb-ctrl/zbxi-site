@@ -4,3 +4,11 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+
+# Images are static crests/favicon and never change in place — cache 30 days to
+# kill the per-page-view revalidation round-trips. CSS/JS are deliberately NOT
+# long-cached here: filenames aren't fingerprinted, so they must keep
+# revalidating (max-age=0) or deploys wouldn't reach users. Swap an image by
+# renaming it if it ever needs to change before the cache expires.
+/assets/img/*
+  Cache-Control: public, max-age=2592000

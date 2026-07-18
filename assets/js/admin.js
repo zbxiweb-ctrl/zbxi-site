@@ -154,7 +154,7 @@
     root.innerHTML =
       // ---- chapter-registry masthead (full on landing; collapses on tab change) ----
       '<div class="console-masthead" id="masthead">' +
-        '<img class="console-masthead__crest" src="assets/img/crest-hero.png" alt="" />' +
+        '<img class="console-masthead__crest" src="assets/img/crest-sm.png" alt="" />' +
         '<span class="console-masthead__eyebrow">Zeta Beta Xi · Chapter Registry · Est. 1993</span>' +
         '<h1 class="console-masthead__title">Admin Console</h1>' +
         '<div class="console-masthead__rule"><i>✦</i></div>' +

@@ -419,7 +419,7 @@
     root.innerHTML =
       '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
       '<div class="card-form" style="max-width:640px">' +
-        '<h3 style="color:var(--navy);font-family:var(--display)">New poll</h3>' +
+        '<h3 style="color:var(--heading);font-family:var(--display)">New poll</h3>' +
         '<form id="pollForm" novalidate>' +
           '<div class="field"><label>Question *</label><input name="question" required maxlength="200"></div>' +
           '<div class="field"><label>Options (one per line, 2–6) *</label><textarea name="opts" rows="5" required></textarea></div>' +
@@ -518,7 +518,7 @@
     root.innerHTML =
       '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
       '<div class="card-form" style="max-width:680px">' +
-        '<h3 style="color:var(--navy);font-family:var(--display)">New ' + (oppNow ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
+        '<h3 style="color:var(--heading);font-family:var(--display)">New ' + (oppNow ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
         '<form id="thrForm" novalidate>' +
           catField +
           '<div class="field" id="tagField"' + (oppNow ? '' : ' style="display:none"') + '><label>Type</label><select name="tag">' +

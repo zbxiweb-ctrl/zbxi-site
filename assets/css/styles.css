@@ -9,7 +9,7 @@
   --navy-deep:   #071634;
   --gold:        #C8A24B;
   --gold-bright: #E8C766;
-  --gold-deep:   #9A7628;
+  --gold-deep:   #7d5f1e;   /* darkened from #9A7628 → clears WCAG AA 4.5:1 as small text on cream/parchment */
   --cream:       #F7F5EF;
   --cream-2:     #EFEADC;
   --ink:         #12151C;
@@ -145,7 +145,7 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
 .danger-confirm .field { margin-bottom: .8rem; }
 .danger-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .btn--danger { background: #b4342b; color: #fff; }
-.btn--danger:hover:not(:disabled) { background: #9a2b23; }
+.btn--danger:hover:not(:disabled) { background: #9a2b23; transform: translateY(-2px); }
 .btn--danger:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ---- Global file-input styling: turn the generic "Choose File" button into a
@@ -499,8 +499,8 @@ p { margin: 0 0 1em; }
 .footer .motto { font-family: var(--serif); font-size: 1.3rem; color: var(--gold-bright); }
 
 /* ---------- Admin: tabs, search, edit modal ---------- */
-.btn--danger { background: #b4342b; color: #fff; }
-.btn--danger:hover { background: #9a2b23; transform: translateY(-2px); }
+/* (.btn--danger consolidated at the top button block — the duplicate here had an
+   unguarded :hover that lifted/darkened even disabled buttons.) */
 
 .admin-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .admin-tabs button {
@@ -2181,6 +2181,7 @@ body.tree-lock { overflow: hidden; }
   /* keep gold accents; hairlines + tints go gold */
   --gold:        #C8A24B;
   --gold-bright: #EAC873;
+  --gold-deep:   #C8A24B;   /* no light-mode override existed → gold-deep text was too dim on the black console */
   --hairline:  rgba(200,162,75,.24);
   --tint:      rgba(200,162,75,.12);
   --shadow:    0 20px 55px rgba(0,0,0,.75);

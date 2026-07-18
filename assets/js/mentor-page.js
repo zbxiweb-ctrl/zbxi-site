@@ -136,7 +136,7 @@
       if (!m) { m = document.createElement('div'); m.id = 'mentorReqModal'; m.className = 'pmodal'; document.body.appendChild(m); }
       m.innerHTML = '<div class="pmodal__card card-form">' +
         '<button class="pmodal__close" data-mr aria-label="Close">✕</button>' +
-        '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">Request a mentor</h3>' +
+        '<h3 style="color:var(--heading);font-family:var(--display);margin-top:0">Request a mentor</h3>' +
         '<p class="form-note" style="margin-top:0">We\'ll notify up to five alumni who said they\'re open to mentoring in this field. They get your name and email, and can reply to you directly.</p>' +
         '<div class="field"><label>What field?</label><select id="mrField">' +
           INDUSTRIES.map(function (i) { return '<option>' + i + '</option>'; }).join('') + '</select></div>' +
@@ -179,7 +179,7 @@
       if (!m) { m = document.createElement('div'); m.id = 'netHelpModal'; m.className = 'pmodal'; document.body.appendChild(m); }
       m.innerHTML = '<div class="pmodal__card card-form">' +
         '<button class="pmodal__close" data-nh aria-label="Close">✕</button>' +
-        '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">How networking works</h3>' +
+        '<h3 style="color:var(--heading);font-family:var(--display);margin-top:0">How networking works</h3>' +
         '<div class="cal-helpbody">' +
         '<p><b>1 · Fill in your profile.</b> Click your name in the top-right → My Profile. Your industry, city, company, and LinkedIn are what make you findable — the meter at the top shows what\'s missing.</p>' +
         '<p><b>2 · Raise your hand.</b> Tick the "I\'m open to…" boxes: 🎓 mentoring actives, 💼 hiring &amp; referrals, 🤝 connecting. They show as badges next to your name so brothers know it\'s welcome to reach out.</p>' +
