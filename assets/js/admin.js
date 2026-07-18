@@ -203,7 +203,7 @@
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
       b.onclick = function () {
         state.tab = b.dataset.tab;
-        state.q = '';                                      // a search is per-tab; don't carry it across
+        state.q = ''; clearSearchBox();                    // a search is per-tab; don't carry it across
         history.replaceState(null, '', '#' + state.tab);   // keeps deep-links honest + shareable
         side.classList.remove('open');                     // close the drawer on phones
         slimMasthead();                                    // ceremony on entry, efficiency once working
@@ -214,10 +214,13 @@
     window.addEventListener('hashchange', function () {
       var t = tabFromHash();
       if (t === state.tab) return;
-      state.tab = t; state.q = ''; side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
+      state.tab = t; state.q = ''; clearSearchBox(); side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
     });
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
+    // The search box lives in the console shell (rendered once), not in renderList's
+    // area, so clearing state.q alone leaves stale text in it on a tab switch.
+    function clearSearchBox() { var s = document.getElementById('adminSearch'); if (s) s.value = ''; }
 
     // Deep links (admin.html#titles from the 🔔 bell) render the right tab but used
     // to leave the heading on the default "Brotherhood Admin" — syncTabs only ran on
