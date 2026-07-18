@@ -189,12 +189,11 @@
   if (searchEl) searchEl.addEventListener('input', function () { F.q = searchEl.value.trim().toLowerCase(); renderGrid(); });
 
   /* ---- member hydration: photos, city, occupation for approved viewers ---- */
-  var RAW = [], ME = null;   // ME = the viewer's own brother row (drives discovery)
+  var RAW = [];
   function hydrate() {
     window.ZBXI.amApprovedBrother().then(function (ok) {
       if (!ok) return;
-      Promise.all([window.ZBXI.listVerifiedDetail(), window.ZBXI.getUser()]).then(function (res) {
-        var rows = res[0], user = res[1];
+      window.ZBXI.listVerifiedDetail().then(function (rows) {
         var det = {};
         (rows || []).forEach(function (d) { det[d.id] = d; });
         RAW.forEach(function (b) {
@@ -205,47 +204,14 @@
           b.company = d.company; b.industry = d.industry; b.open_to = d.open_to;
           b.user_id = d.user_id; b.standing = d.standing;
         });
-        ME = user ? (rows || []).filter(function (d) { return d.user_id === user.id; })[0] || null : null;
         APPROVED = true;
         render(RAW);
-        renderMentorFinder();
-        renderDiscovery();
         renderClassIndex();
         // Hand the hydrated roster to other scripts (e.g. the alumni map).
         window.ZBXI_MEMBERS = RAW;
         document.dispatchEvent(new CustomEvent('zbxi:hydrated'));
       });
     });
-  }
-
-  /* ---- discovery rails: brothers in your field / near you ---- */
-  function renderDiscovery() {
-    var sec = document.getElementById('discoverRail');
-    if (!sec || !APPROVED) return;
-    if (!ME || (!ME.industry && !ME.city)) {
-      sec.style.display = '';
-      sec.innerHTML = '<p class="eyebrow">🧭 Discover</p>' +
-        '<div class="disc-empty">Add your <b>industry</b> and <b>current city</b> to your profile and this fills with brothers who share them.' +
-        ' <a href="index.html#my-profile">Complete my profile →</a></div>';
-      return;
-    }
-    var others = ALL_ROWS.filter(function (b) { return !ME || b.id !== ME.id; });
-    var field = ME.industry
-      ? others.filter(function (b) { return b.industry && b.industry === ME.industry; }) : [];
-    var near = ME.city
-      ? others.filter(function (b) { return b.city && b.city.toLowerCase() === ME.city.toLowerCase(); }) : [];
-
-    var html = '<p class="eyebrow">🧭 Discover</p>';
-    function rail(title, rows, emptyMsg) {
-      if (!rows.length) return '<div class="disc-rail"><h4>' + title + '</h4><p class="disc-none">' + emptyMsg + '</p></div>';
-      return '<div class="disc-rail"><h4>' + title + ' <i>' + rows.length + '</i></h4>' +
-        '<div class="disc-scroll">' + rows.slice(0, 12).map(card).join('') + '</div></div>';
-    }
-    if (ME.industry) html += rail('Brothers in ' + esc(ME.industry), field, 'No other brothers have listed this field yet.');
-    if (ME.city) html += rail('Brothers near ' + esc(ME.city), near, 'No other brothers list this city yet.');
-    sec.style.display = '';
-    sec.innerHTML = html;
-    wire(sec);
   }
 
   /* ---- reunion / pledge-class index (alumni page) ---- */
@@ -263,128 +229,13 @@
     sec.style.display = '';
     sec.innerHTML = '<p class="eyebrow">🎓 Reunions &amp; Pledge Classes</p>' +
       '<p class="lede" style="margin-bottom:1rem">Every class has its own page — the brothers who crossed together, and a thread to plan the next reunion.</p>' +
-      '<div class="class-chips">' + classes.map(function (c) {
-        return '<a class="class-chip" href="class.html?c=' + encodeURIComponent(c) + '">' + esc(c) + ' <i>' + counts[c] + '</i></a>';
-      }).join('') + '</div>';
-  }
-
-  /* ---- mentorship finder (alumni page, members only) ---- */
-  function renderMentorFinder() {
-    if (MODE !== 'alumni' || !APPROVED) return;
-    var sec = document.getElementById('mentorFinder');
-    var grid = document.getElementById('mentorGrid');
-    var input = document.getElementById('mentorSearch');
-    var chipsEl = document.getElementById('mentorChips');
-    if (!sec || !grid || !input) return;
-    var pool = LIST.filter(function (b) { return b.skills || b.occupation || b.industry; });
-    if (!pool.length) return; // stays hidden until profiles carry skills/occupations
-    sec.style.display = '';
-
-    // Brothers who flagged "open to mentoring" float to the front of the pool.
-    pool.sort(function (a, z) {
-      var am = (a.open_to || []).indexOf('mentor') !== -1 ? 0 : 1;
-      var zm = (z.open_to || []).indexOf('mentor') !== -1 ? 0 : 1;
-      return am - zm;
-    });
-
-    var chips = uniqueSorted(pool.map(function (b) { return b.industry; }).concat(
-      pool.map(function (b) { return b.occupation; }))).slice(0, 6);
-    if (chipsEl) {
-      chipsEl.innerHTML = chips.map(function (c) { return '<button class="fam-chip" data-mc="' + esc(c) + '">' + esc(c) + '</button>'; }).join('');
-      chipsEl.querySelectorAll('[data-mc]').forEach(function (c) {
-        c.onclick = function () { input.value = c.dataset.mc; show(c.dataset.mc.toLowerCase()); };
-      });
-    }
-
-    function show(q) {
-      var hits = q
-        ? pool.filter(function (b) {
-            return ((b.skills || '') + ' ' + (b.occupation || '') + ' ' + (b.major || '') + ' ' +
-                    (b.industry || '') + ' ' + (b.company || '')).toLowerCase().indexOf(q) !== -1;
-          })
-        : pool;
-      grid.innerHTML = hits.length ? hits.map(card).join('')
-        : '<p class="page-empty">No alumni match that yet — try a broader term.</p>';
-      wire(grid);
-    }
-    input.addEventListener('input', function () { show(input.value.trim().toLowerCase()); });
-    show('');
-    wireNetHelp();
-    wireMentorRequest();
-  }
-
-  /* ---- request a mentor: state a field + goal, up to 5 matching alumni get a 🔔 ---- */
-  var INDUSTRIES = ['Finance & Banking', 'Technology & Software', 'Healthcare & Medicine',
-    'Law & Government', 'Engineering', 'Education', 'Marketing & Media',
-    'Sales & Business Dev', 'Real Estate & Construction', 'Science & Research',
-    'Arts & Entertainment', 'Military & Public Service', 'Other'];
-
-  function wireMentorRequest() {
-    var btn = document.getElementById('mentorReqBtn');
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.style.display = '';
-    btn.onclick = function () {
-      var m = document.getElementById('mentorReqModal');
-      if (!m) { m = document.createElement('div'); m.id = 'mentorReqModal'; m.className = 'pmodal'; document.body.appendChild(m); }
-      m.innerHTML = '<div class="pmodal__card card-form">' +
-        '<button class="pmodal__close" data-mr aria-label="Close">✕</button>' +
-        '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">Request a mentor</h3>' +
-        '<p class="form-note" style="margin-top:0">We\'ll notify up to five alumni who said they\'re open to mentoring in this field. They get your name and email, and can reply to you directly.</p>' +
-        '<div class="field"><label>What field?</label><select id="mrField">' +
-          INDUSTRIES.map(function (i) { return '<option>' + i + '</option>'; }).join('') + '</select></div>' +
-        '<div class="field"><label>What are you hoping for? (optional)</label>' +
-          '<textarea id="mrNote" maxlength="160" placeholder="e.g. Advice on breaking into investment banking after graduation"></textarea></div>' +
-        '<button class="btn btn--gold" id="mrSend" style="width:100%">🎓 Send my request</button>' +
-        '<p class="form-status" id="mrStatus"></p></div>';
-      m.classList.add('open');
-      m.setAttribute('aria-hidden', 'false');
-      function close() { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); }
-      m.querySelector('[data-mr]').onclick = close;
-      m.addEventListener('click', function (x) { if (x.target === m) close(); });
-
-      m.querySelector('#mrSend').onclick = function () {
-        var send = m.querySelector('#mrSend'), st = m.querySelector('#mrStatus');
-        send.disabled = true; send.textContent = 'Sending…';
-        st.className = 'form-status'; st.textContent = '';
-        window.ZBXI.mentorRequest(m.querySelector('#mrField').value, m.querySelector('#mrNote').value.trim())
-          .then(function (res) {
-            if (res === 'already') { st.className = 'form-status err'; st.textContent = 'You already sent a mentor request this week — give them a few days to reply.'; }
-            else if (res === 'none') { st.className = 'form-status err'; st.textContent = 'No alumni have raised the “open to mentoring” flag in that field yet. Try a nearby field, or reach out directly with 🤝 Connect.'; }
-            else { st.className = 'form-status ok'; st.textContent = '✓ Sent to ' + res + ' brother' + (res === '1' ? '' : 's') + ' — watch your inbox for a reply.'; }
-            send.textContent = 'Sent';
-          })
-          .catch(function (e) {
-            st.className = 'form-status err'; st.textContent = (e && e.message) || 'Could not send.';
-            send.disabled = false; send.textContent = '🎓 Send my request';
-          });
-      };
-    };
-  }
-
-  /* ---- "How networking works" — plain-English member brief ---- */
-  function wireNetHelp() {
-    var btn = document.getElementById('netHelpBtn');
-    if (!btn || btn.dataset.wired) return;
-    btn.dataset.wired = '1';
-    btn.onclick = function () {
-      var m = document.getElementById('netHelpModal');
-      if (!m) { m = document.createElement('div'); m.id = 'netHelpModal'; m.className = 'pmodal'; document.body.appendChild(m); }
-      m.innerHTML = '<div class="pmodal__card card-form">' +
-        '<button class="pmodal__close" data-nh aria-label="Close">✕</button>' +
-        '<h3 style="color:var(--navy);font-family:var(--display);margin-top:0">How networking works</h3>' +
-        '<div class="cal-helpbody">' +
-        '<p><b>1 · Fill in your profile.</b> Click your name in the top-right → My Profile. Your industry, city, company, and LinkedIn are what make you findable — the meter at the top shows what\'s missing.</p>' +
-        '<p><b>2 · Raise your hand.</b> Tick the "I\'m open to…" boxes: 🎓 mentoring actives, 💼 hiring &amp; referrals, 🤝 connecting. They show as badges next to your name so brothers know it\'s welcome to reach out.</p>' +
-        '<p><b>3 · Find brothers.</b> Search here by field ("finance", "law school", "engineer") or browse the directory filters. Brothers open to mentoring appear first. The <b>🧭 Discover</b> rails at the top show brothers who share your industry or city automatically.</p>' +
-        '<p><b>4 · Press Connect.</b> On any brother\'s card, the 🤝 Connect button drops your name and email into his notifications — he just replies to your email. No inbox to check, nothing complicated.</p>' +
-        '<p><b>5 · Or ask the room.</b> <b>🎓 Request a mentor</b> notifies up to five alumni who volunteered to mentor in that field — you don\'t have to know who to ask.</p>' +
-        '<p><b>Privacy:</b> all of this is brothers-only. The public sees none of it, and your contact details only show what you chose under "Reach me via".</p>' +
-        '</div></div>';
-      m.classList.add('open');
-      m.setAttribute('aria-hidden', 'false');
-      m.querySelector('[data-nh]').onclick = function () { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); };
-      m.addEventListener('click', function (x) { if (x.target === m) { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); } });
+      '<select class="page-filter" id="classJump" aria-label="Jump to a pledge class">' +
+        '<option value="">Jump to a pledge class… (' + classes.length + ')</option>' +
+        classes.map(function (c) {
+          return '<option value="' + esc(c) + '">' + esc(c) + ' (' + counts[c] + ')</option>';
+        }).join('') + '</select>';
+    document.getElementById('classJump').onchange = function () {
+      if (this.value) location.href = 'class.html?c=' + encodeURIComponent(this.value);
     };
   }
 

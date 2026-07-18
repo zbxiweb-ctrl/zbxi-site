@@ -2290,9 +2290,8 @@
         '<li><b>Nothing for you to moderate</b> — there\'s no inbox or chat, just intro requests.</li>' +
         '<li>Built-in anti-spam: one request per brother per recipient per week.</li>' +
         '<li>All of it is members-only; the public never sees contact details.</li>' +
-        '<li>Members have their own “❓ How networking works” guide on the Alumni page.</li></ul>' +
-        '<p><b>🎓 Request a mentor:</b> an active picks a field on the Alumni page and up to <b>five</b> alumni who volunteered to mentor in it get a 🔔 with his name and email. Capped and rate-limited (one request per brother per week) so nobody gets spammed. If nobody has raised the mentoring flag in that field yet, he\'s told to reach out directly instead.</p>' +
-        '<p><b>🧭 Discover rails:</b> on the Active/Alumni pages, brothers automatically see others who share their industry or city. Nothing to configure — it fills in as brothers complete their profiles.</p>') +
+        '<li>Members have their own “❓ How networking works” guide on the Find a Mentor page.</li></ul>' +
+        '<p><b>🎓 Request a mentor:</b> an active picks a field on the Find a Mentor page and up to <b>five</b> alumni who volunteered to mentor in it get a 🔔 with his name and email. Capped and rate-limited (one request per brother per week) so nobody gets spammed. If nobody has raised the mentoring flag in that field yet, he\'s told to reach out directly instead.</p>') +
       sec('📅 Run the chapter calendar', '<p>The calendar is <b>members-only</b> — the public sees a sign-in card instead. Two ways to add events:</p><ul>' +
         '<li><b>Right on the calendar</b> (easiest): sign in on the homepage, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
         '<li><b>Here in the console</b>: <b>Events</b> tab → <b>+ New event</b> (same fields, plus the announcement banner editor).</li></ul>' +

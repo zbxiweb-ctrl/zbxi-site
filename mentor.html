@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Active Brothers · Zeta Beta Xi</title>
-  <meta name="description" content="The active brothers of Zeta Beta Xi — currently pursuing their degrees at SUNY Geneseo." />
-    <link rel="canonical" href="https://zetabetaxi.com/active.html" />
+  <title>Find a Mentor · Zeta Beta Xi</title>
+  <meta name="description" content="Search Zeta Beta Xi alumni by skill, field, or profession — members only." />
+  <link rel="canonical" href="https://zetabetaxi.com/mentor.html" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Active Brothers · Zeta Beta Xi" />
-  <meta property="og:description" content="The active undergraduate brothers of Zeta Beta Xi at SUNY Geneseo." />
-  <meta property="og:url" content="https://zetabetaxi.com/active.html" />
+  <meta property="og:title" content="Find a Mentor · Zeta Beta Xi" />
+  <meta property="og:description" content="Search Zeta Beta Xi alumni by skill, field, or profession — members only." />
+  <meta property="og:url" content="https://zetabetaxi.com/mentor.html" />
   <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest-main.jpg" />
   <meta name="twitter:card" content="summary" />
   <link rel="icon" href="assets/img/favicon.png" />
@@ -22,7 +22,7 @@
   <script>try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: no-preference)").matches)document.documentElement.classList.add("fx");}catch(e){}</script>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
-<body data-mode="active" class="page-body">
+<body class="page-body">
 
   <header class="nav">
     <div class="wrap nav__inner">
@@ -32,7 +32,7 @@
       </a>
       <nav class="nav__links" id="navLinks">
         <a href="index.html#about">About</a>
-        <a href="active.html" class="on">Active</a>
+        <a href="active.html">Active</a>
         <a href="alumni.html">Alumni</a>
         <a href="family-tree.html">Family Tree</a>
         <a href="events.html">Events</a>
@@ -50,22 +50,25 @@
   <main class="page-main">
     <section class="page-hero">
       <div class="wrap center">
-        <p class="eyebrow">The Undergraduate Chapter</p>
-        <h1 class="section-title" style="color:var(--gold-bright)">Active Brothers</h1>
+        <p class="eyebrow">Brothers Only</p>
+        <h1 class="section-title" style="color:var(--gold-bright)">Find a Mentor</h1>
         <hr class="rule" />
-        <p class="lede">Brothers currently pursuing their degrees at SUNY Geneseo. <span id="pageCount"></span></p>
+        <p class="lede">Thirty years of alumni, one search away — by skill, field, or profession.</p>
       </div>
     </section>
 
     <section class="section" style="padding-top:3rem">
       <div class="wrap">
-        <p class="eyebrow">Executive Board</p>
-        <div class="eb-grid" id="pageEboard"><p class="page-empty">Loading…</p></div>
-
-        <p class="eyebrow" style="margin-top:3rem">All Active Brothers</p>
-        <input class="admin-search" id="pageSearch" type="search" placeholder="Search by name or pledge class…" />
-        <div class="page-filters" id="pageFilters"></div>
-        <div class="bro-grid" id="pageGrid"><p class="page-empty">Loading…</p></div>
+        <div id="mentorGate"></div>
+        <div id="mentorSec" style="display:none">
+          <p class="lede" style="margin-bottom:1rem">Brothers open to mentoring appear first. <button type="button" class="net-help" id="netHelpBtn">❓ How networking works</button></p>
+          <div class="mentor-bar">
+            <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
+            <button type="button" class="btn btn--gold" id="mentorReqBtn" style="display:none">🎓 Request a mentor</button>
+          </div>
+          <div class="page-filters" style="margin-top:.8rem"><select class="page-filter" id="mentorFilter"></select></div>
+          <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
+        </div>
       </div>
     </section>
   </main>
@@ -83,7 +86,7 @@
     </div>
   </footer>
 
-  <!-- Brother profile modal -->
+  <!-- Brother profile modal (mentor cards open it) -->
   <div class="bmodal" id="brotherModal" aria-hidden="true">
     <div class="bmodal__card">
       <button class="bmodal__close" data-close aria-label="Close">✕</button>
@@ -118,7 +121,7 @@
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/notify.js"></script>
   <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/brothers-page.js"></script>
+  <script src="assets/js/mentor-page.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>
 </html>
