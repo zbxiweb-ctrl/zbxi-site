@@ -206,7 +206,9 @@ p { margin: 0 0 1em; }
 .btn:active { transform: translateY(1px); }
 .btn--gold { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); box-shadow: 0 10px 24px rgba(200,162,75,.35); }
 .btn--gold:hover { box-shadow: 0 14px 30px rgba(200,162,75,.5); transform: translateY(-2px); }
-.btn--ghost { border-color: var(--gold); color: var(--gold-bright); }
+/* Soft gold fill so the secondary button reads as a solid pill, not a washed
+   outline; hover still fills solid gold. */
+.btn--ghost { border-color: var(--gold); color: var(--gold-bright); background: rgba(200,162,75,.12); }
 .btn--ghost:hover { background: var(--gold); color: var(--navy-deep); }
 .btn--navy { background: var(--navy); color: var(--on-navy); }
 .btn--navy:hover { background: var(--navy-2); transform: translateY(-2px); }
@@ -648,7 +650,7 @@ p { margin: 0 0 1em; }
 .bro-card__meta b { display: block; color: var(--heading); font-family: var(--display); font-size: 1.02rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bro-card__meta small { color: var(--muted); font-size: .76rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bro-card__tag { font-style: normal; font-size: .68rem; font-weight: 700; color: var(--gold-deep); }
-.bro-card__tag--off { color: #a9a290; font-weight: 500; }
+.bro-card__tag--off { color: var(--muted); font-weight: 500; }
 .bro-card--live { border-color: rgba(200,162,75,.55); }
 
 /* ---------- Tree: legend, toggles, registration colors ---------- */
@@ -1239,8 +1241,11 @@ body.modal-open { overflow: hidden; }
 /* ---------- Admin roster management (v4.1) ---------- */
 .admin-addbar { display: flex; gap: .7rem; margin: 0 0 1.1rem; flex-wrap: wrap; }
 .admin-addbar .btn { padding: .6rem 1.2rem; font-size: .9rem; }
-.schip { display: inline-block; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: .14rem .5rem; margin-left: .45rem; background: #e8e4d8; color: #6b6355; }
-.schip--active { background: #dff0df; color: #2c6e2c; }
+/* Status chips: on-brand, not stark pale. Neutral = slate; positive(●) = gold;
+   warn = muted red. A dark-theme block below re-tints them for the black console
+   (the old hardcoded pales had no dark rule and glared white on black). */
+.schip { display: inline-block; vertical-align: 2px; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: .14rem .5rem; margin-left: .45rem; background: rgba(10,31,68,.07); color: #3a4a66; border: 1px solid rgba(10,31,68,.14); }
+.schip--active { background: rgba(200,162,75,.16); color: var(--gold-deep); border-color: rgba(200,162,75,.42); }
 .guide-intro h3 { color: var(--gold-bright); font-family: var(--display); margin: 0 0 .3rem; }
 .guide-intro p { color: var(--on-dark); margin-bottom: 1.2rem; }
 .guide-sec { background: var(--surface); border-radius: 12px; margin-bottom: .7rem; box-shadow: var(--shadow-sm); overflow: hidden; }
@@ -1661,6 +1666,20 @@ input, select, textarea { background: var(--surface-2); }
 .admin-body .admin-search { border: 1.5px solid rgba(200,162,75,.30); background: var(--console-field); color: var(--on-navy); }
 .admin-body .admin-search::placeholder { color: var(--on-navy-3); }
 
+/* Console cream cards -> warm parchment (was stark near-white on the navy body).
+   Scoped to .admin-body so the public "My Profile" popup's .acct-block stays as-is.
+   --console-panel flips (warm parchment light / lifted-dark dark), so dark mode is
+   unaffected; the gold hairline reads in both. Inner content keeps its current
+   dark-on-parchment / light-on-dark colors — no inner flips. */
+.admin-body .acct-block,
+.admin-body .guide-sec,
+.admin-body .stat-card,
+.admin-body .stat-list,
+.admin-body .treeed-list { background: var(--console-panel); border-color: rgba(200,162,75,.28); }
+/* keep the destructive "Semester rollover" card's caution border (my rule above
+   would otherwise repaint it gold) — theme-agnostic muted red. */
+.admin-body .acct-block--danger { border-color: rgba(178,52,43,.42); }
+
 /* Email composer tab (email-tab.js) reuses the generic .field / .pref-box form
    classes, but it mounts on the NAVY console where --heading/--text/--muted
    resolve to dark ink and vanish. Re-point them to the console's gold+cream-on-
@@ -2011,7 +2030,7 @@ body.tree-lock { overflow: hidden; }
 @media (max-width: 620px) { .mentor-bar .btn { width: 100%; } }
 
 /* Phase C — invite status chip */
-.schip--warn { background: #fdecea; color: #b03a2e; border-color: #e6b0aa; }
+.schip--warn { background: rgba(178,52,43,.12); color: #c0564e; border-color: rgba(178,52,43,.35); }
 .acct-block textarea { width: 100%; min-height: 110px; }
 
 /* invite-link greeting on the portal auth card */
@@ -2136,6 +2155,7 @@ body.tree-lock { overflow: hidden; }
   --console-card-hi: #16294b;  /* console record-row / table gradient */
   --console-card-lo: #112240;
   --console-field:   #0f2143;  /* console inputs + navy dropdowns */
+  --console-panel:   #ece4d2;  /* warm parchment cards on the navy console (was stark #FBF8F1) */
 }
 :root[data-theme="dark"] {
   /* True neutral black. The page stays essentially dead black; the separation
@@ -2170,6 +2190,7 @@ body.tree-lock { overflow: hidden; }
   --console-card-hi: #161616;  /* lifted blacks, matching the dark card identity */
   --console-card-lo: #101010;
   --console-field:   #191919;
+  --console-panel:   #1a1712;  /* subtly-warm lifted dark; ≈ old #151515 so dark barely shifts */
 }
 :root[data-theme="dark"] body { background: var(--bg); color: var(--text); }
 
@@ -2216,6 +2237,11 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .tree-node { border-color: rgba(200,162,75,.35); }
 :root[data-theme="dark"] .tree-links path { stroke: var(--gold); opacity: .85; }
 :root[data-theme="dark"] .cal-chip--meeting { background: #2a2410; }
+/* Status chips on the black console: the light-mode slate/gold tints go invisible,
+   so re-tint — neutral cool-slate, positive gold, warn light-red — all legible on black. */
+:root[data-theme="dark"] .schip { background: rgba(160,175,205,.12); color: #c2ccdf; border-color: rgba(160,175,205,.24); }
+:root[data-theme="dark"] .schip--active { background: rgba(200,162,75,.20); color: var(--gold-bright); border-color: rgba(200,162,75,.5); }
+:root[data-theme="dark"] .schip--warn { background: rgba(178,52,43,.22); color: #e59a9a; border-color: rgba(178,52,43,.5); }
 :root[data-theme="dark"] .gmodal, :root[data-theme="dark"] .pmodal,
 :root[data-theme="dark"] .bmodal, :root[data-theme="dark"] .admin-modal { background: rgba(0,0,0,.72); }
 /* a soft gold halo lifts the crest off the black hero */
