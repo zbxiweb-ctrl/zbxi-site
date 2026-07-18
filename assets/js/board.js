@@ -301,7 +301,7 @@
     var open = function () {
       var wrap = document.createElement('div');
       wrap.className = 'admin-modal open';
-      wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
         '<h3>❓ How the board works</h3><div class="treeed-help">' +
         '<p><b>👋 Say hi first.</b> Your intro tells 300+ brothers your class, where you landed and what you\'re up to. It\'s the one post everyone can write, and it\'s how brothers find each other.</p>' +
         '<p><b>Post a thread.</b> Hit <b>+ New thread</b>, pick the space that fits (⚖️ Chapter, 🧭 Advice, 🎉 Social, 💼 Opportunities), write it, optionally attach a photo.</p>' +
@@ -606,7 +606,7 @@
       Z.gallerySignedUrls([t.image_path]).then(function (urls) {
         var ph = document.getElementById('threadPhoto');
         var u = urls[t.image_path];
-        if (ph && u) ph.innerHTML = '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt=""></a>';
+        if (ph && u) ph.innerHTML = '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="Photo attached to this thread — opens full size"></a>';
       });
     }
     loadReplies(t);

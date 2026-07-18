@@ -460,7 +460,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>Edit brother</h3>' +
       '<div class="form-row">' + fld('Full name', 'full_name', b.full_name) + fld('Pledge class', 'pledge_class', b.pledge_class) + '</div>' +
       '<div class="form-row">' + fld('Grad year', 'grad_year', b.grad_year, 'number') + fld('Major', 'major', b.major) + '</div>' +
@@ -622,7 +622,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + (e.id ? 'Edit event' : 'New event') + '</h3>' +
       '<div class="field"><label>Title *</label><input data-f="title" value="' + esc(e.title) + '"></div>' +
       '<div class="field"><label class="pref-box"><input type="checkbox" data-f="all_day"' + (e.all_day ? ' checked' : '') + '> All-day event (no start/end time)</label></div>' +
@@ -712,7 +712,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + (a.id ? 'Edit award' : 'Add award') + '</h3>' +
       '<div class="form-row">' +
         '<div class="field"><label>Academic year *</label><input data-f="year_label" value="' + esc(a.year_label || presetYear || '') + '" placeholder="e.g. 2025–26"></div>' +
@@ -864,7 +864,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>Add a brother</h3>' +
       '<p class="form-note">Adds an unclaimed entry to the roster + family tree. If he later makes an account, he claims this name.</p>' +
       '<div class="form-row">' + fld('Full name *', 'full_name', '') + fld('Pledge class *', 'pledge_class', '') + '</div>' +
@@ -897,7 +897,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>Add a pledge class</h3>' +
       '<div data-step1>' +
         '<p class="form-note">Step 1 of 2 — name the class, then paste the new brothers (one name per line).</p>' +
@@ -1036,7 +1036,7 @@
   function treeModal(title, bodyHtml) {
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
-    wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+    wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + title + '</h3>' + bodyHtml + '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
     wrap.close = function () { wrap.remove(); };

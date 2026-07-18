@@ -187,7 +187,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + (e.id ? 'Edit event' : 'New event') + '</h3>' +
       '<div class="field"><label>Title *</label><input data-f="title" value="' + esc(e.title) + '"></div>' +
       '<div class="field"><label class="pref-box"><input type="checkbox" data-f="all_day"' + (e.all_day ? ' checked' : '') + '> All-day event (no start/end time)</label></div>' +
@@ -277,7 +277,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
     wrap.innerHTML =
-      '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+      '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + (a.id ? 'Edit award' : 'Add award') + '</h3>' +
       '<div class="form-row">' +
         '<div class="field"><label>Academic year *</label><input data-f="year_label" value="' + esc(a.year_label || presetYear || '') + '" placeholder="e.g. 2025–26"></div>' +
@@ -314,7 +314,7 @@
   function treeModal(title, bodyHtml) {
     var wrap = document.createElement('div');
     wrap.className = 'admin-modal open';
-    wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x>✕</button>' +
+    wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + title + '</h3>' + bodyHtml + '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
     wrap.close = function () { wrap.remove(); };

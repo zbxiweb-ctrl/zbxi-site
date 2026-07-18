@@ -70,8 +70,8 @@
     } else {
       grid = '<div class="ggrid">' + posts.map(function (p) {
         var u = urls[p.image_path];
-        var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="">' : '<span class="ggrid__ph">…</span>';
-        return '<button class="ggrid__cell" data-post="' + p.id + '">' + img +
+        var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="' + esc(p.caption || 'Gallery photo') + '">' : '<span class="ggrid__ph">…</span>';
+        return '<button class="ggrid__cell" data-post="' + p.id + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
           '<span class="ggrid__hover">♥ ' + likeCount(p.id) + '</span></button>';
       }).join('') + '</div>';
     }
@@ -128,6 +128,7 @@
 
   function openPost(p) {
     g('img').src = urls[p.image_path] || '';
+    g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
     g('caption').textContent = p.caption || '';
     g('date').textContent = when(p.created_at);
