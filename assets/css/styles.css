@@ -617,7 +617,10 @@ p { margin: 0 0 1em; }
 .nav__links a.on { color: var(--gold-bright); font-weight: 700; }
 .page-empty { color: var(--muted); padding: 1.4rem 0; }
 
-.eb-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-top: 1rem; }
+/* minmax(0,1fr), not bare 1fr: a plain 1fr track keeps its min-content floor,
+   so one card with a long unbreakable line (name · title · company) silently
+   widens its whole column — the "some cards are wider" bug. */
+.eb-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.2rem; margin-top: 1rem; }
 .eb-card {
   background: var(--surface); border: 0; border-radius: var(--radius); padding: 1.6rem 1rem; text-align: center;
   box-shadow: var(--shadow-sm); border-top: 4px solid var(--gold); cursor: pointer; transition: transform .15s, box-shadow .2s;
@@ -629,7 +632,7 @@ p { margin: 0 0 1em; }
 .eb-card__role { display: block; color: var(--gold-deep); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; margin: .25rem 0; }
 .eb-card small { color: var(--muted); font-size: .78rem; }
 
-.bro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; margin-top: 1rem; }
+.bro-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; margin-top: 1rem; }
 .bro-card {
   display: flex; align-items: center; gap: .8rem; text-align: left; cursor: pointer;
   background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 12px; padding: .8rem .9rem;
@@ -697,8 +700,8 @@ p { margin: 0 0 1em; }
   .events { grid-template-columns: 1fr; }
   .gallery { grid-template-columns: repeat(2, 1fr); }
   .dir-cards { grid-template-columns: 1fr; }
-  .eb-grid { grid-template-columns: repeat(2, 1fr); }
-  .bro-grid { grid-template-columns: repeat(2, 1fr); }
+  .eb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
   .bro-grid, .eb-grid { grid-template-columns: 1fr; }
