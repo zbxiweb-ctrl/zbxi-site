@@ -71,17 +71,29 @@
       } catch (e) {}
       return false;
     },
+    // Deduped for the page's life: ~5 scripts ask on every load, one request
+    // serves them all. Sign-in/out reloads the page (portal), so the memo can't
+    // go stale — and signIn/signOut clear it anyway, belt and braces.
     getUser: function () {
       if (!configured) return Promise.resolve(null);
-      return client.auth.getUser().then(function (r) { return r.data ? r.data.user : null; });
+      if (this._userP) return this._userP;
+      var self = this;
+      this._userP = client.auth.getUser().then(function (r) { return r.data ? r.data.user : null; });
+      this._userP['catch'](function () { self._userP = null; });
+      return this._userP;
     },
     signUp: function (email, password, captchaToken) {
       return client.auth.signUp({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
     },
     signIn: function (email, password, captchaToken) {
-      return client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined });
+      var self = this;
+      return client.auth.signInWithPassword({ email: email, password: password, options: captchaToken ? { captchaToken: captchaToken } : undefined })
+        .then(function (r) { self._userP = null; self.cacheBust(); return r; });
     },
-    signOut: function () { return client.auth.signOut(); },
+    signOut: function () {
+      var self = this;
+      return client.auth.signOut().then(function (r) { self._userP = null; self.cacheBust(); return r; });
+    },
     onAuth: function (cb) { if (configured) client.auth.onAuthStateChange(cb); },
     // Send a password-reset email (link returns to the portal).
     resetPassword: function (email, captchaToken) {
@@ -138,7 +150,7 @@
     adminResetMfa: function (targetUserId) { return client.rpc('admin_reset_2fa', { target: targetUserId }); },
 
     // Disconnect my account from its family-tree row (row becomes claimable again).
-    releaseProfile: function () { return client.rpc('release_profile'); },
+    releaseProfile: function () { return this._bust(client.rpc('release_profile')); },
 
     /* ---- profile photos: PRIVATE bucket, signed on the way out ---------------
        `brother-photos` went private in upgrade16 (it used to be world-readable by
@@ -186,6 +198,45 @@
         });
     },
 
+    /* ---- roster cache (sessionStorage, per-tab) ------------------------------
+       Every page used to re-download the full roster and re-sign every photo on
+       every navigation. The three heavy reads (family_public, roster_detail,
+       member_directory) now serve from a per-tab cache and refresh in the
+       background (stale-while-revalidate), so the NEXT navigation is fresh.
+       - sessionStorage, not localStorage: roster PII dies with the browser tab.
+       - 30-min TTL, well inside the 6h life of the signed photo URLs that ride
+         along in the rows.
+       - Never caches an empty result (signed-out / not-yet-approved viewers get
+         [] from the self-gating views — caching that would stick).
+       - Busted by every roster write and by sign-in/sign-out, so your own edits
+         and account switches are never stale. Another brother's edit can take up
+         to 30 min to reach an already-open tab. */
+    _CACHE_TTL: 30 * 60 * 1000,
+    _cget: function (name) {
+      try {
+        var raw = sessionStorage.getItem('zbxic_' + name);
+        if (!raw) return null;
+        var obj = JSON.parse(raw);
+        return (obj && obj.exp > Date.now()) ? obj.v : null;
+      } catch (e) { return null; }
+    },
+    _cput: function (name, v) {
+      try { sessionStorage.setItem('zbxic_' + name, JSON.stringify({ exp: Date.now() + this._CACHE_TTL, v: v })); } catch (e) {}
+    },
+    cacheBust: function () {
+      try {
+        for (var i = sessionStorage.length - 1; i >= 0; i--) {
+          var k = sessionStorage.key(i);
+          if (k && k.indexOf('zbxic_') === 0) sessionStorage.removeItem(k);
+        }
+      } catch (e) {}
+    },
+    // Wrap a write so the roster cache clears once it lands.
+    _bust: function (p) {
+      var self = this;
+      return Promise.resolve(p).then(function (r) { self.cacheBust(); return r; });
+    },
+
     /* ---- brothers ---- */
     // PUBLIC: names + lineage only (via the family_public view — no details, and
     // no photo_url column at all, so nothing to sign here).
@@ -198,10 +249,20 @@
       // "not allowed" (tree -> placeholder, homepage stats -> "🔒 members"), so just
       // don't make a request we know will be refused. getSession() is local (no
       // network round-trip), unlike getUser().
+      var self = this;
       return client.auth.getSession().then(function (r) {
         if (!r.data || !r.data.session) return [];
-        return client.from('family_public').select('*')
-          .then(function (x) { return x.data || []; });
+        var fresh = function () {
+          return client.from('family_public').select('*')
+            .then(function (x) {
+              var rows = x.data || [];
+              if (rows.length) self._cput('fam', rows);
+              return rows;
+            });
+        };
+        var hit = self._cget('fam');
+        if (hit) { fresh()['catch'](function () {}); return hit; }
+        return fresh();
       });
     },
     // All verified brothers — read through the roster_detail VIEW, not the raw
@@ -212,8 +273,17 @@
     listVerifiedDetail: function () {
       if (!configured) return Promise.resolve([]);
       var self = this;
-      return client.from('roster_detail').select('*').eq('status', 'verified')
-        .then(function (r) { return self._signPhotos(r.data || []); });
+      var fresh = function () {
+        return client.from('roster_detail').select('*').eq('status', 'verified')
+          .then(function (r) { return self._signPhotos(r.data || []); })
+          .then(function (rows) {
+            if (rows.length) self._cput('roster', rows);
+            return rows;
+          });
+      };
+      var hit = this._cget('roster');
+      if (hit) { fresh()['catch'](function () {}); return Promise.resolve(hit); }
+      return fresh();
     },
     // Unregistered (claimable) tree entries, alphabetical — for the claim picker.
     listUnclaimed: function () {
@@ -224,7 +294,7 @@
     },
     // Claim an existing tree row for the signed-in account (goes to pending review).
     claimProfile: function (targetId) {
-      return client.rpc('claim_profile', { target_id: targetId });
+      return this._bust(client.rpc('claim_profile', { target_id: targetId }));
     },
     // One brother's full detail for the profile card. Read the row from the
     // PII-safe roster_detail view (email/phone gated by his own contact_prefs, no
@@ -265,7 +335,7 @@
         .then(function (r) { return r.data ? self._signPhotos(r.data) : null; });
     },
     upsertProfile: function (row) {
-      return client.from('brothers').upsert(row, { onConflict: 'user_id' }).select().maybeSingle();
+      return this._bust(client.from('brothers').upsert(row, { onConflict: 'user_id' }).select().maybeSingle());
     },
     // Admin: list by status (alphabetical by name)
     listByStatus: function (status) {
@@ -282,7 +352,7 @@
     // Returns [] for non-admins (the DB function is admin-gated). See upgrade23.sql.
     adminPendingEmails: function () { return client.rpc('admin_pending_emails').then(function (r) { return r; }); },
     setStatus: function (id, status) {
-      return client.from('brothers').update({ status: status }).eq('id', id);
+      return this._bust(client.from('brothers').update({ status: status }).eq('id', id));
     },
     /* ---- pledge classes (admin console) --------------------------------------
        `pledge_class` is one free-text field on the brother's row, and the roster,
@@ -291,14 +361,14 @@
        Both writes are gated server-side by the brothers_admin_update RLS policy
        (is_admin(), upgrade14.sql); a non-admin caller updates 0 rows. */
     setPledgeClass: function (id, cls) {
-      return client.from('brothers').update({ pledge_class: cls }).eq('id', id);
+      return this._bust(client.from('brothers').update({ pledge_class: cls }).eq('id', id));
     },
     // Bulk merge/rename: move EVERY brother in `oldCls` to `newCls` in one call.
     renamePledgeClass: function (oldCls, newCls) {
-      return client.from('brothers').update({ pledge_class: newCls }).eq('pledge_class', oldCls);
+      return this._bust(client.from('brothers').update({ pledge_class: newCls }).eq('pledge_class', oldCls));
     },
     updateBrother: function (id, fields) {
-      return client.from('brothers').update(fields).eq('id', id);
+      return this._bust(client.from('brothers').update(fields).eq('id', id));
     },
     // Admin: the same fields on many brothers in one request (CSV import). RLS
     // brothers_admin_update still gates it server-side. Caller chunks the ids —
@@ -306,15 +376,15 @@
     // NOT upsertProfile: that keys on user_id, which is null on roster rows, so it
     // would INSERT duplicates rather than update.
     updateBrothersIn: function (ids, fields) {
-      return client.from('brothers').update(fields).in('id', ids);
+      return this._bust(client.from('brothers').update(fields).in('id', ids));
     },
     deleteBrother: function (id) {
-      return client.from('brothers').delete().eq('id', id);
+      return this._bust(client.from('brothers').delete().eq('id', id));
     },
     // Admin: add roster rows directly (single object or array). Unclaimed
     // (user_id null) + verified so they appear in the tree immediately.
     addBrothers: function (rows) {
-      return client.from('brothers').insert(rows).select();
+      return this._bust(client.from('brothers').insert(rows).select());
     },
 
     /* ---- member directory (author chips; approved brothers only) ---- */
@@ -322,14 +392,20 @@
       if (!configured) return Promise.resolve({});
       if (this._dirCache) return Promise.resolve(this._dirCache);
       var self = this;
-      return client.from('member_directory').select('*').then(function (r) {
-        return self._signPhotos(r.data || []);   // author chips show avatars
-      }).then(function (rows) {
-        var map = {};
-        (rows || []).forEach(function (m) { map[m.user_id] = m; });
-        self._dirCache = map;
-        return map;
-      });
+      var fresh = function () {
+        return client.from('member_directory').select('*').then(function (r) {
+          return self._signPhotos(r.data || []);   // author chips show avatars
+        }).then(function (rows) {
+          var map = {};
+          (rows || []).forEach(function (m) { map[m.user_id] = m; });
+          if ((rows || []).length) self._cput('dir', map);
+          self._dirCache = map;
+          return map;
+        });
+      };
+      var hit = this._cget('dir');
+      if (hit) { this._dirCache = hit; fresh()['catch'](function () {}); return Promise.resolve(hit); }
+      return fresh();
     },
 
     /* ---- gallery (members only; RLS-gated) ---- */
