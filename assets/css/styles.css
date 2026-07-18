@@ -624,7 +624,7 @@ p { margin: 0 0 1em; }
   font-family: var(--sans);
 }
 .eb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
-.eb-card__av { width: 64px; height: 64px; margin: 0 auto .7rem; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
+.eb-card__av { position: relative; overflow: hidden; width: 64px; height: 64px; margin: 0 auto .7rem; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.3rem; }
 .eb-card b { display: block; font-family: var(--display); color: var(--heading); font-size: 1.1rem; }
 .eb-card__role { display: block; color: var(--gold-deep); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; margin: .25rem 0; }
 .eb-card small { color: var(--muted); font-size: .78rem; }
@@ -636,6 +636,8 @@ p { margin: 0 0 1em; }
   font-family: var(--sans); transition: border-color .15s, box-shadow .15s, transform .12s;
 }
 .bro-card:hover { border-color: var(--gold); box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+/* No overflow:hidden here — the __dot badge overhangs the circle by design;
+   the absolutely-pinned img (below) is what keeps the photo a true circle. */
 .bro-card__av { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--navy-2); color: var(--on-dark); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem; }
 .bro-card--live .bro-card__av { background: var(--navy); color: var(--gold-bright); }
 .bro-card__dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold-bright); border: 2px solid var(--white); }
@@ -1081,8 +1083,13 @@ body.modal-open { overflow: hidden; }
 .page-filters { display: flex; gap: .7rem; flex-wrap: wrap; align-items: center; margin: -0.4rem 0 1.4rem; }
 .page-filter { padding: .55rem .8rem; border-radius: 10px; border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text); font-size: .9rem; }
 .page-filter-hint { font-size: .84rem; color: var(--muted); }
-.bro-card__av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.eb-card__av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+/* Absolutely pinned to the container box: a percentage height on a grid item
+   in an auto-sized track resolves to AUTO (cyclic sizing), so `height:100%`
+   let a 3:4 photo keep its natural aspect and overflow the circle as an oval.
+   inset:0 sizes against the positioned container instead — always a true
+   square crop. overflow:hidden on the containers is the backstop. */
+.bro-card__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.eb-card__av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .bro-card__extra { color: var(--gold-deep) !important; }
 
 /* ---------- Author chip (gallery/board) ---------- */
