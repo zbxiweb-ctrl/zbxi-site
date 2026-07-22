@@ -72,6 +72,7 @@ type Row = {
   brother_class: string | null;
   login_email: string | null;
   signed_up: string | null;
+  claimed: boolean | null;    // true = matched himself to an existing chapter-record row
 };
 
 const when = (iso: string) =>
@@ -89,6 +90,9 @@ function personRow(b: Row) {
     <div style="font:700 15px Helvetica,Arial;color:#1c2a45">${esc(b.brother_name || "(no name given)")}</div>
     ${bits.length ? `<div style="font:400 13px/1.6 Helvetica,Arial;color:#3d4657">${bits.join(" · ")}</div>` : ""}
     ${b.signed_up ? `<div style="font:400 12px Helvetica,Arial;color:#8a8f9c">Signed up ${esc(when(b.signed_up))}</div>` : ""}
+    ${b.claimed === null ? "" : b.claimed
+      ? `<div style="font:600 12px Helvetica,Arial;color:#3f7a4d;margin-top:3px">✓ Claimed an existing roster entry</div>`
+      : `<div style="font:600 12px Helvetica,Arial;color:#a4392f;margin-top:3px">⚠ Created a new profile — check him against the roster</div>`}
   </td></tr>`;
 }
 
@@ -126,20 +130,23 @@ function body(rows: Row[]) {
 </table></td></tr></table></body></html>`;
 }
 
+// Shown only when the queue is empty, so a preview still demonstrates the design.
+// Deliberately the self-created case — that's the flag actually worth recognising.
 const SAMPLE: Row = {
   brother_id: null, brother_name: "Sample Brother", brother_class: "Gamma Rho · Fall '25",
-  login_email: "sample@example.com", signed_up: new Date().toISOString(),
+  login_email: "sample@example.com", signed_up: new Date().toISOString(), claimed: false,
 };
 
 // Preview/test read the queue WITHOUT claiming, so testing can never swallow a real alert.
 async function peek(): Promise<Row[]> {
   const rows = await dbGet(
-    `brothers?status=eq.pending&select=id,full_name,pledge_class&order=created_at.desc&limit=10`,
+    `brothers?status=eq.pending&select=id,full_name,pledge_class,roster_name&order=created_at.desc&limit=10`,
   );
-  return (rows as { id: string; full_name: string; pledge_class: string | null }[]).map((b) => ({
-    brother_id: b.id, brother_name: b.full_name, brother_class: b.pledge_class,
-    login_email: null, signed_up: null,
-  }));
+  return (rows as { id: string; full_name: string; pledge_class: string | null; roster_name: string | null }[])
+    .map((b) => ({
+      brother_id: b.id, brother_name: b.full_name, brother_class: b.pledge_class,
+      login_email: null, signed_up: null, claimed: b.roster_name !== null,
+    }));
 }
 
 Deno.serve(async (req) => {
