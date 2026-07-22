@@ -149,7 +149,7 @@
     // label is null on the feed, where "Nothing in the board yet" reads wrong.
     var head = label ? 'Nothing in ' + label + ' yet.' : 'Nothing here yet.';
     return '<div class="board-empty">' +
-      '<img src="assets/img/crest-mark.png" alt="" />' +
+      '<img src="assets/img/crest-mark.webp" alt="" />' +
       '<p><b>' + head + '</b><br>Be the brother who starts the first thread.</p></div>';
   }
 

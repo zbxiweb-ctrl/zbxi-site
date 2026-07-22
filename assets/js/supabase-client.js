@@ -220,8 +220,10 @@
         return (obj && obj.exp > Date.now()) ? obj.v : null;
       } catch (e) { return null; }
     },
-    _cput: function (name, v) {
-      try { sessionStorage.setItem('zbxic_' + name, JSON.stringify({ exp: Date.now() + this._CACHE_TTL, v: v })); } catch (e) {}
+    // ttl is optional — a caller with a freshness requirement tighter than the
+    // roster's 30 min (e.g. the announcement banner) passes its own.
+    _cput: function (name, v, ttl) {
+      try { sessionStorage.setItem('zbxic_' + name, JSON.stringify({ exp: Date.now() + (ttl || this._CACHE_TTL), v: v })); } catch (e) {}
     },
     cacheBust: function () {
       try {
@@ -532,14 +534,29 @@
       return client.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', userId);
     },
 
-    /* ---- site settings (announcement banner) ---- */
+    /* ---- site settings (announcement banner) ----
+       getSetting('announcement') runs from notify.js on EVERY page load for every
+       visitor — the most-fired query on the site — to paint a banner that changes
+       maybe monthly. Cache it per tab so navigation costs no round-trip. Short TTL
+       (not the roster's 30 min) because it's cheap to refetch and the admin expects
+       a new banner to show up promptly; setSetting busts it so his own edit is
+       instant. null is cached too — "no announcement" is the common answer and
+       re-asking every page view is exactly the waste being removed. */
+    _SETTING_TTL: 5 * 60 * 1000,
     getSetting: function (key) {
       if (!configured) return Promise.resolve(null);
+      var self = this, ck = 'set_' + key;
+      var hit = this._cget(ck);
+      if (hit !== null && hit !== undefined) return Promise.resolve(hit.v);
       return client.from('site_settings').select('value').eq('key', key).maybeSingle()
-        .then(function (r) { return r.data ? r.data.value : null; });
+        .then(function (r) {
+          var v = r.data ? r.data.value : null;
+          self._cput(ck, { v: v }, self._SETTING_TTL);   // wrapped so a null value still caches
+          return v;
+        });
     },
     setSetting: function (key, value) {
-      return client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() });
+      return this._bust(client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() }));
     },
 
     /* ---- polls (admin-created; members vote) ---- */
