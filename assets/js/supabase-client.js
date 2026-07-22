@@ -364,8 +364,14 @@
       return this._bust(client.from('brothers').update({ pledge_class: cls }).eq('id', id));
     },
     // Bulk merge/rename: move EVERY brother in `oldCls` to `newCls` in one call.
+    // The admin's "— blank —" bucket groups NULL and '' together, but SQL `= ''`
+    // never matches NULL — so merging it used to silently leave the NULL rows behind
+    // while the confirm promised "all N". Match both for that bucket.
     renamePledgeClass: function (oldCls, newCls) {
-      return this._bust(client.from('brothers').update({ pledge_class: newCls }).eq('pledge_class', oldCls));
+      var q = client.from('brothers').update({ pledge_class: newCls });
+      return this._bust(oldCls === '' || oldCls == null
+        ? q.or('pledge_class.is.null,pledge_class.eq.')
+        : q.eq('pledge_class', oldCls));
     },
     updateBrother: function (id, fields) {
       return this._bust(client.from('brothers').update(fields).eq('id', id));

@@ -416,24 +416,30 @@
       each(el, '[data-revoke]',  function () { if (confirm('Move this brother back to Pending?')) setStatus(id, 'pending'); });
       each(el, '[data-restore]', function () { setStatus(id, 'pending'); });
       each(el, '[data-edit]',    function () { openEdit(find()); });
-      each(el, '[data-delete]',  function () { if (confirm('Permanently delete ' + (find().full_name) + '? This cannot be undone.')) del(id); });
+      // big_id is ON DELETE SET NULL, so deleting a big silently makes each of his
+      // littles his own root on the family tree. Say so before it happens.
+      each(el, '[data-delete]',  function () {
+        var kids = (state.data.all || []).filter(function (x) { return x.big_id === id; }).length;
+        if (confirm('Permanently delete ' + (find().full_name) + '? This cannot be undone.' +
+          (kids ? '\n\n⚠️ ' + kids + ' brother' + (kids === 1 ? '' : 's') +
+                  ' will lose their big and each become their own family line on the tree.' : ''))) del(id);
+      });
     });
   }
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
 
-  // NOTE: the last line is an UNGUARDED fall-through — any tab without a case
-  // above gets Restore + Delete. A new tab must be added here in the same commit
-  // that adds it to BRO_TABS, or every row on it grows a Delete button wired to
-  // del(id) on a real brother.
+  // Every tab that may show Delete is named EXPLICITLY below. del() is a hard DELETE
+  // with no undo, so the fall-through deliberately hands out Edit only — a new tab
+  // added to BRO_TABS without a case here can never grow a Delete button by accident.
   function actionsFor(tab) {
     if (tab === 'pending') return btn('approve', 'Approve', 'gold') + btn('reject', 'Reject', 'danger') + btn('edit', 'Edit', 'ghost');
     if (tab === 'approved') return btn('revoke', 'Revoke', 'ghost') + btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
     if (tab === 'unclaimed') return btn('edit', 'Edit', 'ghost') + btn('delete', 'Delete', 'danger');
+    if (tab === 'rejected') return btn('restore', 'Restore', 'gold') + btn('delete', 'Delete', 'danger');
     // All Brothers is a mixed-status list, so a single verb can't be right for
     // every row. Edit only — openEdit carries the Big and Status selects, and the
     // status-specific verbs stay on the tab where they're unambiguous.
-    if (tab === 'all') return btn('edit', 'Edit', 'ghost');
-    return btn('restore', 'Restore', 'gold') + btn('delete', 'Delete', 'danger'); // rejected
+    return btn('edit', 'Edit', 'ghost');   // 'all' + any unknown tab: never hand out Delete
   }
   function btn(action, label, kind) {
     var cls = kind === 'gold' ? 'btn btn--gold' : kind === 'danger' ? 'btn btn--danger' : 'btn btn--ghost';
@@ -1456,8 +1462,17 @@
       return r.some(function (x) { return String(x).trim() !== ''; });   // drop spacer rows
     });
   }
-  // One field, CSV-quoted. csvParse is its inverse; both exports use it.
-  function csvEsc(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  // One field, CSV-quoted AND spreadsheet-safe. csvParse is its inverse; both exports use it.
+  // A value starting with = + - @ tab or CR is a FORMULA to Excel/Sheets, and CSV quotes do
+  // NOT stop that (they're stripped at parse time, then the cell is evaluated). A brother
+  // controls his own full_name/pledge_class, so prefix a single quote to force it to text.
+  // \r is in the quote test too: csvParse treats a bare CR as a row break, so an unquoted
+  // one would inject an extra row on the export->import round-trip.
+  function csvEsc(v) {
+    v = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+    return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
 
   // The family line is derived, never stored: walk big_id up to the root; the
   // line is the root's LAST NAME — the same rule the public tree uses. A rootless
@@ -1707,6 +1722,9 @@
       var eff = i.verdict === 'conflict' ? (i.pick === 'new' ? 'create' : 'skip') : i.verdict;
       if (eff !== 'create') return;
       if (liveKeys[nameKey(i.name)]) return;             // appeared since the preview
+      liveKeys[nameKey(i.name)] = 1;                     // …and don't insert it twice in ONE batch:
+      // a "this name appears twice in the file" conflict only offers New/Skip, so picking New on
+      // both copies used to insert both (liveKeys was built from live rows and never updated).
       var bid = i.bigName ? bigByName[nameKey(i.bigName)] : null;
       if (i.bigName && !bid) missBig.push(i.name + ' (big “' + i.bigName + '” not found)');
       inserts.push({ full_name: i.name, roster_name: i.name, pledge_class: i.cls || null,
@@ -1761,7 +1779,8 @@
       'Needs a <b>Name</b> column. <b>Pledge Class</b> and <b>Big</b> are used if present. ' +
       'Anyone missing from the file is left alone — this never deletes.</p>' +
       '<p><input type="file" id="impFile" accept=".csv,text/csv"></p>' +
-      '<p class="admin-hint">Back up first: <b>📊 Stats → ⬇ Export roster (CSV)</b>. That export is the only real undo.</p>');
+      '<p class="admin-hint">Back up first: <b>📊 Stats → ⬇ Export roster (CSV)</b>. Keep it as your record — ' +
+      'note it’s a snapshot of the main fields, not a full restore file (it leaves out photos, bios and links).</p>');
     wrap.querySelector('.admin-modal__card').classList.add('admin-modal__card--wide');
     var st = wrap.querySelector('[data-status]');
     wrap.querySelector('#impFile').onchange = function (e) {
@@ -1872,6 +1891,13 @@
     var left0 = unresolved(), c0 = counts();
     body.innerHTML =
       '<div class="cls-sum" id="impSum">' + summaryInner() + '</div>' +
+      // The export offers a Family Line column and the importer maps the header, but
+      // nothing reads it back — families come from each brother's big. Say so, rather
+      // than silently no-op an edit the admin thinks he just made.
+      (plan.hdr && plan.hdr.family !== -1
+        ? '<p class="admin-hint"><b>Note:</b> the <b>Family Line</b> column is ignored — family lines are ' +
+          'worked out from each brother’s big. To move someone into another family, change his big in <b>🌳 Tree</b>.</p>'
+        : '') +
       (confl.length ? '<h4 class="stat-h">Is this the same man? (' + confl.length + ')</h4>' +
         '<p class="admin-hint"><b>Same man</b> writes nothing. <b>New brother</b> creates a profile — ' +
         'a wrong pick puts one man on the roster and the tree twice.</p>' +
@@ -2384,7 +2410,11 @@
         '</span><em></em></div></div>';
 
       html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
-        '<span style="color:var(--on-dark);font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>';
+        '<span style="color:var(--on-dark);font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>' +
+        '<p style="margin:.5rem 0 0"><label style="color:var(--on-dark);font-size:.82rem;display:inline-flex;align-items:center;gap:.4rem;cursor:pointer">' +
+          '<input type="checkbox" id="expContact"> Include email &amp; phone columns</label> ' +
+          '<span style="color:var(--on-dark);font-size:.78rem;opacity:.85">— leave unticked to keep contact details out of the file. ' +
+          'With it on, treat the download as confidential and delete it when you\'re done.</span></p>';
 
       html += '<h3 class="stat-h">Activity log</h3>';
       html += acts.length ? '<div class="stat-list">' + acts.map(function (a) {
@@ -2398,7 +2428,12 @@
       var exp = document.getElementById('exportCsv');
       if (exp) exp.onclick = function () {
         var all = state.data.pending.concat(state.data.verified, state.data.rejected);
-        var cols = ['full_name', 'pledge_class', 'grad_year', 'big', 'status', 'registered', 'role', 'role_term', 'major', 'city', 'occupation', 'hometown', 'email', 'phone', 'skills'];
+        // Contact details are OFF by default: the DB gates email/phone on each brother's
+        // contact_prefs everywhere else, and this file is the one place that copied them
+        // all out regardless. Tick the box when you actually need them.
+        var wantContact = !!(document.getElementById('expContact') || {}).checked;
+        var cols = ['full_name', 'pledge_class', 'grad_year', 'big', 'status', 'registered', 'role', 'role_term', 'major', 'city', 'occupation', 'hometown', 'skills'];
+        if (wantContact) cols = cols.concat(['email', 'phone']);
         var lines = [cols.join(',')].concat(all.map(function (b) {
           return cols.map(function (c) {
             if (c === 'big') return csvEsc(b.big_id && bigName(b.big_id) || '');
