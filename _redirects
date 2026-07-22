@@ -1,7 +1,0 @@
-# Cloudflare Pages isn't auto-serving 404.html for unknown routes (it returns a
-# bare empty 404, so browsers show their own default error). Force the custom
-# page: serve /404.html with a 404 status for anything that doesn't match a real
-# static asset. Static assets — including clean URLs like /alumni — take
-# precedence over _redirects rules, so real pages are unaffected; only genuinely
-# unmatched paths hit this catch-all.
-/*  /404.html  404
