@@ -1,0 +1,32 @@
+-- upgrade29.sql — Gallery/board photo BYTES moved from Supabase Storage to Cloudflare R2.
+-- (Documentation of record — NO schema change. Bucket/edge config lives outside Postgres.)
+--
+-- Why: Supabase Free storage (1 GB) was the tightest cap on a growing photo archive.
+-- Cloudflare R2 free tier is 10 GB with ZERO egress fees, and the site is already on
+-- Cloudflare. Only image bytes moved; all metadata stays here in Postgres.
+--
+-- What changed (2026-07-23):
+--   * New edge fn `zbxi-gallery` mints short-lived R2 S3 presigned URLs, gated in the DB
+--     as the caller: sign-view (is_approved_brother/admin), sign-upload (admin OR
+--     officer_can('gallery.post')), delete-post (RLS gposts_own_delete, then deletes the
+--     R2 object). R2 creds live ONLY as edge-fn secrets (R2_ACCOUNT_ID / R2_BUCKET /
+--     R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) — never in the repo.
+--   * `assets/js/supabase-client.js`: galleryUpload / gallerySignedUrls / galleryDeletePost
+--     now call `zbxi-gallery` instead of `client.storage.from('gallery')`. Signatures
+--     unchanged, so gallery.js / board.js / main.js were untouched.
+--   * `gallery_posts.image_path` and `forum_threads.image_path` now name R2 object keys
+--     (SAME key format `<uid>/<ts>.jpg` — no data update was needed).
+--   * `_headers` / `vercel.json`: CSP connect-src now allows the R2 S3 endpoint (upload PUT).
+--
+-- Privacy is unchanged: only approved brothers can mint URLs; the URLs are short-lived
+-- bearer URLs (1 h view / 10 min upload) — identical to the old Supabase signed-URL model.
+--
+-- The old private `gallery` bucket, its objects, and the storage.objects RLS policies from
+-- upgrade3/16/20 are LEFT IN PLACE as the rollback path. One live object (a board thread
+-- photo) was copied to R2; an unreferenced orphan was left behind.
+--
+-- ROLLBACK: `git revert` the supabase-client.js + _headers/vercel.json commit and redeploy —
+-- the three helpers point back at Supabase Storage, whose objects were never removed. Copy
+-- back to Supabase Storage any objects uploaded during the R2 window (gallery_posts /
+-- forum_threads rows with created_at after cutover). `zbxi-gallery` can stay deployed (inert)
+-- or be deleted. Do NOT empty the Supabase `gallery` bucket for at least ~2 weeks.

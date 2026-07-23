@@ -429,26 +429,26 @@
       return client.from('gallery_comments').select('*').eq('post_id', postId)
         .order('created_at').then(function (r) { return r.data || []; });
     },
+    // userId/imagePath are kept for the callers' sake but IGNORED — the edge fn
+    // derives the key from the verified caller uid (upload) and from the row (delete).
     galleryUpload: function (userId, blob, ext) {
-      var path = userId + '/' + Date.now() + '.' + ext;
-      return client.storage.from('gallery').upload(path, blob, { contentType: 'image/jpeg' })
-        .then(function (r) { if (r.error) throw r.error; return path; });
+      return this._gallery({ op: 'sign-upload', ext: ext || 'jpg' })
+        .then(function (r) { if (!r.ok) throw new Error('upload not allowed'); return r.json(); })
+        .then(function (j) {
+          return fetch(j.url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob })
+            .then(function (pr) { if (!pr.ok) throw new Error('upload failed'); return j.key; });
+        });
     },
     gallerySignedUrls: function (paths) {
       if (!paths.length) return Promise.resolve({});
-      return client.storage.from('gallery').createSignedUrls(paths, 3600).then(function (r) {
-        var map = {};
-        (r.data || []).forEach(function (row, i) { if (row.signedUrl) map[paths[i]] = row.signedUrl; });
-        return map;
-      });
+      return this._gallery({ op: 'sign-view', paths: paths })
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (j) { return (j && j.urls) || {}; })
+        .catch(function () { return {}; });   // signed-out / error -> {} (posts show the placeholder)
     },
     galleryCreate: function (row) { return client.from('gallery_posts').insert(row).select().single(); },
     galleryDeletePost: function (id, imagePath) {
-      var p = client.from('gallery_posts').delete().eq('id', id);
-      if (!imagePath) return p;
-      return p.then(function (r) {
-        return client.storage.from('gallery').remove([imagePath]).then(function () { return r; });
-      });
+      return this._gallery({ op: 'delete-post', id: id });   // fn deletes the row (RLS) + the R2 object
     },
     likePost: function (postId, userId) {
       return client.from('gallery_likes').insert({ post_id: postId, user_id: userId });
@@ -726,6 +726,19 @@
     _token: function () {
       return client.auth.getSession().then(function (r) {
         return (r.data && r.data.session && r.data.session.access_token) || null;
+      });
+    },
+    // Gallery/board photos live in Cloudflare R2. The zbxi-gallery edge fn checks the
+    // caller's permission IN THE DB, then mints a short-lived presigned URL. Returns
+    // the raw fetch Response; callers decide how to read it.
+    _gallery: function (body) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-gallery'), {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
       });
     },
     // Renders the digest without sending it (admin only).
