@@ -19,12 +19,20 @@
   function loadLeaflet() {
     return new Promise(function (resolve, reject) {
       if (window.L) return resolve();
+      // Subresource Integrity: pin the exact bytes so a compromised/edited CDN file
+      // can't run. Hashes cross-verified byte-identical from unpkg AND cdnjs (Leaflet
+      // 1.9.4). crossOrigin is required for the browser to check integrity on a
+      // cross-origin resource.
       var css = document.createElement('link');
       css.rel = 'stylesheet';
       css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      css.integrity = 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H';
+      css.crossOrigin = 'anonymous';
       document.head.appendChild(css);
       var js = document.createElement('script');
       js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      js.integrity = 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH';
+      js.crossOrigin = 'anonymous';
       js.onload = resolve;
       js.onerror = function () { reject(new Error('map library failed to load')); };
       document.head.appendChild(js);
