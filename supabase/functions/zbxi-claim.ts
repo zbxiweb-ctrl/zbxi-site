@@ -33,12 +33,22 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const { token, password } = await req.json();
-    if (!token || typeof password !== "string" || password.length < 8) {
+    if (!token || typeof password !== "string" || password.length < 8 || password.length > 200) {
       return json({ error: "invalid input" }, 400);
     }
 
-    // 1. token -> invited email (the token is the proof of inbox control)
-    const inv = await db(`invites?token=eq.${encodeURIComponent(token)}&select=id,email`);
+    // 1. token -> invited email (the token is the proof of inbox control).
+    //    Single-use + expiry: only an UNCLAIMED invite from the last 30 days
+    //    resolves, so a forwarded/leaked link goes stale after it's used once and
+    //    after a month. (Even without this the worst case is squatting a no-access
+    //    Pending account, but the guard is cheap defense-in-depth.)
+    const cutoff = new Date(Date.now() - 30 * 864e5).toISOString();
+    const inv = await db(
+      `invites?token=eq.${encodeURIComponent(token)}` +
+      `&accepted_at=is.null` +
+      `&created_at=gt.${encodeURIComponent(cutoff)}` +
+      `&select=id,email`,
+    );
     if (!inv?.[0]) return json({ error: "invalid or expired invite" }, 400);
     const email = String(inv[0].email).toLowerCase();
 
@@ -54,7 +64,8 @@ Deno.serve(async (req) => {
       if (/already.*(registered|exists)|duplicate|has already/i.test(t)) {
         return json({ error: "account exists", exists: true }, 409);
       }
-      return json({ error: t.slice(0, 200) }, 500);
+      console.error("zbxi-claim create failed:", t.slice(0, 300));   // detail to logs, not the caller
+      return json({ error: "could not create your account — please try again" }, 500);
     }
 
     // 3. stamp the invite as accepted (best-effort; don't fail the claim over it)
@@ -66,6 +77,7 @@ Deno.serve(async (req) => {
 
     return json({ ok: true });
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    console.error("zbxi-claim error:", String(e));   // may contain the token/db detail — logs only
+    return json({ error: "could not complete request" }, 500);
   }
 });

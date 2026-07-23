@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     // Optional: personalise using the roster row this invite is linked to.
     let name: string | null = null;
     if (brother_id) {
-      const b = await db(`brothers?id=eq.${brother_id}&select=full_name`);
+      const b = await db(`brothers?id=eq.${encodeURIComponent(brother_id)}&select=full_name`);
       name = b?.[0]?.full_name?.split(" ")[0] || null;
     }
 
