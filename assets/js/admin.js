@@ -2220,6 +2220,7 @@
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
     { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
     { key: 'gallery.post',        label: 'Post to the gallery',    desc: 'Create new gallery posts (otherwise only the admin can).', seats: ['alumni_president'] },
+    { key: 'gallery.albums',      label: 'Manage gallery sections', desc: 'Create, rename, and delete gallery sections, right on the gallery page. Deleting a section keeps its photos — they move to Miscellaneous.', seats: ['alumni_president'] },
     { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['active_president', 'alumni_president'] },
     { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] }
   ];
@@ -2438,8 +2439,9 @@
           var n = albCount(a);
           return '<div class="stat-list__row"><b>' + esc(a.name) + '</b>' +
             '<span>' + n + ' photo' + (n === 1 ? '' : 's') + '</span>' +
-            '<em><a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a>' +
-              (a.name === 'Miscellaneous' ? '' : ' · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a>') +
+            '<em>' + (a.name === 'Miscellaneous'
+              ? 'default section'
+              : '<a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a> · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a>') +
             '</em></div>';
         }).join('') + '</div>' +
         '<p style="margin:.6rem 0 1.4rem"><button class="btn btn--ghost" id="albumAdd">+ New album</button></p>';

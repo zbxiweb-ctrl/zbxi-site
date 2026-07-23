@@ -1145,6 +1145,22 @@ body.modal-open { overflow: hidden; }
 .stor-meter__bar span { display: block; height: 100%; border-radius: 999px; background: var(--gold-bright); transition: width .4s ease; }
 .stor-meter__label { margin: .55rem 0 .1rem; color: var(--on-dark); font-size: .92rem; }
 
+/* On-page gallery section manager (admin + a granted alumni president). Sits on
+   the normal page surface, so page tokens — not the console navy tokens. */
+.galbum-mgr { margin: -.7rem 0 1.4rem; }
+.galbum-mgr__toggle { background: none; border: 1.5px solid var(--hairline); color: var(--muted);
+  border-radius: 999px; padding: .35rem .85rem; font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: border-color .15s, color .15s; }
+.galbum-mgr__toggle:hover, .galbum-mgr--open .galbum-mgr__toggle { border-color: var(--gold-bright); color: var(--heading); }
+.galbum-mgr__list { margin-top: .7rem; padding: .5rem 1rem; border: 1.5px solid var(--hairline); border-radius: 12px; background: var(--surface); }
+.galbum-mgr__row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid var(--hairline); }
+.galbum-mgr__row:last-of-type { border-bottom: 0; }
+.galbum-mgr__row b { font-weight: 600; color: var(--heading); }
+.galbum-mgr__acts a { color: var(--gold-deep); font-size: .85rem; text-decoration: none; }
+.galbum-mgr__acts a:hover { text-decoration: underline; }
+.galbum-mgr__acts--fixed { color: var(--muted); font-size: .82rem; font-style: italic; }
+.galbum-mgr__add { margin: .7rem 0 .3rem; }
+
 .ggrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
 .ggrid__cell { position: relative; padding: 0; border: 0; background: var(--navy); border-radius: 12px; overflow: hidden; cursor: pointer; aspect-ratio: 1; box-shadow: var(--shadow-sm); }
 .ggrid__cell img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }

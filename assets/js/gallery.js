@@ -32,7 +32,7 @@
   // OR a seat with gallery.post switched on. The DB enforces both (the gallery
   // insert/delete policies check officer_can); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
-  var albums = [], curAlbum = 'all';
+  var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false;
 
   // Posts with no album_id fall into Miscellaneous (the fallback bucket) so a
   // deleted-album's photos are never orphaned. albumName() reads the same map.
@@ -93,6 +93,27 @@
       albums.map(function (a) { return chip(a.id, a.name, albumCount(a.id)); }).join('') + '</div>';
   }
 
+  // Section manager — shown only to the admin OR a granted alumni president
+  // (canAlbums). The DB (officer_can on gallery_albums, upgrade31) is the real
+  // gate; this UI just exposes the controls. Names are user-visible -> esc().
+  function sectionMgrHtml() {
+    if (!canAlbums) return '';
+    var toggle = '<button class="galbum-mgr__toggle" id="mgToggle" aria-expanded="' + (manageOpen ? 'true' : 'false') + '">✎ Manage sections</button>';
+    if (!manageOpen) return '<div class="galbum-mgr">' + toggle + '</div>';
+    var rows = albums.map(function (a) {
+      // Miscellaneous is the fixed fallback bucket — no rename/delete (the DB
+      // enforces it too, upgrade31).
+      var acts = a.name === 'Miscellaneous'
+        ? '<span class="galbum-mgr__acts galbum-mgr__acts--fixed">default section</span>'
+        : '<span class="galbum-mgr__acts"><a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a> · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a></span>';
+      return '<div class="galbum-mgr__row"><b>' + esc(a.name) + '</b>' + acts + '</div>';
+    }).join('');
+    return '<div class="galbum-mgr galbum-mgr--open">' + toggle +
+      '<div class="galbum-mgr__list">' + rows +
+        '<button class="btn btn--ghost galbum-mgr__add" id="mgAdd">＋ New section</button>' +
+      '</div></div>';
+  }
+
   function gridHtml() {
     var shown = curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
     if (!shown.length) {
@@ -113,7 +134,7 @@
   function renderBody() {
     var body = document.getElementById('galleryBody');
     if (!body) return;
-    body.innerHTML = chipsHtml() + gridHtml();
+    body.innerHTML = chipsHtml() + sectionMgrHtml() + gridHtml();
     body.querySelectorAll('[data-album]').forEach(function (c) {
       c.addEventListener('click', function () { curAlbum = c.dataset.album; renderBody(); });
     });
@@ -121,6 +142,42 @@
       c.addEventListener('click', function () {
         var p = posts.filter(function (x) { return x.id === c.dataset.post; })[0];
         if (p) openPost(p);
+      });
+    });
+    wireSectionMgr(body);
+  }
+
+  // Create/rename/delete sections via the existing album helpers. RLS rejects a
+  // caller without the grant, so this is safe even if the UI ever showed by mistake.
+  function wireSectionMgr(body) {
+    var tog = body.querySelector('#mgToggle');
+    if (tog) tog.addEventListener('click', function () { manageOpen = !manageOpen; renderBody(); });
+    var add = body.querySelector('#mgAdd');
+    if (add) add.addEventListener('click', function () {
+      ZBXIAsk.text({ title: 'New section', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
+        name = (name || '').trim(); if (!name) return;
+        Z.albumCreate(name).then(function (r) {
+          if (r && r.error) { alert(r.error.message || 'Could not create that section (is the name already taken?).'); return; }
+          loadAll();
+        });
+      });
+    });
+    body.querySelectorAll('[data-alb-rn]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        ZBXIAsk.text({ title: 'Rename section', value: a.getAttribute('data-alb-nm'), ok: 'Save' }, function (name) {
+          name = (name || '').trim(); if (!name) return;
+          Z.albumRename(a.getAttribute('data-alb-rn'), name).then(function () { loadAll(); });
+        });
+      });
+    });
+    body.querySelectorAll('[data-alb-del]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var id = a.getAttribute('data-alb-del');
+        if (!confirm('Delete the section “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
+        if (curAlbum === id) curAlbum = 'all';
+        Z.albumDelete(id).then(function () { loadAll(); });
       });
     });
   }
@@ -267,10 +324,12 @@
       if (!ok) { locked('Awaiting verification', false); return; }
       Promise.all([
         Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false),
-        Z.officerCan ? Z.officerCan('gallery.post') : Promise.resolve(false)
+        Z.officerCan ? Z.officerCan('gallery.post') : Promise.resolve(false),
+        Z.officerCan ? Z.officerCan('gallery.albums') : Promise.resolve(false)
       ]).then(function (r) {
         canMod = isAdmin || r[0];
         canPost = isAdmin || r[1];
+        canAlbums = isAdmin || r[2];
         if (!root.querySelector('.sk')) root.innerHTML = gallerySkeleton();  // unless already painted above
         loadAll().catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
