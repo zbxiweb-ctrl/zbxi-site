@@ -11,10 +11,12 @@
 //   POST { op:'sign-view',   paths:[key,...] } -> { urls:{key:GET url} }  (approved brother/admin)
 //   POST { op:'sign-upload', ext? }            -> { key, url:PUT url }    (admin OR officer gallery.post)
 //   POST { op:'delete-post', id }              -> { ok } | 404            (RLS decides via the caller's JWT)
+//   POST { op:'usage' }                        -> { objects, bytes }      (admin JWT OR x-zbxi-cron header)
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const SB = Deno.env.get("SUPABASE_URL")!;
 const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const ACCOUNT = Deno.env.get("R2_ACCOUNT_ID")!;
 const BUCKET = Deno.env.get("R2_BUCKET")!;
 const R2_BASE = `https://${ACCOUNT}.r2.cloudflarestorage.com/${BUCKET}`;
@@ -79,15 +81,47 @@ async function presign(key: string, method: "GET" | "PUT", expires: number): Pro
   return signed.url;
 }
 
+// Total bytes + object count in the bucket, via S3 ListObjectsV2 (Class A op —
+// 1M free/mo; called a handful of times a month). Paginates the whole bucket and
+// sums <Size>; a regex is safe against S3's fixed XML schema.
+async function bucketUsage(): Promise<{ objects: number; bytes: number }> {
+  let token = "", objects = 0, bytes = 0, more = true, guard = 0;
+  while (more && guard++ < 500) {
+    const u = new URL(R2_BASE);
+    u.searchParams.set("list-type", "2");
+    u.searchParams.set("max-keys", "1000");
+    if (token) u.searchParams.set("continuation-token", token);
+    const r = await r2.fetch(u.toString(), { method: "GET" });
+    if (!r.ok) throw new Error("list failed " + r.status);
+    const xml = await r.text();
+    for (const m of xml.matchAll(/<Size>(\d+)<\/Size>/g)) { bytes += Number(m[1]); objects++; }
+    const next = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/);
+    token = /<IsTruncated>true<\/IsTruncated>/.test(xml) && next ? next[1] : "";
+    more = !!token;
+  }
+  return { objects, bytes };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
+  // The monthly digest cron calls op:'usage' with a shared secret and no JWT.
+  const cronOk = CRON_SECRET !== "" && req.headers.get("x-zbxi-cron") === CRON_SECRET;
   const me = await callerUser(req);
-  if (!me) return json({ error: "forbidden" }, 403);
+  if (!me && !cronOk) return json({ error: "forbidden" }, 403);
 
   try {
     const { op, paths = [], ext = "jpg", id = null } = await req.json().catch(() => ({}));
-    const isAdmin = me.email === (await adminEmail());
+    const isAdmin = !!me && me.email === (await adminEmail());
+
+    if (op === "usage") {
+      if (!isAdmin && !cronOk) return json({ error: "forbidden" }, 403);
+      return json(await bucketUsage());
+    }
+
+    // Every op below acts on behalf of a signed-in brother — the cron path may
+    // only read usage.
+    if (!me) return json({ error: "forbidden" }, 403);
 
     if (op === "sign-view") {
       const ok = isAdmin || (await callerRpc(req, "is_approved_brother")) === true;

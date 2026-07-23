@@ -450,6 +450,21 @@
     galleryDeletePost: function (id, imagePath) {
       return this._gallery({ op: 'delete-post', id: id });   // fn deletes the row (RLS) + the R2 object
     },
+    // Albums: a small admin-managed list photos are filed under. RLS: brothers read,
+    // only the admin writes (upgrade30.sql).
+    galleryAlbums: function () {
+      return client.from('gallery_albums').select('*').order('sort')
+        .then(function (r) { return r.data || []; });
+    },
+    albumCreate: function (name) { return client.from('gallery_albums').insert({ name: name }).select().single(); },
+    albumRename: function (id, name) { return client.from('gallery_albums').update({ name: name }).eq('id', id); },
+    albumDelete: function (id) { return client.from('gallery_albums').delete().eq('id', id); },
+    // Total R2 usage {objects, bytes} for the admin storage meter (edge fn admin-gated).
+    galleryUsage: function () {
+      return this._gallery({ op: 'usage' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        ['catch'](function () { return null; });
+    },
     likePost: function (postId, userId) {
       return client.from('gallery_likes').insert({ post_id: postId, user_id: userId });
     },

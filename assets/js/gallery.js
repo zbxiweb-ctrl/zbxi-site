@@ -32,6 +32,14 @@
   // OR a seat with gallery.post switched on. The DB enforces both (the gallery
   // insert/delete policies check officer_can); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
+  var albums = [], curAlbum = 'all';
+
+  // Posts with no album_id fall into Miscellaneous (the fallback bucket) so a
+  // deleted-album's photos are never orphaned. albumName() reads the same map.
+  function miscId() { var m = albums.filter(function (a) { return a.name === 'Miscellaneous'; })[0]; return m ? m.id : null; }
+  function albumOf(p) { return p.album_id || miscId(); }
+  function albumCount(id) { return posts.filter(function (p) { return albumOf(p) === id; }).length; }
+  function albumName(p) { var a = albums.filter(function (x) { return x.id === albumOf(p); })[0]; return a ? a.name : ''; }
 
   // Paint the skeleton NOW for a likely-signed-in brother — the auth checks below
   // take ~200ms and used to be a blank screen. Signed-out visitors skip it and go
@@ -50,40 +58,77 @@
   }
 
   /* ---------- grid ---------- */
-  function renderGrid() {
-    var uploader =
-      '<div class="gupload">' +
+  function albumPicker() {
+    var mid = miscId();
+    return '<select class="zselect gupload__album" id="guAlbum" aria-label="Album">' +
+      albums.map(function (a) {
+        return '<option value="' + esc(a.id) + '"' + (a.id === mid ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function uploaderHtml() {
+    return '<div class="gupload">' +
         '<form id="guForm">' +
           '<label class="gupload__drop" id="guDrop">📷 <b>Share a photo with the brotherhood</b><span id="guName">Click to choose an image (max 5MB)</span>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
+            (albums.length ? albumPicker() : '') +
             '<input id="guCaption" placeholder="Write a caption…" maxlength="300">' +
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
           '<p class="form-status" id="guStatus" role="status"></p>' +
         '</form>' +
       '</div>';
+  }
 
-    var grid;
-    if (!posts.length) {
-      grid = '<p class="page-empty">No posts yet — be the first to share a memory.</p>';
-    } else {
-      grid = '<div class="ggrid">' + posts.map(function (p) {
-        var u = urls[p.image_path];
-        var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="' + esc(p.caption || 'Gallery photo') + '">' : '<span class="ggrid__ph">…</span>';
-        return '<button class="ggrid__cell" data-post="' + p.id + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
-          '<span class="ggrid__hover">♥ ' + likeCount(p.id) + '</span></button>';
-      }).join('') + '</div>';
+  // Album filter chips: 'All' + one per album with a count, dimmed when empty
+  // (never hidden), matching the board. Names are user-visible -> esc().
+  function chipsHtml() {
+    if (!albums.length) return '';
+    var chip = function (id, label, n) {
+      return '<button class="gchip' + (curAlbum === id ? ' on' : '') + (n === 0 ? ' gchip--empty' : '') +
+        '" data-album="' + esc(id) + '">' + esc(label) + '<span class="gchip__n">' + n + '</span></button>';
+    };
+    return '<div class="gchips">' + chip('all', 'All', posts.length) +
+      albums.map(function (a) { return chip(a.id, a.name, albumCount(a.id)); }).join('') + '</div>';
+  }
+
+  function gridHtml() {
+    var shown = curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
+    if (!shown.length) {
+      return '<p class="page-empty">' + (curAlbum === 'all'
+        ? 'No posts yet — be the first to share a memory.'
+        : 'No photos in this album yet.') + '</p>';
     }
+    return '<div class="ggrid">' + shown.map(function (p) {
+      var u = urls[p.image_path];
+      var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="' + esc(p.caption || 'Gallery photo') + '">' : '<span class="ggrid__ph">…</span>';
+      return '<button class="ggrid__cell" data-post="' + p.id + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
+        '<span class="ggrid__hover">♥ ' + likeCount(p.id) + '</span></button>';
+    }).join('') + '</div>';
+  }
 
-    root.innerHTML = (canPost ? uploader : '') + grid;
-    wireUpload();
-    root.querySelectorAll('[data-post]').forEach(function (c) {
+  // Only the chips+grid re-render on album switch, so a half-filled composer above
+  // (chosen file, typed caption) survives the click.
+  function renderBody() {
+    var body = document.getElementById('galleryBody');
+    if (!body) return;
+    body.innerHTML = chipsHtml() + gridHtml();
+    body.querySelectorAll('[data-album]').forEach(function (c) {
+      c.addEventListener('click', function () { curAlbum = c.dataset.album; renderBody(); });
+    });
+    body.querySelectorAll('[data-post]').forEach(function (c) {
       c.addEventListener('click', function () {
         var p = posts.filter(function (x) { return x.id === c.dataset.post; })[0];
         if (p) openPost(p);
       });
     });
+  }
+
+  function renderGrid() {
+    root.innerHTML = (canPost ? uploaderHtml() : '') + '<div id="galleryBody"></div>';
+    if (canPost) wireUpload();
+    renderBody();
   }
 
   /* ---------- upload (canvas-downscale to ≤1600px JPEG) ---------- */
@@ -107,10 +152,12 @@
       var f = fileIn.files[0];
       if (!f) return;
       btn.disabled = true; btn.textContent = 'Posting…';
+      var albumSel = document.getElementById('guAlbum');
+      var albumId = albumSel && albumSel.value ? albumSel.value : null;   // null -> Miscellaneous
       Z.downscale(f, 1600).then(function (blob) {
         return Z.galleryUpload(me.id, blob, 'jpg');
       }).then(function (path) {
-        return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null });
+        return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null, album_id: albumId });
       }).then(function (r) {
         if (r.error) throw r.error;
         btn.textContent = 'Post';
@@ -131,7 +178,8 @@
     g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
     g('caption').textContent = p.caption || '';
-    g('date').textContent = when(p.created_at);
+    var an = albumName(p);
+    g('date').textContent = (an ? an + ' · ' : '') + when(p.created_at);
     var del = g('delete');
     del.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
     del.onclick = function () {
@@ -196,8 +244,8 @@
 
   /* ---------- data ---------- */
   function loadAll() {
-    return Promise.all([Z.galleryList(), Z.galleryLikesAll(), Z.memberDirectory()]).then(function (res) {
-      posts = res[0]; likes = res[1]; dir = res[2] || {};
+    return Promise.all([Z.galleryList(), Z.galleryLikesAll(), Z.memberDirectory(), Z.galleryAlbums()]).then(function (res) {
+      posts = res[0]; likes = res[1]; dir = res[2] || {}; albums = res[3] || [];
       var paths = posts.map(function (p) { return p.image_path; });
       return Z.gallerySignedUrls(paths).then(function (map) {
         urls = map; renderGrid();

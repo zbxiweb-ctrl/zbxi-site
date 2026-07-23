@@ -171,6 +171,56 @@ async function send(to: string, subject: string, html: string, unsubUrl: string)
   return r.ok ? { ok: true } : { ok: false, error: await r.text() };
 }
 
+// A plain admin-only email (no List-Unsubscribe) — operational alerts, not a
+// broadcast, so email_opt_out never applies.
+async function sendPlain(to: string, subject: string, html: string) {
+  if (!RESEND) return { ok: false, dry: true };
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM, to, subject, html }),
+  });
+  return r.ok ? { ok: true } : { ok: false, error: await r.text() };
+}
+
+// ---- Gallery storage watch -------------------------------------------------
+// Photos live in Cloudflare R2 (10 GB free). Once a month the digest asks
+// zbxi-gallery's `usage` op for total bytes and, past 8 GB, nudges the admin —
+// tons of runway before the cap, and R2 overflow costs only pennies/GB anyway.
+const R2_LIMIT_GB = 10;
+const R2_ALERT_BYTES = 8 * 1024 ** 3;
+const gb = (b: number) => b / 1024 ** 3;
+
+async function galleryUsage(): Promise<{ objects: number; bytes: number } | null> {
+  if (!CRON_SECRET) return null;
+  try {
+    const r = await fetch(`${SB}/functions/v1/zbxi-gallery`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SRK, "x-zbxi-cron": CRON_SECRET },
+      body: JSON.stringify({ op: "usage" }),
+    });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+function storageAlertHtml(bytes: number): string {
+  const used = gb(bytes).toFixed(2);
+  return `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+  <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FBF8F1;border-radius:14px;border:1px solid #e3d9bd;overflow:hidden">
+    <tr><td style="background:#0A1F44;padding:22px 26px;text-align:center">
+      <div style="font:700 20px Georgia,serif;color:#E8C766;letter-spacing:.03em">Gallery storage heads-up</div></td></tr>
+    <tr><td style="padding:24px 26px;font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657">
+      <p style="margin:0 0 12px">The photo gallery is now using <b>${used} GB</b> of its <b>${R2_LIMIT_GB} GB</b> of free storage.</p>
+      <p style="margin:0 0 12px">Nothing is broken and nothing is lost — this is an early nudge while there's still plenty
+      of room. When you get a chance you can delete some older photos, or simply let it spill a little past 10 GB,
+      which costs only a couple of cents per gigabyte on the card already on file.</p>
+      <p style="text-align:center;margin:24px 0 4px">
+        <a href="${SITE}/admin.html" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:11px 24px;border-radius:999px;display:inline-block">Open the admin console →</a></p>
+    </td></tr>
+  </table></td></tr></table></body></html>`;
+}
+
 // Browser calls (the admin console's Preview/Send buttons) carry an
 // Authorization header, which makes the browser send a CORS preflight FIRST.
 // Without this OPTIONS branch the preflight fell through to the auth check,
@@ -194,6 +244,19 @@ Deno.serve(async (req) => {
 
   try {
     const ADM = await adminEmail();
+
+    // Gallery storage: `?storage=1` returns the figure and sends NOTHING (so the
+    // threshold plumbing is verifiable email-free). Computed lazily so a digest
+    // Preview (?dry=1) never triggers a bucket list.
+    if (url.searchParams.get("storage") === "1") {
+      const storage = await galleryUsage();
+      return new Response(JSON.stringify({
+        storage,
+        gb: storage ? +gb(storage.bytes).toFixed(3) : null,
+        limitGb: R2_LIMIT_GB, alertGb: 8, wouldAlert: !!storage && storage.bytes > R2_ALERT_BYTES,
+      }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    }
+
     const authMap = await authEmails();
     const adminUserId = Object.keys(authMap).find((id) => authMap[id].toLowerCase() === ADM) || null;
     const { html, counts, empty } = await build(adminUserId);
@@ -225,7 +288,17 @@ Deno.serve(async (req) => {
 
     await db(`digest_log`, { method: "POST", body: JSON.stringify({ recipients: sent, test, note: (empty ? "quiet month; " : "") + (errors[0] || "") || null }) });
 
-    return new Response(JSON.stringify({ sent, attempted: list.length, test, counts, errors: [...new Set(errors)] }), {
+    // Storage nudge rides the real send only (never the dry preview). One bucket
+    // list, reused for both the alert decision and the summary. test=1 is a
+    // rehearsal, so it reports the figure but never actually alerts.
+    const storage = await galleryUsage();
+    let storageAlerted = false;
+    if (!test && storage && storage.bytes > R2_ALERT_BYTES) {
+      const res = await sendPlain(ADM, `ΖΒΞ — gallery storage at ${gb(storage.bytes).toFixed(1)} GB of ${R2_LIMIT_GB} GB`, storageAlertHtml(storage.bytes));
+      storageAlerted = !!res.ok;
+    }
+
+    return new Response(JSON.stringify({ sent, attempted: list.length, test, counts, storageGb: storage ? +gb(storage.bytes).toFixed(2) : null, storageAlerted, errors: [...new Set(errors)] }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (e) {

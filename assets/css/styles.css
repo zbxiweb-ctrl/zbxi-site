@@ -1121,8 +1121,29 @@ body.modal-open { overflow: hidden; }
 .gupload__drop:hover { background: var(--bg-2); }
 .gupload__drop b { display: block; font-family: var(--display); font-size: 1.1rem; }
 .gupload__drop span { color: var(--muted); font-size: .85rem; }
-.gupload__row { display: flex; gap: .7rem; margin-top: .8rem; }
-.gupload__row input { flex: 1; padding: .7rem .9rem; border-radius: 10px; border: 1.5px solid var(--hairline); font-size: .95rem; }
+.gupload__row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .8rem; }
+.gupload__row input { flex: 1; min-width: 160px; padding: .7rem .9rem; border-radius: 10px; border: 1.5px solid var(--hairline); font-size: .95rem; }
+.gupload__album { flex: 0 1 auto; min-width: 140px; max-width: 220px; }
+
+/* Album filter chips — one grid, chips filter it (board pattern; that CSS was
+   retired in the rail redesign, so this is fresh). Gold-fill selected state
+   matches the site's .btn--gold convention; empty albums dim, never hide. */
+.gchips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.4rem; }
+.gchip { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .85rem; border-radius: 999px;
+  border: 1.5px solid var(--hairline); background: var(--surface); color: var(--heading);
+  font-weight: 600; font-size: .9rem; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.gchip:hover { border-color: var(--gold-bright); }
+.gchip.on { background: var(--gold-bright); border-color: var(--gold-bright); color: var(--navy); }
+.gchip__n { font-size: .78rem; font-weight: 700; opacity: .65; }
+.gchip.on .gchip__n { opacity: .85; color: var(--navy); }
+.gchip--empty { opacity: .5; }
+.gchip--empty.on { opacity: 1; }
+
+/* Admin console gallery storage meter (navy surface -> flipping tokens only). */
+.stor-meter { margin: .2rem 0 1rem; }
+.stor-meter__bar { height: 12px; border-radius: 999px; background: var(--console-field); border: 1px solid var(--hairline); overflow: hidden; }
+.stor-meter__bar span { display: block; height: 100%; border-radius: 999px; background: var(--gold-bright); transition: width .4s ease; }
+.stor-meter__label { margin: .55rem 0 .1rem; color: var(--on-dark); font-size: .92rem; }
 
 .ggrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
 .ggrid__cell { position: relative; padding: 0; border: 0; background: var(--navy); border-radius: 12px; overflow: hidden; cursor: pointer; aspect-ratio: 1; box-shadow: var(--shadow-sm); }

@@ -2356,8 +2356,14 @@
 
   function renderStatsTab(q) {
     q.innerHTML = '<p class="admin-empty">Crunching the numbers…</p>';
-    Promise.all([Z.adminStats(), Z.activityList(50)]).then(function (res) {
+    Promise.all([
+      Z.adminStats(), Z.activityList(50),
+      Z.galleryAlbums()['catch'](function () { return []; }),
+      Z.galleryList()['catch'](function () { return []; }),
+      Z.galleryUsage()   // returns null on any error — never rejects the batch
+    ]).then(function (res) {
       var s = res[0] || {}, acts = res[1] || [];
+      var gAlbums = res[2] || [], gPosts = res[3] || [], gUsage = res[4] || null;
       if (s.error) { q.innerHTML = '<p class="form-status err">' + esc(s.error) + '</p>'; return; }
       function statCard(n, label) {
         return '<div class="stat-card"><b>' + (n == null ? '—' : n) + '</b><span>' + label + '</span></div>';
@@ -2409,6 +2415,35 @@
           : 'every registered profile is complete 🎉') +
         '</span><em></em></div></div>';
 
+      /* ---- gallery: storage meter + album manager ---- */
+      var gGB = gUsage ? gUsage.bytes / 1073741824 : null;
+      var gPct = gGB == null ? 0 : Math.min(100, gGB / 10 * 100);
+      html += '<h3 class="stat-h">🖼️ Gallery storage</h3>';
+      if (gUsage) {
+        html += '<div class="stor-meter">' +
+          '<div class="stor-meter__bar"><span style="width:' + gPct.toFixed(1) + '%;' + (gGB >= 8 ? 'background:#b4342b' : '') + '"></span></div>' +
+          '<p class="stor-meter__label"><b>' + gGB.toFixed(2) + ' GB</b> of 10 GB · ' +
+            (gUsage.objects || 0) + ' photo' + (gUsage.objects === 1 ? '' : 's') + '</p>' +
+          '<p class="admin-hint">Photos auto-compress to ~300&nbsp;KB. You\'ll get an email if it ever passes 8&nbsp;GB — plenty of runway before then.</p>' +
+        '</div>';
+      } else {
+        html += '<p class="admin-hint">Storage usage is unavailable right now.</p>';
+      }
+
+      var albCount = function (a) {
+        return gPosts.filter(function (p) { return p.album_id === a.id || (a.name === 'Miscellaneous' && !p.album_id); }).length;
+      };
+      html += '<h3 class="stat-h">🗂️ Gallery albums</h3>' +
+        '<div class="stat-list">' + gAlbums.map(function (a) {
+          var n = albCount(a);
+          return '<div class="stat-list__row"><b>' + esc(a.name) + '</b>' +
+            '<span>' + n + ' photo' + (n === 1 ? '' : 's') + '</span>' +
+            '<em><a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a>' +
+              (a.name === 'Miscellaneous' ? '' : ' · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a>') +
+            '</em></div>';
+        }).join('') + '</div>' +
+        '<p style="margin:.6rem 0 1.4rem"><button class="btn btn--ghost" id="albumAdd">+ New album</button></p>';
+
       html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
         '<span style="color:var(--on-dark);font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>' +
         '<p style="margin:.5rem 0 0"><label style="color:var(--on-dark);font-size:.82rem;display:inline-flex;align-items:center;gap:.4rem;cursor:pointer">' +
@@ -2424,6 +2459,35 @@
       }).join('') + '</div>' : '<p class="admin-empty">No activity recorded yet.</p>';
 
       q.innerHTML = html;
+
+      /* ---- album manager wiring (admin-only; RLS enforces it too) ---- */
+      function reStats() { renderStatsTab(q); }
+      var albumAdd = document.getElementById('albumAdd');
+      if (albumAdd) albumAdd.onclick = function () {
+        ZBXIAsk.text({ title: 'New album', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
+          name = (name || '').trim(); if (!name) return;
+          Z.albumCreate(name).then(function (r) {
+            if (r && r.error) alert(r.error.message || 'Could not create that album (is the name already taken?).');
+            reStats();
+          });
+        });
+      };
+      q.querySelectorAll('[data-alb-rn]').forEach(function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          ZBXIAsk.text({ title: 'Rename album', value: a.getAttribute('data-alb-nm'), ok: 'Save' }, function (name) {
+            name = (name || '').trim(); if (!name) return;
+            Z.albumRename(a.getAttribute('data-alb-rn'), name).then(reStats);
+          });
+        };
+      });
+      q.querySelectorAll('[data-alb-del]').forEach(function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          if (!confirm('Delete the album “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
+          Z.albumDelete(a.getAttribute('data-alb-del')).then(reStats);
+        };
+      });
 
       var exp = document.getElementById('exportCsv');
       if (exp) exp.onclick = function () {
