@@ -73,7 +73,7 @@
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
             (albums.length ? albumPicker() : '') +
-            '<input id="guCaption" placeholder="Write a caption…" maxlength="300">' +
+            '<input id="guCaption" aria-label="Photo caption" placeholder="Write a caption…" maxlength="300">' +
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
           '<p class="form-status" id="guStatus" role="status"></p>' +
