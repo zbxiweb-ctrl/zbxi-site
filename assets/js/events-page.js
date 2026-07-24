@@ -212,8 +212,9 @@
       b.onclick = function () {
         var e = EV_ALL.filter(function (x) { return x.id === b.dataset.evDel; })[0];
         if (!e) return;
-        if (!confirm('Delete "' + e.title + '"? This cannot be undone.')) return;
-        window.ZBXI.eventDelete(e.id).then(reloadEvents);
+        ZBXIAsk.confirm({ title: 'Delete event', body: 'Delete "' + e.title + '"? This cannot be undone.', ok: 'Delete', danger: true }, function () {
+          window.ZBXI.eventDelete(e.id).then(reloadEvents);
+        });
       };
     });
   }
@@ -251,9 +252,11 @@
     '</div>';
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
-    function close() { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); }
+    function onEsc(x) { if (x.key === 'Escape') close(); }
+    function close() { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); document.removeEventListener('keydown', onEsc); }
     m.querySelector('[data-ev-close]').onclick = close;
     m.addEventListener('click', function (x) { if (x.target === m) close(); });
+    document.addEventListener('keydown', onEsc);
     var allday = m.querySelector('#evmAllDay');
     allday.onchange = function () { m.querySelector('#evmTimes').style.display = allday.checked ? 'none' : ''; };
     m.querySelector('#evmSave').onclick = function () {
@@ -282,8 +285,9 @@
     };
     var del = m.querySelector('#evmDel');
     if (del) del.onclick = function () {
-      if (!confirm('Delete "' + ev.title + '"? This cannot be undone.')) return;
-      window.ZBXI.eventDelete(ev.id).then(function () { close(); reloadEvents(); });
+      ZBXIAsk.confirm({ title: 'Delete event', body: 'Delete "' + ev.title + '"? This cannot be undone.', ok: 'Delete', danger: true }, function () {
+        window.ZBXI.eventDelete(ev.id).then(function () { close(); reloadEvents(); });
+      });
     };
   }
 

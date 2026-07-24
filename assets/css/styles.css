@@ -552,6 +552,8 @@ p { margin: 0 0 1em; }
 .ask-input { width: 100%; background: rgba(255,255,255,.07); border: 1px solid rgba(200,162,75,.4); border-radius: 10px; padding: .65rem .8rem; color: var(--on-navy); font: inherit; }
 .ask-input:focus { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.22); }
 .ask-warn { margin: .7rem 0 0; font-size: .85rem; color: var(--gold-bright); }
+.ask-body { margin: 0 0 1.1rem; font-size: .95rem; line-height: 1.5; color: var(--on-navy); }
+.ask-body b, .ask-body strong { color: var(--gold-bright); font-weight: 600; }
 .ask-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.2rem; }
 
 .imp-list { max-height: 46vh; overflow-y: auto; margin: .5rem 0 1rem; }
@@ -1310,6 +1312,19 @@ body.modal-open { overflow: hidden; }
 .admin-tabgroup .admin-tabs { margin: 0; }
 .admin-hint { background: rgba(255,255,255,.07); border-left: 3px solid var(--gold); color: var(--on-dark); font-size: .88rem; padding: .7rem 1rem; border-radius: 8px; margin: 0 0 1rem; }
 .admin-hint b { color: var(--gold-bright); }
+
+/* Officer Console "Overview" landing — a card per enabled tool (officer.js renderHome). */
+.oc-home { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem; margin: .2rem 0 0; }
+.oc-card { display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; text-align: left;
+  padding: 1.15rem 1.2rem; border-radius: 14px; cursor: pointer; font: inherit;
+  background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo)); color: var(--on-navy);
+  border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold);
+  box-shadow: 0 8px 22px rgba(0,0,0,.24); transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.oc-card:hover { transform: translateY(-2px); border-left-color: var(--gold-bright); box-shadow: 0 12px 28px rgba(0,0,0,.32); }
+.oc-card:focus-visible { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.28); }
+.oc-card__ic { font-size: 1.7rem; line-height: 1; }
+.oc-card__label { font-weight: 600; font-size: 1.03rem; font-family: var(--display); color: var(--on-navy); }
+.oc-card__meta { font-size: .85rem; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 .admin-hint a { color: var(--gold-bright); text-decoration: underline; }
 .admin-hint--tip { background: rgba(200,162,75,.12); }
 

@@ -95,7 +95,10 @@
           '</div>' +
           (state.tools.length ? '<button class="admin-side__burger" id="sideBurger" aria-label="Show tools">☰ Tools</button>' : '') +
           '<nav id="tabs" class="admin-side__nav">' +
-            (nav ? '<div class="admin-navgroup"><span class="admin-navgroup__label">Chapter Tools</span>' + nav + '</div>' : '') +
+            (state.tools.length ? '<div class="admin-navgroup">' +
+              '<button data-tab="home" class="admin-navbtn ' + (state.tab === 'home' ? 'on' : '') + '"><i>⌂</i><span>Overview</span></button>' +
+              '<span class="admin-navgroup__label" style="margin-top:.7rem">Chapter Tools</span>' + nav +
+              '</div>' : '') +
           '</nav>' +
           '<button class="btn btn--ghost admin-side__out" id="so">Sign out</button>' +
         '</aside>' +
@@ -115,11 +118,7 @@
     if (burger) burger.onclick = function () { side.classList.toggle('open'); };
 
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
-      b.onclick = function () {
-        state.tab = b.dataset.tab; side.classList.remove('open');
-        var m = document.getElementById('masthead'); if (m) m.classList.add('is-slim');  // ceremony on entry, efficiency once working
-        renderTab();
-      };
+      b.onclick = function () { enter(b.dataset.tab); };
     });
 
     if (!state.tools.length) {
@@ -128,8 +127,8 @@
         '<b>Admin Console → Officers</b>. As soon as one is enabled, it will appear in the list on the left.</p>';
       return;
     }
-    if (!state.tab || !state.tools.filter(function (t) { return t.id === state.tab; }).length) state.tab = state.tools[0].id;
-    renderTab();
+    if (state.tab !== 'home' && !state.tools.filter(function (t) { return t.id === state.tab; }).length) state.tab = 'home';
+    enter(state.tab);
   }
 
   function renderTab() {
@@ -141,6 +140,70 @@
     var h = document.getElementById('officerTitle');
     if (h) h.textContent = tool.label;
     tool.render(q);
+  }
+
+  /* ---------------- landing overview ---------------- */
+  // 'home' is the default tab: a card per enabled tool with a live count.
+  // Clicking a card (or a rail button) enters that tool; "⌂ Overview" returns.
+  function enter(tab) {
+    state.tab = tab;
+    var side = root.querySelector('.admin-side'); if (side) side.classList.remove('open');
+    var m = document.getElementById('masthead'); if (m) m.classList.toggle('is-slim', tab !== 'home');
+    document.querySelectorAll('#tabs [data-tab]').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+    if (tab === 'home') {
+      var h = document.getElementById('officerTitle'); if (h) h.textContent = 'Overview';
+      renderHome();
+    } else {
+      renderTab();
+    }
+  }
+
+  function renderHome() {
+    var q = document.getElementById('q');
+    if (!q) return;
+    var cards = state.tools.map(function (t) {
+      return '<button class="oc-card" data-go="' + t.id + '">' +
+        '<span class="oc-card__ic">' + t.ic + '</span>' +
+        '<span class="oc-card__label">' + esc(t.label) + '</span>' +
+        '<span class="oc-card__meta" data-meta="' + t.id + '">…</span>' +
+      '</button>';
+    }).join('');
+    q.innerHTML =
+      '<p class="admin-hint">Welcome, <b>' + esc(state.myName) + '</b>. Here’s what needs attention — pick a tool to jump in.</p>' +
+      '<div class="oc-home">' + cards + '</div>';
+    q.querySelectorAll('[data-go]').forEach(function (b) {
+      b.onclick = function () { enter(b.dataset.go); };
+    });
+    fillHomeCounts();
+  }
+
+  function setMeta(id, txt) {
+    var el = document.querySelector('.oc-card [data-meta="' + id + '"]');
+    if (el) el.textContent = txt;
+  }
+
+  // Fetch a live count for each enabled tool, in parallel, reusing this
+  // console's own client calls. Only enabled tools are queried.
+  function fillHomeCounts() {
+    var have = {};
+    state.tools.forEach(function (t) { have[t.id] = true; });
+    if (have.events) Z.eventsList().then(function (rows) {
+      var now = Date.now();
+      var n = rows.filter(function (e) { return new Date(e.starts_at).getTime() >= now; }).length;
+      setMeta('events', n ? n + ' upcoming' : 'None upcoming');
+    }).catch(function () { setMeta('events', 'Open →'); });
+    if (have.suggest) Z.suggestionsMine().then(function (rows) {
+      var n = rows.filter(function (s) { return s.status === 'new'; }).length;
+      setMeta('suggest', n ? n + ' new' : 'All caught up');
+    }).catch(function () { setMeta('suggest', 'Open →'); });
+    if (have.committees) Z.committeesList().then(function (rows) {
+      setMeta('committees', rows.length + (rows.length === 1 ? ' committee' : ' committees'));
+    }).catch(function () { setMeta('committees', 'Open →'); });
+    if (have.awards) Z.awardsList().then(function (rows) {
+      setMeta('awards', rows.length + (rows.length === 1 ? ' award' : ' awards'));
+    }).catch(function () { setMeta('awards', 'Open →'); });
+    if (have.gallery) setMeta('gallery', 'Moderate →');
+    if (have.email) setMeta('email', 'Compose →');
   }
 
   /* ================= EVENTS (own copy; no announcement-banner editor) ======= */
@@ -169,7 +232,8 @@
         var ev = state.events.filter(function (x) { return x.id === el.dataset.ev; })[0];
         each(el, '[data-evedit]', function () { openEventEdit(ev); });
         each(el, '[data-evdel]', function () {
-          if (confirm('Delete "' + ev.title + '"?')) Z.eventDelete(ev.id).then(function () { renderTab(); });
+          ZBXIAsk.confirm({ title: 'Delete event', body: 'Delete "' + ev.title + '"?', ok: 'Delete', danger: true },
+            function () { Z.eventDelete(ev.id).then(function () { renderTab(); }); });
         });
       });
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load events: ' + esc(e.message || '') + '</p>'; });
@@ -206,7 +270,9 @@
       '<button class="btn btn--navy" data-save style="width:100%">' + (e.id ? 'Save changes' : 'Create event') + '</button>' +
       '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
-    function close() { wrap.remove(); }
+    function close() { wrap.remove(); document.removeEventListener('keydown', onEsc); }
+    function onEsc(ev3) { if (ev3.key === 'Escape') close(); }
+    document.addEventListener('keydown', onEsc);
     wrap.addEventListener('click', function (ev2) { if (ev2.target === wrap || ev2.target.closest('[data-x]')) close(); });
     wrap.querySelector('[data-save]').onclick = function () {
       var st = wrap.querySelector('[data-status]');
@@ -266,7 +332,8 @@
         var a = rows.filter(function (x) { return x.id === el.dataset.aw; })[0];
         each(el, '[data-awedit]', function () { openAwardEdit(a); });
         each(el, '[data-awdel]', function () {
-          if (confirm('Delete "' + a.title + '" from the homepage?')) Z.awardDelete(a.id).then(function () { renderTab(); });
+          ZBXIAsk.confirm({ title: 'Delete award', body: 'Delete "' + a.title + '" from the homepage?', ok: 'Delete', danger: true },
+            function () { Z.awardDelete(a.id).then(function () { renderTab(); }); });
         });
       });
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load awards: ' + esc(e.message || '') + '</p>'; });
@@ -290,7 +357,9 @@
       '<button class="btn btn--navy" data-save style="width:100%">' + (a.id ? 'Save changes' : 'Add to homepage') + '</button>' +
       '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
-    function close() { wrap.remove(); }
+    function close() { wrap.remove(); document.removeEventListener('keydown', onEsc); }
+    function onEsc(ev3) { if (ev3.key === 'Escape') close(); }
+    document.addEventListener('keydown', onEsc);
     wrap.addEventListener('click', function (ev2) { if (ev2.target === wrap || ev2.target.closest('[data-x]')) close(); });
     wrap.querySelector('[data-save]').onclick = function () {
       var st = wrap.querySelector('[data-status]');
@@ -317,7 +386,9 @@
     wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
       '<h3>' + title + '</h3>' + bodyHtml + '<p class="form-status" data-status></p></div>';
     document.body.appendChild(wrap);
-    wrap.close = function () { wrap.remove(); };
+    function onEsc(e) { if (e.key === 'Escape') wrap.close(); }
+    wrap.close = function () { wrap.remove(); document.removeEventListener('keydown', onEsc); };
+    document.addEventListener('keydown', onEsc);
     wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) wrap.close(); });
     return wrap;
   }
@@ -350,7 +421,8 @@
         });
         each(el, '[data-members]', function () { openCommitteeMembers(c); });
         each(el, '[data-del]', function () {
-          if (confirm('Delete "' + c.name + '"? Its private threads are deleted too.')) Z.committeeDelete(c.id).then(function () { renderTab(); });
+          ZBXIAsk.confirm({ title: 'Delete committee', body: 'Delete "' + c.name + '"? Its private threads are deleted too.', ok: 'Delete', danger: true },
+            function () { Z.committeeDelete(c.id).then(function () { renderTab(); }); });
         });
       });
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load committees: ' + esc(e.message || '') + '</p>'; });

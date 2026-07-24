@@ -406,10 +406,11 @@
       var del = card.querySelector('[data-delpoll]');
       if (del) del.onclick = function (e) {
         e.preventDefault();
-        if (!confirm('Delete this poll and its votes?')) return;
-        Z.pollDelete(p.id).then(function () {
-          POLLS = POLLS.filter(function (x) { return x.id !== p.id; });
-          renderPolls();
+        ZBXIAsk.confirm({ title: 'Delete poll', body: 'Delete this poll and its votes?', ok: 'Delete', danger: true }, function () {
+          Z.pollDelete(p.id).then(function () {
+            POLLS = POLLS.filter(function (x) { return x.id !== p.id; });
+            renderPolls();
+          });
         });
       };
     });
@@ -599,8 +600,9 @@
     var del = document.getElementById('delThread');
     if (del) del.onclick = function (e) {
       e.preventDefault();
-      if (!confirm('Delete this thread and all replies?')) return;
-      Z.threadDelete(t.id).then(function () { loadAll().then(renderList); });
+      ZBXIAsk.confirm({ title: 'Delete thread', body: 'Delete this thread and all replies?', ok: 'Delete', danger: true }, function () {
+        Z.threadDelete(t.id).then(function () { loadAll().then(renderList); });
+      });
     };
     if (t.image_path) {
       Z.gallerySignedUrls([t.image_path]).then(function (urls) {

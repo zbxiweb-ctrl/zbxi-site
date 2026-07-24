@@ -157,7 +157,7 @@
       ZBXIAsk.text({ title: 'New section', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
         name = (name || '').trim(); if (!name) return;
         Z.albumCreate(name).then(function (r) {
-          if (r && r.error) { alert(r.error.message || 'Could not create that section (is the name already taken?).'); return; }
+          if (r && r.error) { ZBXIAsk.alert({ title: 'Section not created', body: r.error.message || 'Could not create that section (is the name already taken?).' }); return; }
           loadAll();
         });
       });
@@ -175,9 +175,10 @@
       a.addEventListener('click', function (e) {
         e.preventDefault();
         var id = a.getAttribute('data-alb-del');
-        if (!confirm('Delete the section “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
-        if (curAlbum === id) curAlbum = 'all';
-        Z.albumDelete(id).then(function () { loadAll(); });
+        ZBXIAsk.confirm({ title: 'Delete section', body: 'Delete the section “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.', ok: 'Delete', danger: true }, function () {
+          if (curAlbum === id) curAlbum = 'all';
+          Z.albumDelete(id).then(function () { loadAll(); });
+        });
       });
     });
   }
@@ -240,9 +241,10 @@
     var del = g('delete');
     del.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
     del.onclick = function () {
-      if (!confirm('Delete this post?')) return;
-      Z.galleryDeletePost(p.id, p.author_user === me.id ? p.image_path : null).then(function () {
-        closeModal(); loadAll();
+      ZBXIAsk.confirm({ title: 'Delete photo', body: 'Delete this post?', ok: 'Delete', danger: true }, function () {
+        Z.galleryDeletePost(p.id, p.author_user === me.id ? p.image_path : null).then(function () {
+          closeModal(); loadAll();
+        });
       });
     };
     syncLike(p);
