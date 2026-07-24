@@ -1004,7 +1004,7 @@
               '<textarea id="trNote" maxlength="300" rows="2" placeholder="e.g. I held this in 2019 — Matt O\'Sullivan can vouch."></textarea></div>' +
             '<button class="btn btn--navy" id="trSend" type="button">Send request</button>' +
             '<p class="form-status" id="trStatus" role="status"></p>' +
-            '<p class="form-note" style="margin:.4rem 0 0">Leadership reviews every request. Official E-Board seats are verified before they appear on the board.</p>' +
+            '<p class="form-note" style="margin:.4rem 0 0">Leadership reviews every request. Official Executive Board seats are verified before they appear on the board.</p>' +
           '</div>' +
         '</details>';
 

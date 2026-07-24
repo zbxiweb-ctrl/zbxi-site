@@ -303,7 +303,7 @@
       wrap.className = 'admin-modal open';
       wrap.innerHTML = '<div class="admin-modal__card"><button class="admin-modal__close" data-x aria-label="Close">✕</button>' +
         '<h3>❓ How the board works</h3><div class="treeed-help">' +
-        '<p><b>👋 Say hi first.</b> Your intro tells 300+ brothers your class, where you landed and what you\'re up to. It\'s the one post everyone can write, and it\'s how brothers find each other.</p>' +
+        '<p><b>👋 Say hi first.</b> Your intro tells 320+ brothers your class, where you landed and what you\'re up to. It\'s the one post everyone can write, and it\'s how brothers find each other.</p>' +
         '<p><b>Post a thread.</b> Hit <b>+ New thread</b>, pick the space that fits (⚖️ Chapter, 🧭 Advice, 🎉 Social, 💼 Opportunities), write it, optionally attach a photo.</p>' +
         '<p><b>Jobs &amp; referrals.</b> In 💼 Opportunities, mark your post <i>Offering</i> (you have something) or <i>Seeking</i> (you\'re looking).</p>' +
         '<p><b>Reply &amp; react.</b> Open any thread to reply. Tap 👍 ❤️ 😂 under a reply to react — tap again to take it back.</p>' +
