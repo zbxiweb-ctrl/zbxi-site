@@ -157,6 +157,9 @@
         if (!seat || !grants.some(function (g) { return g.seat === seat && g.enabled; })) return;
         var signout = document.getElementById('navSignOut');
         if (!signout || !signout.parentNode) return;
+        // Idempotent: the chrome re-renders on auth events, so two async inserts
+        // can race into the same menu. Bail if the link is already there.
+        if (signout.parentNode.querySelector('a[href="officer.html"]')) return;
         var a = document.createElement('a');
         a.href = 'officer.html'; a.setAttribute('role', 'menuitem'); a.className = 'nav__menu-admin';
         a.innerHTML = '<i>🛡</i> Officer Console <em>→</em>';
