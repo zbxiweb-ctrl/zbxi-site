@@ -671,15 +671,16 @@
         row.onclick = function () {
           var picked = all.filter(function (b) { return b.id === row.dataset.id; })[0];
           if (!picked) return;
-          if (!confirm('Claim "' + picked.full_name + ' (' + (picked.pledge_class || '') + ')" as your profile?')) return;
-          var st = mbody.querySelector('#claimStatus');
-          st.className = 'form-status'; st.textContent = 'Claiming…';
-          Z.claimProfile(picked.id).then(function (r) {
-            var msg = (r && r.data) || '';
-            if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
-            if (String(msg).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(msg).replace('error: ', ''); return; }
-            state.wantModal = true;
-            refresh(); // -> pending state
+          ZBXIAsk.confirm({ title: 'Claim this profile?', body: 'Claim "' + picked.full_name + ' (' + (picked.pledge_class || '') + ')" as your profile?', ok: 'Claim it' }, function () {
+            var st = mbody.querySelector('#claimStatus');
+            st.className = 'form-status'; st.textContent = 'Claiming…';
+            Z.claimProfile(picked.id).then(function (r) {
+              var msg = (r && r.data) || '';
+              if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
+              if (String(msg).indexOf('ok') !== 0) { st.className = 'form-status err'; st.textContent = String(msg).replace('error: ', ''); return; }
+              state.wantModal = true;
+              refresh(); // -> pending state
+            });
           });
         };
       });
@@ -864,11 +865,90 @@
       var f = e.target, st = host.querySelector('#profStatus');
       st.className = 'form-status'; st.textContent = '';
       if (!f.checkValidity()) { f.reportValidity(); return; }
+      var bigVal = f.big_id.value;
+
+      // The actual save — runs once the two guards below are cleared.
+      function doSave() {
+        var btn = f.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Saving…';
+
+        var chosen = ['email', 'phone', 'linkedin'].filter(function (k) { return f['pref_' + k].checked; });
+        var file = f.photo.files[0];
+        // Downscale headshots before upload (fast mobile loads, small storage).
+        // No new upload -> keep the stored PATH (`_photo_path`), never the signed URL
+        // that `pr.photo_url` currently holds — that expires, and writing it back
+        // would kill the photo in a few hours.
+        var photoP = file
+          ? Z.downscale(file, 800).then(function (blob) {
+              blob.name = 'photo.jpg';
+              return Z.uploadPhoto(state.user.id, blob);   // returns the storage path
+            })
+          : Promise.resolve(pr._photo_path || pr.photo_url || null);
+        photoP.then(function (url) {
+          var row = {
+            user_id: state.user.id,
+            full_name: f.full_name.value.trim(),
+            pledge_class: (f.pledge_class.value === '__other__' ? f.pledge_class_other.value.trim() : f.pledge_class.value),
+            grad_year: f.grad_year.value ? parseInt(f.grad_year.value, 10) : null,
+            major: f.major.value.trim() || null,
+            standing: f.standing.value || null,
+            // role / role_scope are intentionally NOT sent — chapter titles are
+            // admin-assigned (E-Board console) and the DB guard would ignore them
+            // from a brother anyway. See upgrade13.sql.
+            big_id: bigVal === '__founder__' ? null : (bigVal || null),
+            city: f.city.value.trim() || null,
+            occupation: f.occupation.value.trim() || null,
+            hometown: f.hometown.value.trim() || null,
+            phone: f.phone.value.trim() || null,
+            email: f.email.value.trim() || null,
+            linkedin: f.linkedin.value.trim() || null,
+            company: f.company.value.trim() || null,
+            industry: f.industry.value || null,
+            open_to: ['mentor', 'hire', 'connect'].filter(function (k) { return f['open_' + k].checked; }),
+            contact_prefs: chosen.length ? chosen.join(',') : null,
+            quote: f.quote.value.trim() || null,
+            bio: f.bio.value.trim() || null,
+            skills: f.skills.value.trim() || null,
+            photo_url: url
+            // `status` is never sent from the browser: the guard_status trigger
+            // (upgrade12.sql) pins it — new rows start pending, and an approved
+            // brother's edits publish immediately without re-review.
+          };
+          if (pr.id) row.id = pr.id;
+          return Z.upsertProfile(row);
+        }).then(function (r) {
+          if (r.error) throw r.error;
+          st.className = 'form-status ok';
+          st.textContent = pr.status === 'verified'
+            ? '✓ Saved — your profile is updated across the site.'
+            : '✓ Submitted — pending verification by chapter leadership.';
+          state.wantModal = true;
+          setTimeout(refresh, 900);
+        }).catch(function (err) {
+          st.className = 'form-status err'; st.textContent = err.message || 'Could not save.';
+          btn.disabled = false; btn.textContent = 'Try again';
+        });
+      }
+
+      // Nudge: a blank big means this brother floats as a disconnected root on the
+      // family tree. Founders pick the explicit option (below) and skip this.
+      function bigCheck() {
+        if (!bigVal) {
+          ZBXIAsk.confirm({
+            title: 'No big brother chosen',
+            body: "You haven't chosen your big brother. Picking your big is what links you into the family tree — without it you'll show up as your own separate line. If you're a founder or truly don't know your big, that's fine. Save without linking to the tree?",
+            ok: 'Save anyway'
+          }, doSave);
+          return;
+        }
+        doSave();
+      }
+
       // Duplicate guard — only on CREATE (no pr.id), the "I'm not in the tree yet"
       // path. If the typed name matches an unclaimed roster brother, he is almost
       // certainly already in the tree and about to make a second row (this is how
       // Matthew O'Sullivan got two). Send him to claim instead. registered=false
       // is the unclaimed set; state.verified is already loaded, so no extra call.
+      // OK -> go claim the existing name (stop); Cancel/dismiss -> continue as new.
       if (!pr.id) {
         var typed = f.full_name.value.trim();
         var maybe = state.verified.filter(function (b) {
@@ -878,77 +958,15 @@
           var lst = maybe.map(function (b) {
             return '• ' + b.full_name + (b.pledge_class ? ' (' + b.pledge_class + ')' : '');
           }).join('\n');
-          if (confirm('You may already be in the family tree:\n\n' + lst + '\n\n' +
-            'Making a new profile would create a duplicate. Click OK to find and claim your ' +
-            'existing name instead — or Cancel if you are genuinely a different, new brother.')) {
-            renderClaim(); return;
-          }
+          ZBXIAsk.confirm({
+            title: 'You may already be in the tree',
+            body: 'You may already be in the family tree:\n\n' + lst + '\n\nMaking a new profile would create a duplicate. Choose "Find my name" to claim your existing name instead — or "I\'m new" if you are genuinely a different, new brother.',
+            ok: 'Find my name', cancel: 'I\'m new'
+          }, function () { renderClaim(); }, bigCheck);
+          return;
         }
       }
-      // Nudge: a blank big means this brother floats as a disconnected root on the
-      // family tree. Founders pick the explicit option (below) and skip this.
-      var bigVal = f.big_id.value;
-      if (!bigVal && !confirm("You haven't chosen your big brother. Picking your big is what links you into "
-        + "the family tree — without it you'll show up as your own separate line. If you're a founder or truly "
-        + "don't know your big, that's fine. Save without linking to the tree?")) return;
-      var btn = f.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Saving…';
-
-      var chosen = ['email', 'phone', 'linkedin'].filter(function (k) { return f['pref_' + k].checked; });
-      var file = f.photo.files[0];
-      // Downscale headshots before upload (fast mobile loads, small storage).
-      // No new upload -> keep the stored PATH (`_photo_path`), never the signed URL
-      // that `pr.photo_url` currently holds — that expires, and writing it back
-      // would kill the photo in a few hours.
-      var photoP = file
-        ? Z.downscale(file, 800).then(function (blob) {
-            blob.name = 'photo.jpg';
-            return Z.uploadPhoto(state.user.id, blob);   // returns the storage path
-          })
-        : Promise.resolve(pr._photo_path || pr.photo_url || null);
-      photoP.then(function (url) {
-        var row = {
-          user_id: state.user.id,
-          full_name: f.full_name.value.trim(),
-          pledge_class: (f.pledge_class.value === '__other__' ? f.pledge_class_other.value.trim() : f.pledge_class.value),
-          grad_year: f.grad_year.value ? parseInt(f.grad_year.value, 10) : null,
-          major: f.major.value.trim() || null,
-          standing: f.standing.value || null,
-          // role / role_scope are intentionally NOT sent — chapter titles are
-          // admin-assigned (E-Board console) and the DB guard would ignore them
-          // from a brother anyway. See upgrade13.sql.
-          big_id: bigVal === '__founder__' ? null : (bigVal || null),
-          city: f.city.value.trim() || null,
-          occupation: f.occupation.value.trim() || null,
-          hometown: f.hometown.value.trim() || null,
-          phone: f.phone.value.trim() || null,
-          email: f.email.value.trim() || null,
-          linkedin: f.linkedin.value.trim() || null,
-          company: f.company.value.trim() || null,
-          industry: f.industry.value || null,
-          open_to: ['mentor', 'hire', 'connect'].filter(function (k) { return f['open_' + k].checked; }),
-          contact_prefs: chosen.length ? chosen.join(',') : null,
-          quote: f.quote.value.trim() || null,
-          bio: f.bio.value.trim() || null,
-          skills: f.skills.value.trim() || null,
-          photo_url: url
-          // `status` is never sent from the browser: the guard_status trigger
-          // (upgrade12.sql) pins it — new rows start pending, and an approved
-          // brother's edits publish immediately without re-review.
-        };
-        if (pr.id) row.id = pr.id;
-        return Z.upsertProfile(row);
-      }).then(function (r) {
-        if (r.error) throw r.error;
-        st.className = 'form-status ok';
-        st.textContent = pr.status === 'verified'
-          ? '✓ Saved — your profile is updated across the site.'
-          : '✓ Submitted — pending verification by chapter leadership.';
-        state.wantModal = true;
-        setTimeout(refresh, 900);
-      }).catch(function (err) {
-        st.className = 'form-status err'; st.textContent = err.message || 'Could not save.';
-        btn.disabled = false; btn.textContent = 'Try again';
-      });
+      bigCheck();
     };
   }
 

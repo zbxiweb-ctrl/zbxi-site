@@ -6,9 +6,9 @@
         — cb(value) only on OK; Cancel / Esc / ✕ / backdrop close silently.
         — validate(v) may return a warning string: it shows inline and the OK
           button becomes "Use it anyway" — a second OK accepts as typed.
-     ZBXIAsk.confirm({title, body, ok, cancel, danger}, cb)
-        — cb() only on OK; Esc / Cancel / backdrop = "no" (no cb). Destructive
-          dialogs (danger:true) render a red OK and default-focus Cancel.
+     ZBXIAsk.confirm({title, body, ok, cancel, danger}, cb, onCancel?)
+        — cb() on OK; optional onCancel() on Esc / Cancel / backdrop dismissal.
+          Destructive dialogs (danger:true) render a red OK and default-focus Cancel.
      ZBXIAsk.alert({title, body, ok}, cb?)
         — single button; cb?() fires once the notice is dismissed (any path). */
 (function () {
@@ -104,8 +104,9 @@
     input.focus();
   }
 
-  function confirm(opts, cb) {
+  function confirm(opts, cb, onCancel) {
     opts = opts || {};
+    var okd = false;
     var s = shell(
       '<h3>' + esc(opts.title || 'Are you sure?') + '</h3>' +
       (opts.body ? '<p class="ask-body">' + bodyHtml(opts.body) + '</p>' : '') +
@@ -113,9 +114,10 @@
         '<button class="btn btn--ghost" type="button" data-cancel>' + esc(opts.cancel || 'Cancel') + '</button>' +
         '<button class="btn ' + (opts.danger ? 'btn--danger' : 'btn--gold') + '" type="button" data-ok>' + esc(opts.ok || 'OK') + '</button>' +
       '</div>',
-      opts.title || '');
+      opts.title || '',
+      function () { if (!okd && onCancel) onCancel(); });   // onCancel: Esc / Cancel / backdrop dismissal
     s.wrap.querySelector('[data-cancel]').onclick = s.close;
-    s.wrap.querySelector('[data-ok]').onclick = function () { s.close(); if (cb) cb(); };
+    s.wrap.querySelector('[data-ok]').onclick = function () { okd = true; s.close(); if (cb) cb(); };
     // Destructive dialogs default-focus Cancel so a stray Enter never deletes.
     s.wrap.querySelector(opts.danger ? '[data-cancel]' : '[data-ok]').focus();
   }
