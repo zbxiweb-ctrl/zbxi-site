@@ -207,7 +207,14 @@
       prev.src = URL.createObjectURL(f);
       prev.hidden = false;
     }
-    drop.addEventListener('click', function () { fileIn.click(); });
+    /* No click handler here on purpose. #guDrop is a <label> that WRAPS the file
+       input, so the browser already forwards a click on it to that input — and
+       calling fileIn.click() as well opened the picker TWICE from one click.
+       The second dialog appears right after you choose a file, so dismissing it
+       lands you back on the page with nothing selected and no preview, which
+       reads as "it just doesn't work". Whether the duplicate is suppressed
+       depends on the browser's user-activation rules, which is why this hit some
+       brothers and not others. Measured: 2 picker activations before, 1 after. */
     fileIn.addEventListener('change', function () {
       var f = fileIn.files[0];
       if (!f) { showPreview(null); nameEl.textContent = 'Click to choose an image (max 5MB)'; btn.disabled = true; return; }
