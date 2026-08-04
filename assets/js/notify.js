@@ -35,7 +35,7 @@
       // exactly the "tap to email him back does nothing" report. Both now land
       // on the notifications page, which shows the address as copyable text
       // next to a pre-filled mail link, so the reply never depends on a handler.
-      case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect — open to reply', href: 'notifications.html#n=' + esc(n.id) };
+      case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect' + (p.note ? ': “' + esc(p.note) + '”' : '') + ' — open to reply', href: 'notifications.html#n=' + esc(n.id) };
       case 'mentor_request': return { ic: '🎓', text: '<b>' + esc(p.actor || 'A brother') + '</b> is looking for a mentor in <b>' + esc(p.field || 'your field') + '</b>' + (p.note ? ': “' + esc(p.note) + '”' : '') + ' — open to reply', href: 'notifications.html#n=' + esc(n.id) };
       default:            return { ic: '•', text: esc(n.kind), href: '#' };
     }

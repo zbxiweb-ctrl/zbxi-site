@@ -2157,6 +2157,14 @@ body.tree-lock { overflow: hidden; }
 .bm__connect span { color: var(--muted); font-size: .78rem; flex: 1; min-width: 180px; }
 .bm__connect-btn { font-size: .88rem; padding: .55rem 1.3rem; }
 .bm__connect-btn:disabled { opacity: .75; cursor: default; }
+/* Once the note field opens the bar stops being a row: the textarea needs the
+   full width, and 120px (the site-wide .field default) is far too tall for one
+   optional line inside an already-scrolling profile modal. */
+.bm__connect--open { display: block; }
+.bm__connect--open .field { margin-bottom: 0; }
+.bm__connect--open .field textarea { min-height: 66px; }
+.bm__connect-send { display: flex; align-items: center; gap: .9rem; margin-top: .7rem; flex-wrap: wrap; }
+.bm__connect-send span { color: var(--muted); font-size: .78rem; flex: 1; min-width: 180px; }
 
 /* tiny open-to icons on roster cards */
 .bro-card__ots { font-style: normal; margin-left: .3rem; letter-spacing: .1em; }

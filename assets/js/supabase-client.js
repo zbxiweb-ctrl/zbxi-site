@@ -644,9 +644,10 @@
     awardUpdate: function (id, row) { return client.from('awards').update(row).eq('id', id); },
     awardDelete: function (id) { return client.from('awards').delete().eq('id', id); },
 
-    /* ---- networking: intro request (SECURITY DEFINER RPC; see upgrade9.sql) ---- */
-    connectRequest: function (targetUserId) {
-      return client.rpc('connect_request', { target: targetUserId })
+    /* ---- networking: intro request (SECURITY DEFINER RPC; upgrade9 + upgrade39) ----
+       `note` is optional; the function trims and caps it at 200 chars itself. */
+    connectRequest: function (targetUserId, note) {
+      return client.rpc('connect_request', { target: targetUserId, note: note || null })
         .then(function (r) { if (r.error) throw r.error; return r.data; });
     },
     // Notifies up to 5 alumni who flagged "open to mentoring" in that field.

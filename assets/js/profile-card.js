@@ -144,13 +144,35 @@
               '<span>Sends your name &amp; email to his notifications so he can reply directly.</span>';
             body.appendChild(bar);
             var cbtn = bar.querySelector('button');
+
+            /* Two steps, deliberately. Connect used to fire on this click and
+               land as a bare "X wants to connect" with no reason attached,
+               which leaves the recipient to work out what you want. Asking for
+               one line first is the whole difference between that and a reply. */
             cbtn.onclick = function () {
-              cbtn.disabled = true; cbtn.textContent = 'Sending…';
-              window.ZBXI.connectRequest(d.user_id).then(function (res) {
-                cbtn.textContent = res === 'already' ? '✓ Already requested this week' : '✓ Request sent';
-              }).catch(function () {
-                cbtn.disabled = false; cbtn.textContent = '🤝 Connect';
-              });
+              bar.className = 'bm__connect bm__connect--open';
+              bar.innerHTML =
+                '<div class="field"><label for="bmConnectNote">Add a line so he knows why (optional)</label>' +
+                  '<textarea id="bmConnectNote" maxlength="200" placeholder="e.g. I saw you work in product — could I ask how you broke in?"></textarea></div>' +
+                '<div class="bm__connect-send">' +
+                  '<button type="button" class="btn btn--gold bm__connect-btn" data-send>Send request</button>' +
+                  '<span>He gets your name, email and note in his notifications.</span>' +
+                '</div>';
+              var send = bar.querySelector('[data-send]');
+              var note = bar.querySelector('textarea');
+              note.focus();
+              send.onclick = function () {
+                send.disabled = true; send.textContent = 'Sending…';
+                window.ZBXI.connectRequest(d.user_id, note.value.trim()).then(function (res) {
+                  bar.className = 'bm__connect';
+                  bar.innerHTML = '<span>' + (res === 'already'
+                    ? '✓ You already asked him this week — give him a few days to reply.'
+                    : '✓ Request sent. Watch your inbox — he replies to you directly.') + '</span>';
+                }).catch(function (e) {
+                  send.disabled = false; send.textContent = 'Send request';
+                  ZBXIAsk.alert({ title: 'Could not send', body: (e && e.message) || 'Please try again.' });
+                });
+              };
             };
           });
         }

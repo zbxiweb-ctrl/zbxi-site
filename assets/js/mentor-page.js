@@ -184,8 +184,9 @@
         '<p><b>1 · Fill in your profile.</b> Click your name in the top-right → My Profile. Your industry, city, company, and LinkedIn are what make you findable — the meter at the top shows what\'s missing.</p>' +
         '<p><b>2 · Raise your hand.</b> Tick the "I\'m open to…" boxes: 🎓 mentoring actives, 💼 hiring &amp; referrals, 🤝 connecting. They show as badges next to your name so brothers know it\'s welcome to reach out.</p>' +
         '<p><b>3 · Find brothers.</b> Search here by field ("finance", "law school", "engineer") or pick a profession from the dropdown. Brothers open to mentoring appear first.</p>' +
-        '<p><b>4 · Press Connect.</b> On any brother\'s card, the 🤝 Connect button drops your name and email into his notifications — he just replies to your email. No inbox to check, nothing complicated.</p>' +
+        '<p><b>4 · Press Connect.</b> On any brother\'s card, the 🤝 Connect button drops your name, email and a short note into his notifications — he just replies to your email. Add the note: "wants to connect" on its own leaves him guessing what you\'re after.</p>' +
         '<p><b>5 · Or ask the room.</b> <b>🎓 Request a mentor</b> notifies up to five alumni who volunteered to mentor in that field — you don\'t have to know who to ask.</p>' +
+        '<p><b>Where the conversation actually happens.</b> There is deliberately no chat app here — one brother to one brother goes over email via 🤝 Connect, and anything the whole chapter might want to weigh in on belongs on the <a href="board.html">Board</a>, where it stays findable instead of dying in someone\'s inbox. If a group of you meets regularly, ask an officer or the webmaster for a <b>private committee space</b> — a members-only corner of the Board that nobody outside it can see.</p>' +
         '<p><b>Privacy:</b> all of this is brothers-only. The public sees none of it, and your contact details only show what you chose under "Reach me via".</p>' +
         '</div></div>';
       m.classList.add('open');
