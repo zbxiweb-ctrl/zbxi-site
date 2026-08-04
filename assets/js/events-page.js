@@ -11,7 +11,11 @@
 
   var CAT_LABEL = { rush: 'Rush', philanthropy: 'Philanthropy', reunion: 'Reunion', meeting: 'Chapter Meeting', social: 'Social' };
   var EV_CATS = ['social', 'meeting', 'philanthropy', 'rush', 'reunion'];
-  var EV_ALL = [], IS_ADMIN = false, ME = null, selDay = null;
+  // IS_ADMIN is the webmaster; CAN_MANAGE is "may add/edit/delete events" and is
+  // the flag every control below reads. The events RLS policies are already
+  // `is_admin() OR officer_can('events.manage')`, so a granted officer could
+  // always do this — the page just never showed him the buttons.
+  var EV_ALL = [], IS_ADMIN = false, CAN_MANAGE = false, ME = null, selDay = null;
   var RSVPS = [], RSVP_DIR = {}, CAN_RSVP = false;
   var cal = (function () { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
 
@@ -192,7 +196,7 @@
         var chips = chipped.slice(0, 2).map(function (e) {
           return '<span class="cal-chip cal-chip--' + esc(e.category) + '">' + esc(e.title) + '</span>';
         }).join('') + (chipped.length > 2 ? '<span class="cal-more">+' + (chipped.length - 2) + '</span>' : '');
-        var canClick = evs.length || IS_ADMIN;
+        var canClick = evs.length || CAN_MANAGE;
         cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') +
           (evs.length ? ' cal-cell--has' : '') + (selDay === day ? ' cal-cell--sel' : '') +
           '"' + (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
@@ -237,12 +241,12 @@
       return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || esc(e.category)) + '</span>' +
         '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' +
         (e.description ? '<p>' + esc(e.description) + '</p>' : '') + rsvpBar(e) +
-        (IS_ADMIN ? '<div class="cal-adminrow"><button class="cal-mini" data-ev-edit="' + e.id + '">✎ Edit</button><button class="cal-mini cal-mini--del" data-ev-del="' + e.id + '">🗑 Delete</button></div>' : '') +
+        (CAN_MANAGE ? '<div class="cal-adminrow"><button class="cal-mini" data-ev-edit="' + e.id + '">✎ Edit</button><button class="cal-mini cal-mini--del" data-ev-del="' + e.id + '">🗑 Delete</button></div>' : '') +
       '</div>';
     }).join('');
-    if (!evs.length && !IS_ADMIN) { box.innerHTML = ''; selDay = null; return; }
+    if (!evs.length && !CAN_MANAGE) { box.innerHTML = ''; selDay = null; return; }
     if (!evs.length) html += '<p class="cal-detail__none">Nothing on this day yet.</p>';
-    if (IS_ADMIN) html += '<button class="btn btn--gold cal-detail__add" data-ev-add>＋ Add event on this day</button>';
+    if (CAN_MANAGE) html += '<button class="btn btn--gold cal-detail__add" data-ev-add>＋ Add event on this day</button>';
     box.innerHTML = html;
     wireRsvps(box);
     wireAdmin(box, date);
@@ -261,7 +265,7 @@
       .slice(0, 4);
     var html = '<h3 class="cal-rail__h">⚡ Up Next</h3>';
     if (!upcoming.length) {
-      html += '<p class="cal-rail__none">No upcoming events yet' + (IS_ADMIN ? ' — add the first one below.' : ' — check back soon.') + '</p>';
+      html += '<p class="cal-rail__none">No upcoming events yet' + (CAN_MANAGE ? ' — add the first one below.' : ' — check back soon.') + '</p>';
     } else {
       html += upcoming.map(function (e) {
         var d = new Date(e.starts_at);
@@ -271,7 +275,7 @@
           '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' + rsvpBar(e) + '</div></article>';
       }).join('');
     }
-    if (IS_ADMIN) html += '<button class="btn btn--gold cal-rail__add" data-ev-add-any>＋ Add an event</button>';
+    if (CAN_MANAGE) html += '<button class="btn btn--gold cal-rail__add" data-ev-add-any>＋ Add an event</button>';
     html += '<button class="cal-rail__help" id="calHelpBtn">❓ How the calendar works</button>';
     rail.innerHTML = html;
     wireRsvps(rail);
@@ -414,7 +418,7 @@
       '<p><b>✋ RSVP.</b> Press “I\'m going” on any event so the chapter knows to expect you. Press it again to change your mind — no harm done.</p>' +
       '<p><b>📍 Getting there.</b> If an event shows a location, clicking it opens the map.</p>' +
       '<p><b>⚡ Up Next.</b> The list beside the calendar always shows the next few events, so you never have to hunt for them.</p>' +
-      (IS_ADMIN ? '<p><b>⚙ Webmaster only.</b> Click any day and press “＋ Add event on this day” — fill in the title and time and it\'s live for every brother instantly. Use ✎ Edit or 🗑 Delete on an event to change it. No code, ever.</p>' : '') +
+      (CAN_MANAGE ? '<p><b>⚙ Running the calendar.</b> You can add and change events — click any day and press “＋ Add event on this day”, fill in the title and time, and it\'s live for every brother instantly. Use ✎ Edit or 🗑 Delete on an event to change it. No code, ever.</p>' : '') +
       '</div></div>';
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
@@ -428,13 +432,15 @@
   } else {
     window.ZBXI.amApprovedBrother().then(function (ok) {
       if (!ok) { lockedCal(); return; }
-      Promise.all([window.ZBXI.getUser(), window.ZBXI.eventsList(), window.ZBXI.rsvpList(), window.ZBXI.memberDirectory()]).then(function (res) {
+      Promise.all([window.ZBXI.getUser(), window.ZBXI.eventsList(), window.ZBXI.rsvpList(), window.ZBXI.memberDirectory(),
+        window.ZBXI.officerCan ? window.ZBXI.officerCan('events.manage') : Promise.resolve(false)]).then(function (res) {
         ME = res[0];
         EV_ALL = res[1] || [];
         RSVPS = res[2] || [];
         RSVP_DIR = res[3] || {};
         CAN_RSVP = true;
         IS_ADMIN = !!(ME && ME.email && window.ZBXI.adminEmail && ME.email.toLowerCase() === window.ZBXI.adminEmail);
+        CAN_MANAGE = IS_ADMIN || !!res[4];
         buildCalLayout();
         renderMonth();
         renderRail();
