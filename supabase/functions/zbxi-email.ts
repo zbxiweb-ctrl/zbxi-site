@@ -87,7 +87,11 @@ async function authEmails(): Promise<Record<string, string>> {
 }
 
 function shell(subject: string, message: string, unsubUrl: string) {
-  const bodyHtml = esc(message).replace(/\r\n|\r|\n/g, "<br>");
+  // Neutralise a literal {{ typed into the message. esc() escapes & < > " but
+  // not braces, so an officer who wrote "{{UNSUB}}" in the body would have had
+  // it silently swapped for their own unsubscribe URL by the drainer. Renders
+  // as "{{" either way; the marker string just no longer survives.
+  const bodyHtml = esc(message).replace(/\{\{/g, "&#123;{").replace(/\r\n|\r|\n/g, "<br>");
   return `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#f3efe4;padding:24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">

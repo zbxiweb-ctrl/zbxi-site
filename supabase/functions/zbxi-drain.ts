@@ -12,8 +12,8 @@
 // bump by editing TypeScript. This function deliberately calls the RPC with only
 // a batch size and lets the DB decide how much of it it is allowed to have.
 //
-// ?once=1 -> claim and send exactly one batch, then report (used for manual
-//            verification before the cron is switched on).
+// Every call claims and sends exactly ONE batch, then reports. The cron ticks it
+// every 15 minutes; calling it by hand is how a send is flushed early.
 // Deployed via the Supabase Management API; no secrets live in the repo.
 
 const SB = Deno.env.get("SUPABASE_URL")!;
@@ -110,8 +110,19 @@ async function sendBulk(
   }
 }
 
-const mark = (id: number, patch: Record<string, unknown>) =>
-  db(`email_queue?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+// Never let a failed status write abort the run. db() throws on any non-OK
+// response, and an exception here used to escape the send loop entirely: the row
+// stayed 'sending', got reclaimed 15 minutes later, and was sent a SECOND time —
+// while also dropping out of the day's count, because the reclaim clears
+// claimed_at. Swallowing it leaves the reclaim to retry, which is bounded now
+// that claim_email_batch gives up after 3 attempts (upgrade36).
+const mark = async (id: number, patch: Record<string, unknown>) => {
+  try {
+    await db(`email_queue?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  } catch (e) {
+    console.error("email_queue mark failed", id, String(e).slice(0, 200));
+  }
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
