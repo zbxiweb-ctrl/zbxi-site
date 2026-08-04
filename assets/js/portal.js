@@ -235,7 +235,15 @@
     { ic: '📸', title: 'Private Gallery', blurb: 'Photos from the house & reunions — likes and comments, brothers only.', href: 'gallery.html' },
     { ic: '💬', title: 'Brothers Board', blurb: 'Chapter business, advice, and the job & referral board.', href: 'board.html' },
     { ic: '🌳', title: 'Family Tree', blurb: 'Claim your name and see full profiles across every line.', href: 'family-tree.html' },
-    { ic: '🔎', title: 'Member Directory', blurb: 'Find brothers by class year, city, and profession.', href: 'alumni.html' }
+    { ic: '🔎', title: 'Member Directory', blurb: 'Find brothers by class year, city, and profession.', href: 'alumni.html' },
+    // Both of these existed for months with a single link to them anywhere on
+    // the site — the collapsed account submenu. This is the grid that tells a
+    // brother what he actually gets, so they belong in it.
+    { ic: '🧭', title: 'Find a Mentor', blurb: 'Alumni who volunteered to help — by field, company, and profession.', href: 'mentor.html' },
+    // No real city named here: this grid renders to SIGNED-OUT visitors too, and
+    // with 37 cities across the brothers who've filled one in, most hold exactly
+    // one person — naming one points at him.
+    { ic: '🗺', title: 'Worldwide Map', blurb: 'See where brothers landed after Geneseo, and who is near you.', href: 'map.html' }
   ];
   function renderPerks(signedIn) {
     if (!perksEl) return;

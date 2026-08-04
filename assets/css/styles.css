@@ -231,6 +231,43 @@ p { margin: 0 0 1em; }
 .nav__links a { color: var(--on-navy-2); font-size: .92rem; font-weight: 500; letter-spacing: .02em; transition: color .15s; }
 .nav__links a:hover { color: var(--gold-bright); }
 .nav__cta { padding: .55rem 1.2rem; font-size: .88rem; }
+/* ---------- "Brothers" nav group ----------
+   Find a Mentor and Worldwide Map were reachable from exactly ONE place on the
+   whole site (the collapsed account submenu) — no nav, no footer, no perks grid.
+   They could not simply be added to the top row: measured at 1024px the row had
+   4px of headroom. Folding the six members-only pages behind one item frees
+   ~360px and surfaces both.
+
+   Opens on hover AND focus-within, so it costs no click handler, no
+   outside-click listener, and no JS — and a keyboard user gets it by tabbing to
+   the button, which is what makes the panel's links focusable in the first
+   place. aria-expanded is deliberately absent rather than hardcoded to a value
+   nothing updates; aria-haspopup states what's true. */
+.nav__group { position: relative; }
+.nav__group-btn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  background: none; border: 0; padding: 0 0 4px; cursor: pointer;
+  font-family: inherit; font-size: .92rem; font-weight: 500; letter-spacing: .02em;
+  color: var(--on-navy-2); transition: color .15s;
+}
+.nav__group-btn:hover, .nav__group:focus-within .nav__group-btn { color: var(--gold-bright); }
+.nav__group--on .nav__group-btn { color: var(--gold-bright); font-weight: 700; }
+.nav__group-btn .nav__caret { font-style: normal; font-size: .7rem; }
+.nav__group-menu {
+  position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  min-width: 190px; padding: .4rem 0; border-radius: 14px;
+  background: var(--surface); box-shadow: 0 18px 50px rgba(var(--chrome),.35);
+  display: none; z-index: 120;
+}
+/* Invisible bridge across the 10px gap. Without it the pointer leaves the group
+   on the way down and the panel shuts before you reach it. */
+.nav__group-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -12px; height: 12px; }
+.nav__group:hover .nav__group-menu, .nav__group:focus-within .nav__group-menu { display: block; }
+.nav__group-menu a { display: block; padding: .55rem 1.1rem; font-size: .86rem; color: var(--text); }
+.nav__group-menu a:hover { background: var(--bg); color: var(--gold-deep); }
+.nav__group-menu a.on { color: var(--gold-deep); font-weight: 700; }
+.nav__group-menu a::after { display: none; }   /* the underline sweep is for the top row only */
+
 .nav__toggle { display: none; background: none; border: 0; cursor: pointer; padding: 8px; }
 .nav__toggle span { display: block; width: 26px; height: 2px; background: var(--gold-bright); margin: 5px 0; transition: .25s; }
 
@@ -570,6 +607,17 @@ p { margin: 0 0 1em; }
 .bm__locked b { display: block; color: var(--heading); font-family: var(--display); font-size: 1.1rem; margin: .2rem 0; }
 .bm__locked span { display: block; color: var(--muted); font-size: .9rem; margin-bottom: .8rem; }
 .bm__locked .btn { padding: .5rem 1.2rem; font-size: .9rem; }
+
+/* Homepage members-only teasers (Find a Mentor / Worldwide Map): a count and a
+   button. Never a row, a name, a city or a pin — see main.js for the reasoning. */
+.home-stats { display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; margin-top: 2.2rem; }
+.home-stat { text-align: center; }
+.home-stat b { display: block; font-family: var(--display); font-size: 2.7rem; line-height: 1; color: var(--gold-deep); }
+.home-stat span { display: block; margin-top: .45rem; color: var(--muted); font-size: .84rem; letter-spacing: .04em; }
+@media (max-width: 480px) {
+  .home-stats { gap: 1.8rem; }
+  .home-stat b { font-size: 2.1rem; }
+}
 .bm__loading { color: var(--muted); text-align: center; padding: 1rem; }
 .bm__bio { color: var(--text); font-size: .95rem; margin-top: 1rem; }
 
@@ -2220,6 +2268,16 @@ body.tree-lock { overflow: hidden; }
     background: rgba(var(--chrome),.98); padding: 1rem 0;
     border-bottom: 1px solid rgba(200,162,75,.3);
     transform: translateY(-140%); transition: transform .3s; align-items: stretch;
+    /* The panel is position:fixed, so anything past the viewport bottom cannot
+       be scrolled to by the page — it is simply unreachable. Surfacing Find a
+       Mentor and Worldwide Map pushed the panel to ~666px, which put "Contact"
+       off the bottom of a 390x664 phone. Same failure the account menu had.
+       svh, not vh: the SMALL viewport, i.e. iOS Safari with its toolbars
+       showing, and unlike dvh it won't resize mid-scroll. */
+    max-height: calc(100vh - 72px);
+    max-height: calc(100svh - 72px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .nav__links.open { transform: translateY(0); }
   .nav__links a { padding: .9rem 8vw; font-size: 1rem; }
@@ -2227,6 +2285,27 @@ body.tree-lock { overflow: hidden; }
   .nav__links .nav__cta { margin: .6rem 8vw; text-align: center; }
   .nav__toggle { display: block; }
   .nav__account { margin-left: auto; margin-right: .6rem; }
+
+  /* Nothing collapses on a phone. The panel is already a vertical column here,
+     so the group becomes a labelled sub-list with all six always visible — a
+     brother who doesn't know the group exists would never think to tap it. */
+  .nav__group { position: static; }
+  .nav__group-btn {
+    display: block; width: 100%; text-align: left; pointer-events: none;
+    padding: 1rem 8vw .3rem; color: var(--on-navy-3);
+    font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+  }
+  .nav__group-btn .nav__caret { display: none; }
+  .nav__group-menu {
+    position: static; transform: none; display: block; background: none;
+    box-shadow: none; border-radius: 0; min-width: 0;
+    padding: 0 0 0 .8rem; margin: 0 8vw .5rem;
+    border-left: 2px solid rgba(200,162,75,.3);
+  }
+  .nav__group-menu::before { display: none; }
+  .nav__group-menu a { padding: .7rem .5rem; font-size: 1rem; color: var(--on-navy-2); }
+  .nav__group-menu a:hover { background: none; color: var(--gold-bright); }
+  .nav__group-menu a.on { color: var(--gold-bright); }
 }
 
 @media (max-width: 620px) {

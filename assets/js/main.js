@@ -61,6 +61,88 @@
     }
   }
 
+  /* ---- Members-only teasers: Find a Mentor + Worldwide Map ----
+     Both pages were reachable from exactly one place on the whole site before
+     this. Same three-branch shape as the gallery teaser above.
+
+     UNLOCKED shows COUNTS ONLY. LOCKED carries no live data whatsoever — no
+     names, cities, pins, employers, industries or mentor flags, and not even the
+     aggregate counts. That isn't caution for its own sake: 37 distinct cities
+     across the brothers who've filled one in means most cities hold exactly ONE
+     person, so "2 brothers in Denver" on a public page is a re-identification
+     vector against a semi-public alumni list. The locked copy leans on the
+     already-public "320+ brothers" figure instead.
+
+     Both counts come out of listVerifiedDetail(), which the roster already
+     caches for 30 minutes, so these two sections add ZERO network requests.
+
+     And deliberately NO Leaflet here: worldwide-map.js lazy-loads a CDN library
+     and geocodes sequentially at <=1 request/sec, so 37 cities would be ~40
+     seconds of Nominatim traffic on every single homepage load — and an OSM
+     usage-policy problem. A teaser is a count and a button. */
+  var MENTOR_LOCK = 'Brothers across 320+ alumni have volunteered to mentor, hire and refer. Sign in as a verified brother to search them by field and profession.';
+  var MAP_LOCK = 'Brothers have landed all over the world since 1993. Sign in as a verified brother to see the map and find who is near you.';
+
+  function homeLock(id, msg, href, cta) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Brothers only</b>' +
+      '<span>' + msg + '</span>' +
+      '<a class="btn btn--gold" href="' + href + '">' + cta + '</a></div>';
+  }
+  function homeStats(id, stats, href, cta) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<div class="home-stats">' + stats.map(function (s) {
+      return '<div class="home-stat"><b>' + s[0] + '</b><span>' + s[1] + '</span></div>';
+    }).join('') + '</div>' +
+      '<p class="center" style="margin-top:1.8rem"><a class="btn btn--navy" href="' + href + '">' + cta + '</a></p>';
+  }
+  function homeTeasersLocked() {
+    homeLock('mentorTeaser', MENTOR_LOCK, 'mentor.html', 'Find a Mentor');
+    homeLock('mapTeaser', MAP_LOCK, 'map.html', 'Open the map');
+  }
+
+  if (document.getElementById('mentorTeaser')) {
+    if (!(window.ZBXI && window.ZBXI.configured)) {
+      homeTeasersLocked();
+    } else {
+      window.ZBXI.amApprovedBrother().then(function (ok) {
+        if (!ok) { homeTeasersLocked(); return; }
+        window.ZBXI.listVerifiedDetail().then(function (rows) {
+          rows = rows || [];
+          var mentors = rows.filter(function (b) { return (b.open_to || []).indexOf('mentor') !== -1; });
+          var fields = {}, cities = {}, placed = 0;
+          mentors.forEach(function (b) { if (b.industry) fields[String(b.industry).trim()] = 1; });
+          rows.forEach(function (b) {
+            if (!b.city) return;
+            placed++;
+            cities[String(b.city).trim().toLowerCase()] = 1;
+          });
+          var nf = Object.keys(fields).length, nc = Object.keys(cities).length;
+
+          if (mentors.length) {
+            homeStats('mentorTeaser', [
+              [mentors.length, mentors.length === 1 ? 'brother open to mentoring' : 'brothers open to mentoring'],
+              [nf, nf === 1 ? 'field' : 'fields']
+            ], 'mentor.html', 'Find a mentor →');
+          } else {
+            homeLock('mentorTeaser', 'Nobody has ticked “open to mentoring” yet — raise your hand in My Profile and you will be the first.', 'mentor.html', 'Open Find a Mentor');
+          }
+
+          if (nc) {
+            homeStats('mapTeaser', [
+              [nc, nc === 1 ? 'city' : 'cities'],
+              [placed, placed === 1 ? 'brother on the map' : 'brothers on the map']
+            ], 'map.html', 'Open the map →');
+          } else {
+            homeLock('mapTeaser', 'No cities on file yet — add your current city in My Profile to put the first pin on the map.', 'map.html', 'Open the map');
+          }
+        })['catch'](homeTeasersLocked);
+      })['catch'](homeTeasersLocked);
+    }
+  }
+
   /* ---- Brother of the Month (deterministic monthly rotation) ---- */
   var spotSec = document.getElementById('spotlight');
   var spotEl = document.getElementById('spotlightCard');
