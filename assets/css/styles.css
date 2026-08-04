@@ -1544,7 +1544,11 @@ body.modal-open { overflow: hidden; }
 .poll-opt__n { position: relative; color: var(--muted); font-size: .8rem; flex: none; }
 .poll-card__meta { color: var(--muted); font-size: .82rem; margin-top: .5rem; }
 .poll-card__meta a { color: #b54848; text-decoration: underline; }
+/* "edit" is not destructive — only "delete" should read as danger red. */
+.poll-card__meta a[data-editpoll] { color: var(--gold-deep, #A07E2D); }
 .poll-closed { color: #b54848; }
+/* Marks a poll you wrote, so "edit / delete" next to it is self-explanatory. */
+.poll-mine { color: var(--gold-deep, #A07E2D); font-weight: 700; }
 
 /* ---------- Board: committee tabs + suggestion box ---------- */
 .sug-box { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1.4rem; }

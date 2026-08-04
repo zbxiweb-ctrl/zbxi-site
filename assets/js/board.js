@@ -60,6 +60,11 @@
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
   var me = null, dir = {}, threads = [], META = {}, isAdmin = false;
+  // Poll moderation: edit/delete ANY brother's poll. Ships OFF and is granted per
+  // seat in Admin -> Officers, exactly like gallery.moderate. Authoring your own
+  // poll needs nothing — every approved brother can (upgrade38). RLS is the real
+  // gate; this flag only decides which buttons get drawn.
+  var canModPolls = false;
   var MY_COMMITTEES = [], POLLS = [], VOTES = [];
   var state = { cat: 'all', thread: null, sort: 'active' };
 
@@ -352,7 +357,9 @@
 
   /* ---------- polls ---------- */
   function renderPolls() {
-    var newBtn = isAdmin ? '<p style="margin:1rem 0"><button class="btn btn--gold" id="newPoll">+ New poll</button></p>' : '';
+    // Every approved brother can post a poll now (upgrade38) — this used to be
+    // admin-only, which is why the owner saw a bare "No polls yet."
+    var newBtn = '<p style="margin:1rem 0"><button class="btn btn--gold" id="newPoll">+ New poll</button></p>';
     var cards = POLLS.length ? POLLS.map(function (p) {
       var opts = p.options || [];
       var votes = VOTES.filter(function (v) { return v.poll_id === p.id; });
@@ -370,11 +377,19 @@
       }).join('');
       var meta = total + ' vote' + (total === 1 ? '' : 's') +
         (p.closes_at ? (closed ? ' · <b class="poll-closed">CLOSED</b>' : ' · closes ' + new Date(p.closes_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) : '');
+      // Your own poll, or anyone's if you hold polls.moderate / are the admin.
+      // RLS enforces the same rule server-side, so a hand-crafted request that
+      // skipped these buttons would still be refused.
+      var mine = me && p.author_user && p.author_user === me.id;
+      var canEdit = mine || canModPolls;
+      var byLine = mine ? ' · <span class="poll-mine">yours</span>'
+        : (p.author_user && dir[p.author_user] ? ' · ' + esc(dir[p.author_user].full_name || '') : '');
       return '<div class="poll-card" data-poll="' + p.id + '">' +
         '<h3>' + esc(p.question) + '</h3>' + bars +
-        '<div class="poll-card__meta">' + meta +
-        (isAdmin ? ' · <a href="#" data-delpoll>delete</a>' : '') + '</div></div>';
-    }).join('') : '<p class="page-empty">No polls yet' + (isAdmin ? ' — post the first one.' : '.') + '</p>';
+        '<div class="poll-card__meta">' + meta + byLine +
+        (canEdit ? ' · <a href="#" data-editpoll>edit</a> · <a href="#" data-delpoll>delete</a>' : '') +
+        '</div></div>';
+    }).join('') : '<p class="page-empty">No polls yet — post the first one.</p>';
 
     root.innerHTML = '<div class="board-shell">' + railHtml() +
       '<div class="board-main">' +
@@ -403,11 +418,16 @@
           });
         };
       });
+      var edit = card.querySelector('[data-editpoll]');
+      if (edit) edit.onclick = function (e) { e.preventDefault(); renderNewPoll(p); };
       var del = card.querySelector('[data-delpoll]');
       if (del) del.onclick = function (e) {
         e.preventDefault();
         ZBXIAsk.confirm({ title: 'Delete poll', body: 'Delete this poll and its votes?', ok: 'Delete', danger: true }, function () {
-          Z.pollDelete(p.id).then(function () {
+          Z.pollDelete(p.id).then(function (r) {
+            // RLS is the real gate — surface a refusal instead of silently
+            // pretending it worked and having the row reappear on refresh.
+            if (r && r.error) { ZBXIAsk.alert({ title: 'Could not delete', body: r.error.message }); return; }
             POLLS = POLLS.filter(function (x) { return x.id !== p.id; });
             renderPolls();
           });
@@ -416,17 +436,30 @@
     });
   }
 
-  function renderNewPoll() {
+  // One form for both create and edit — pass an existing poll to edit it.
+  function renderNewPoll(poll) {
+    var editing = !!(poll && poll.id);
+    // datetime-local needs local wall-clock "YYYY-MM-DDTHH:mm", not an ISO Z
+    // string, or the field renders blank and a saved close time is silently lost.
+    var closesLocal = '';
+    if (editing && poll.closes_at) {
+      var d = new Date(poll.closes_at);
+      closesLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
     root.innerHTML =
       '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
       '<div class="card-form" style="max-width:640px">' +
-        '<h3 style="color:var(--heading);font-family:var(--display)">New poll</h3>' +
+        '<h3 style="color:var(--heading);font-family:var(--display)">' + (editing ? 'Edit poll' : 'New poll') + '</h3>' +
         '<form id="pollForm" novalidate>' +
-          '<div class="field"><label>Question *</label><input name="question" required maxlength="200"></div>' +
-          '<div class="field"><label>Options (one per line, 2–6) *</label><textarea name="opts" rows="5" required></textarea></div>' +
-          '<div class="field"><label>Closes (optional)</label><input name="closes" type="datetime-local"></div>' +
-          '<button class="btn btn--navy" type="submit" style="width:100%">Post poll</button>' +
-          '<p class="form-status" id="pollStatus"></p>' +
+          '<div class="field"><label>Question *</label><input name="question" required maxlength="200" value="' +
+            (editing ? esc(poll.question) : '') + '"></div>' +
+          '<div class="field"><label>Options (one per line, 2–6) *</label><textarea name="opts" rows="5" required>' +
+            (editing ? esc((poll.options || []).join('\n')) : '') + '</textarea></div>' +
+          '<div class="field"><label>Closes (optional)</label><input name="closes" type="datetime-local" value="' + closesLocal + '"></div>' +
+          '<button class="btn btn--navy" type="submit" style="width:100%">' + (editing ? 'Save changes' : 'Post poll') + '</button>' +
+          '<p class="form-status" id="pollStatus">' +
+            (editing && (poll.options || []).length ? 'Changing the options resets nothing — existing votes keep their position.' : '') +
+          '</p>' +
         '</form></div>';
     document.getElementById('backList').onclick = renderList;
     document.getElementById('pollForm').onsubmit = function (e) {
@@ -436,11 +469,22 @@
       if (!f.question.value.trim() || opts.length < 2 || opts.length > 6) {
         st.className = 'form-status err'; st.textContent = 'Question plus 2–6 options required.'; return;
       }
-      Z.pollCreate({
+      var row = {
         question: f.question.value.trim(),
         options: opts,
         closes_at: f.closes.value ? new Date(f.closes.value).toISOString() : null
-      }).then(function (r) {
+      };
+      // author_user is required by polls_member_insert and must be YOU — that is
+      // what stops a brother posting under someone else's name. Not sent on edit:
+      // the update policy's WITH CHECK would reject a reassignment anyway.
+      var op;
+      if (editing) {
+        op = Z.pollUpdate(poll.id, row);
+      } else {
+        row.author_user = me.id;
+        op = Z.pollCreate(row);
+      }
+      op.then(function (r) {
         if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
         Z.pollsList().then(function (ps) { POLLS = ps; renderList(); });
       });
@@ -702,6 +746,11 @@
     me = u;
     if (!u) { locked('Members only', true); return; }
     isAdmin = Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail;
+    // Resolved once per page load; Z.officerCan caches internally and falls back
+    // to false on any error, so a failure here can only hide buttons, never grant.
+    if (Z.officerCan) {
+      Z.officerCan('polls.moderate').then(function (can) { canModPolls = isAdmin || !!can; });
+    }
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
       if (!root.querySelector('.sk')) root.innerHTML = boardSkeleton();  // unless already painted below

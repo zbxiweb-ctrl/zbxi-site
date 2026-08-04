@@ -574,7 +574,7 @@
       return this._bust(client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() }));
     },
 
-    /* ---- polls (admin-created; members vote) ---- */
+    /* ---- polls (any approved brother authors his own; members vote) ---- */
     pollsList: function () {
       return client.from('polls').select('*').order('created_at', { ascending: false })
         .then(function (r) { return r.data || []; });
@@ -587,6 +587,9 @@
       return client.from('poll_votes').upsert({ poll_id: pollId, user_id: userId, choice: choice });
     },
     pollCreate: function (row) { return client.from('polls').insert(row); },
+    // RLS (upgrade38) decides who may change what: the author, the admin, or a
+    // seat holding polls.moderate. This helper carries no permission logic.
+    pollUpdate: function (id, patch) { return client.from('polls').update(patch).eq('id', id); },
     pollDelete: function (id) { return client.from('polls').delete().eq('id', id); },
 
     /* ---- suggestion dropbox ---- */

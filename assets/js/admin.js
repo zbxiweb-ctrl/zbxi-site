@@ -2231,7 +2231,8 @@
     { key: 'gallery.post',        label: 'Post to the gallery',    desc: 'Create new gallery posts (otherwise only the admin can).', seats: ['alumni_president'] },
     { key: 'gallery.albums',      label: 'Manage gallery sections', desc: 'Create, rename, and delete gallery sections, right on the gallery page. Deleting a section keeps its photos — they move to Miscellaneous.', seats: ['alumni_president'] },
     { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['active_president', 'alumni_president'] },
-    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] }
+    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] },
+    { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['active_president', 'alumni_president'] }
   ];
 
   function officerSeatHolder(scope) {
@@ -2324,7 +2325,8 @@
       sec('🌳 Fix the family tree (wrong big, typo, add/remove someone)', '<p>Use the dedicated <b>🌳 Tree</b> tab — it shows each family line as an indented list with plain buttons on every brother: <b>Rename</b>, <b>Change big</b>, <b>+ Little</b>, <b>Remove</b>. There\'s a “❓ How do I use this?” button inside with step-by-step instructions. Every save is live on the public tree instantly.</p>') +
       sec('👑 Run the executive boards', '<p>Use the <b>👑 E-Board</b> tab. The Active and Alumni boards are separate — each has four seats. Click <b>Assign</b> on a seat, pick the brother and term; the previous holder automatically moves to “Previous officers” (shown on the Alumni page with title filters). Each semester, hit <b>🔄 Semester rollover</b> once, then assign the new boards.</p>') +
       sec('👥 Committees & private spaces', '<p><b>👥 Committees</b> tab: create a committee (e.g. Rush Committee), add brothers with accounts. Each committee gets a private space on the Board that only its members and you can see. Current officers are auto-kept in the “E-Board Officers” committee.</p>') +
-      sec('🗳️ Post a poll', '<p>On the <b>Board</b> page (signed in as admin) → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>') +
+      sec('🗳️ Post a poll', '<p>On the <b>Board</b> page → 🗳️ Polls tab → “+ New poll”. Brothers get one vote each and can change it until the poll closes.</p>' +
+        '<p><b>Any brother can post a poll</b> and edit or delete his own. If you ever need to clean up someone else’s, you can — and you can hand that power to an officer with the <b>Moderate polls</b> switch in the <b>Officers</b> tab (it starts off).</p>') +
       sec('💡 Answer suggestions', '<p>Brothers drop ideas in the Suggestion box on the Board page. They land in your <b>💡 Suggestions</b> tab (badge = new ones). Write a response — the brother gets a 🔔 — or archive it.</p>') +
       sec('🤝 Networking & Connect (runs itself)', '<p>Brothers fill in industry, company, and LinkedIn on their profiles, and can raise "I\'m open to…" badges (🎓 mentoring · 💼 hiring · 🤝 connecting). On any brother\'s card, the <b>Connect</b> button drops the requester\'s name + email into the other brother\'s 🔔 so he can reply directly by email.</p><ul>' +
         '<li><b>Nothing for you to moderate</b> — there\'s no inbox or chat, just intro requests.</li>' +
