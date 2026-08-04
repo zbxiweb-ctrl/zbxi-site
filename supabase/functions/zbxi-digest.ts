@@ -71,15 +71,21 @@ async function authEmails(): Promise<Record<string, string>> {
 }
 
 async function build(adminUserId: string | null) {
-  const last = await db(`digest_log?test=eq.false&order=sent_at.desc&limit=1&select=sent_at`);
+  // kind=digest: the composer and the pending-alert cron also write digest_log
+  // rows, and the pending job runs every 5 minutes — without this filter one
+  // signup collapses the "what's new since" window to minutes ago.
+  const last = await db(`digest_log?kind=eq.digest&test=eq.false&order=sent_at.desc&limit=1&select=sent_at`);
   const since = last?.[0]?.sent_at || new Date(Date.now() - 30 * 864e5).toISOString();
   const nowISO = new Date().toISOString();
 
+  // encodeURIComponent is not optional on `since`: it comes from Postgres as
+  // ...+00:00, and a bare + in a query string decodes to a SPACE, which Postgres
+  // then rejects (22007). nowISO is toISOString() ...Z form, so it has no +.
   const [newMembersRaw, events, jobs, photos, classes] = await Promise.all([
-    db(`brothers?status=eq.verified&user_id=not.is.null&created_at=gt.${since}&select=full_name,pledge_class,user_id&limit=12`),
+    db(`brothers?status=eq.verified&user_id=not.is.null&created_at=gt.${encodeURIComponent(since)}&select=full_name,pledge_class,user_id&limit=12`),
     db(`events?starts_at=gt.${nowISO}&order=starts_at.asc&limit=5&select=title,starts_at,location,all_day`),
-    db(`forum_threads?category=eq.opportunities&created_at=gt.${since}&order=created_at.desc&limit=5&select=id,title`),
-    db(`gallery_posts?created_at=gt.${since}&select=id`),
+    db(`forum_threads?category=eq.opportunities&created_at=gt.${encodeURIComponent(since)}&order=created_at.desc&limit=5&select=id,title`),
+    db(`gallery_posts?created_at=gt.${encodeURIComponent(since)}&select=id`),
     db(`brothers?pledge_class=not.is.null&select=pledge_class`),
   ]);
 
@@ -286,7 +292,7 @@ Deno.serve(async (req) => {
       else errors.push(String(res.error).slice(0, 120));
     }
 
-    await db(`digest_log`, { method: "POST", body: JSON.stringify({ recipients: sent, test, note: (empty ? "quiet month; " : "") + (errors[0] || "") || null }) });
+    await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: sent, test, note: (empty ? "quiet month; " : "") + (errors[0] || "") || null }) });
 
     // Storage nudge rides the real send only (never the dry preview). One bucket
     // list, reused for both the alert decision and the summary. test=1 is a

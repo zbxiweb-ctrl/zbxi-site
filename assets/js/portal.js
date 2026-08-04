@@ -404,20 +404,59 @@
       '</form>' +
       '<button class="back-pill back-pill--center" id="resetBack" type="button">← Back to log in</button></div>');
     card.querySelector('#resetBack').onclick = function () { state.mode = 'signin'; renderAuth(); };
-    var capReset = window.ZBXITurnstile ? ZBXITurnstile.render(card.querySelector('#tsReset')) : null;
+    var sendBtn = card.querySelector('#resetForm button[type=submit]');
+    var resetSt = card.querySelector('#resetStatus');
+    // Hold the button until the captcha is actually solved. Submitting early
+    // sends an EMPTY token, which Supabase rejects — the brother sees a raw
+    // captcha error and no email, with nothing recorded server-side.
+    // Fails OPEN: if the widget never loads (CSP, offline, Cloudflare down) the
+    // button re-enables and Supabase decides, rather than locking anyone out.
+    var capLive = false;   // a widget is really on the page (not just configured)
+    var capReset = window.ZBXITurnstile ? ZBXITurnstile.render(
+      card.querySelector('#tsReset'),
+      function () { sendBtn.disabled = false; resetSt.textContent = ''; },
+      function () {                                   // token expired (~5 min)
+        sendBtn.disabled = true;
+        resetSt.className = 'form-status';
+        resetSt.textContent = 'The human check expired — tick it again.';
+      }
+    ) : null;
+    if (capReset) {
+      sendBtn.disabled = true;
+      // `ready` is authoritative WHENEVER it lands, including late. Don't race it
+      // into capLive: a slow widget that arrives after the guard below must still
+      // count as live, or a failed submit would skip reset() and keep re-sending
+      // the spent single-use token until the page is reloaded.
+      capReset.ready.then(function (rendered) {
+        capLive = rendered;
+        if (!rendered) sendBtn.disabled = false;
+        else if (sendBtn.disabled) resetSt.textContent = 'Tick the box below to confirm you\'re human.';
+      });
+      // Stall guard, button only: the loader settles on the script's load/error
+      // events, so a request that HANGS would disable the button forever.
+      setTimeout(function () { if (!capLive) sendBtn.disabled = false; }, 8000);
+    }
     card.querySelector('#resetForm').onsubmit = function (e) {
       e.preventDefault();
       var f = e.target, st = card.querySelector('#resetStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
-      f.querySelector('button').disabled = true;
+      sendBtn.disabled = true;
       Z.resetPassword(f.email.value.trim(), capReset && capReset.token()).then(function (r) {
         if (r.error) throw r.error;
         st.className = 'form-status ok';
-        st.textContent = '✓ Check your email for the reset link.';
+        // Deliberately conditional: Supabase returns success for an address with
+        // no account (so the form can't be used to discover who has one), and
+        // the old copy asserted an email was sent when often none was.
+        st.textContent = '✓ If that address has an account, a reset link is on its way. Give it a minute, and check your spam folder.';
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Could not send the link.';
-        if (capReset) capReset.reset();
-        f.querySelector('button').disabled = false;
+        // The captcha token is single-use. With a live widget, re-challenge and
+        // leave the button held until it solves again — re-enabling here would
+        // let the next click submit an empty token. With no widget, fail open.
+        if (capLive) {
+          capReset.reset();
+          st.textContent += ' Tick the box again to retry.';
+        } else sendBtn.disabled = false;
       });
     };
   }
@@ -834,7 +873,8 @@
           '<div class="field"><label>Short quote</label><input name="quote" value="' + esc(pr.quote) + '" maxlength="140"></div>' +
           '<div class="field"><label>Bio — your story &amp; memories from the house</label><textarea name="bio">' + esc(pr.bio) + '</textarea></div>' +
           '<div class="field"><label>Skills &amp; interests (great for mentoring)</label><input name="skills" value="' + esc(pr.skills) + '" placeholder="e.g. finance, grad school apps, guitar"></div>' +
-          '<div class="field"><label>Profile photo</label><input type="file" name="photo" accept="image/*"></div>' +
+          '<div class="field"><label>Profile photo</label><input type="file" name="photo" accept="image/*">' +
+            '<img class="file-prev file-prev--round" id="profPhotoPrev" alt="Preview of the photo you chose" hidden></div>' +
         '</fieldset>' +
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (pr.id ? 'Save profile' : 'Submit for verification') + '</button>' +
         '<p class="form-status" id="profStatus" role="status"></p>' +
@@ -842,6 +882,18 @@
 
     var back = host.querySelector('#formBack');
     if (back) back.onclick = renderChooser;
+
+    // Thumbnail the chosen photo — this one becomes your avatar everywhere, so
+    // seeing it beats trusting a filename. Revoke the old URL on every re-pick.
+    var photoIn = host.querySelector('input[name="photo"]');
+    var photoPrev = host.querySelector('#profPhotoPrev');
+    if (photoIn && photoPrev) photoIn.addEventListener('change', function () {
+      if (photoPrev.src) URL.revokeObjectURL(photoPrev.src);
+      var f = photoIn.files[0];
+      if (!f) { photoPrev.hidden = true; photoPrev.removeAttribute('src'); return; }
+      photoPrev.src = URL.createObjectURL(f);
+      photoPrev.hidden = false;
+    });
 
     // "My class isn't listed…" reveals (and requires) the free-text box; any other
     // choice hides and clears it, so only one of the two can ever carry a value.

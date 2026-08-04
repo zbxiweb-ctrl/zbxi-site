@@ -70,6 +70,7 @@
     return '<div class="gupload">' +
         '<form id="guForm">' +
           '<label class="gupload__drop" id="guDrop">📷 <b>Share a photo with the brotherhood</b><span id="guName">Click to choose an image (max 5MB)</span>' +
+            '<img id="guPrev" class="gupload__prev" alt="Preview of the photo you chose" hidden>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
             (albums.length ? albumPicker() : '') +
@@ -198,12 +199,20 @@
     var btn = document.getElementById('guBtn');
     var st = document.getElementById('guStatus');
     if (!form) return;
+    var prev = document.getElementById('guPrev');
+    // Object URLs must be released or every re-pick leaks the previous image.
+    function showPreview(f) {
+      if (prev.src) URL.revokeObjectURL(prev.src);
+      if (!f) { prev.hidden = true; prev.removeAttribute('src'); return; }
+      prev.src = URL.createObjectURL(f);
+      prev.hidden = false;
+    }
     drop.addEventListener('click', function () { fileIn.click(); });
     fileIn.addEventListener('change', function () {
       var f = fileIn.files[0];
-      if (!f) { btn.disabled = true; return; }
-      if (f.size > 5 * 1024 * 1024) { st.className = 'form-status err'; st.textContent = 'That image is over 5MB.'; btn.disabled = true; return; }
-      st.textContent = ''; nameEl.textContent = f.name; btn.disabled = false;
+      if (!f) { showPreview(null); nameEl.textContent = 'Click to choose an image (max 5MB)'; btn.disabled = true; return; }
+      if (f.size > 5 * 1024 * 1024) { showPreview(null); st.className = 'form-status err'; st.textContent = 'That image is over 5MB.'; btn.disabled = true; return; }
+      st.textContent = ''; st.className = 'form-status'; nameEl.textContent = f.name; showPreview(f); btn.disabled = false;
     });
     form.onsubmit = function (e) {
       e.preventDefault();
@@ -219,6 +228,7 @@
       }).then(function (r) {
         if (r.error) throw r.error;
         btn.textContent = 'Post';
+        showPreview(null);   // loadAll() rebuilds the uploader; release the URL first
         return loadAll();
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Upload failed.';

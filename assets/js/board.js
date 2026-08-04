@@ -527,11 +527,24 @@
             '<option value="seeking">🔎 Seeking — I\'m looking for opportunities</option></select></div>' +
           '<div class="field"><label>Title *</label><input name="title" required maxlength="140" value="' + esc(prefillTitle || '') + '"></div>' +
           '<div class="field"><label>Post *</label><textarea name="body" required></textarea></div>' +
-          '<div class="field"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*"></div>' +
+          '<div class="field"><label>Photo (optional)</label><input type="file" name="photo" accept="image/*">' +
+            '<img class="file-prev" id="thrPhotoPrev" alt="Preview of the photo you chose" hidden></div>' +
           '<button class="btn btn--navy" type="submit" style="width:100%">Post thread</button>' +
           '<p class="form-status" id="thrStatus" role="status"></p>' +
         '</form></div>';
     document.getElementById('backList').onclick = renderList;
+
+    // Thumbnail the chosen photo — a filename alone doesn't tell you if it's the
+    // right picture. Revoke the old object URL on every re-pick so it can't leak.
+    var thrPhoto = document.querySelector('#thrForm input[name=photo]');
+    var thrPrev = document.getElementById('thrPhotoPrev');
+    if (thrPhoto && thrPrev) thrPhoto.addEventListener('change', function () {
+      if (thrPrev.src) URL.revokeObjectURL(thrPrev.src);
+      var f = thrPhoto.files[0];
+      if (!f) { thrPrev.hidden = true; thrPrev.removeAttribute('src'); return; }
+      thrPrev.src = URL.createObjectURL(f);
+      thrPrev.hidden = false;
+    });
 
     // Same show/hide pattern as the profile pledge-class picker in portal.js.
     var catSel = document.getElementById('thrCat');

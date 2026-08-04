@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
     if (!send.ok) return json({ sent: 0, error: (await send.text()).slice(0, 200) }, 502);
 
     await dbPost("digest_log", {
-      recipients: 1, test,
+      kind: "pending", recipients: 1, test,
       note: `pending alert: ${rows.length} brother${rows.length === 1 ? "" : "s"}`.slice(0, 180),
     });
     return json({ sent: 1, brothers: rows.length, test });

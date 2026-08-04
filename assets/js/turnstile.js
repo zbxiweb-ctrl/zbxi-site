@@ -36,10 +36,19 @@
          token() -> current response token, or '' if not solved / disabled
          reset() -> clear + re-challenge (call after a failed submit so the
                     single-use token is replaced before the next attempt)
-       `onSolve(token)` fires when a token first becomes available (optional). */
-    render: function (host, onSolve) {
+         ready   -> Promise<boolean>: true once the widget is actually on the
+                    page, false if it is disabled or the API could not load.
+                    A form that gates its submit button on being solved needs
+                    this to tell "not solved YET" from "no widget at all" —
+                    without it, a CSP-blocked or offline Turnstile would leave
+                    the button disabled forever and lock people out.
+       `onSolve(token)` fires when a token first becomes available (optional).
+       `onExpire()` fires when a solved token times out (~5 min) (optional). */
+    render: function (host, onSolve, onExpire) {
+      var markReady;
       var handle = {
         _id: null,
+        ready: new Promise(function (r) { markReady = r; }),
         token: function () {
           return (handle._id !== null && window.turnstile) ? (window.turnstile.getResponse(handle._id) || '') : '';
         },
@@ -47,15 +56,17 @@
           if (handle._id !== null && window.turnstile) { try { window.turnstile.reset(handle._id); } catch (e) {} }
         }
       };
-      if (!KEY || !host) return handle;
+      if (!KEY || !host) { markReady(false); return handle; }
       load().then(function (ok) {
-        if (!ok || !window.turnstile) return;
+        if (!ok || !window.turnstile) { markReady(false); return; }
         try {
           handle._id = window.turnstile.render(host, {
             sitekey: KEY,
-            callback: function (t) { if (onSolve) onSolve(t); }
+            callback: function (t) { if (onSolve) onSolve(t); },
+            'expired-callback': function () { if (onExpire) onExpire(); }
           });
-        } catch (e) { /* double-render or torn-down host — ignore */ }
+          markReady(handle._id !== null && handle._id !== undefined);
+        } catch (e) { markReady(false); /* double-render or torn-down host */ }
       });
       return handle;
     },

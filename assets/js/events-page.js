@@ -16,13 +16,41 @@
   var cal = (function () { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
 
   function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
-  function evsOn(date) { return EV_ALL.filter(function (e) { return sameDay(new Date(e.starts_at), date); }); }
   function evEnd(e) { return e.ends_at ? new Date(e.ends_at) : new Date(new Date(e.starts_at).getTime() + 3 * 3600 * 1000); }
+
+  /* -- multi-day events -----------------------------------------------------
+     An event covers every day from its start date through its end date. Compare
+     whole DAYS, not timestamps: a 6pm–2am event ends on the following calendar
+     day and must paint on both. */
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function evSpan(e) {
+    var s = startOfDay(new Date(e.starts_at));
+    var t = startOfDay(evEnd(e));
+    return { s: s, e: t < s ? s : t };
+  }
+  function isMulti(e) { var sp = evSpan(e); return sp.e.getTime() > sp.s.getTime(); }
+  function evsOn(date) {
+    var d = startOfDay(date).getTime();
+    return EV_ALL.filter(function (e) {
+      var sp = evSpan(e);
+      return d >= sp.s.getTime() && d <= sp.e.getTime();
+    });
+  }
+
   function evTime(e) {
+    var MD = { month: 'short', day: 'numeric' }, HM = { hour: 'numeric', minute: '2-digit' };
+    var s = new Date(e.starts_at);
+    if (isMulti(e)) {
+      // Without the date on both ends, a 13-day event reads as a one-hour one.
+      var end = evEnd(e);
+      if (e.all_day) return s.toLocaleDateString(undefined, MD) + ' – ' + end.toLocaleDateString(undefined, MD);
+      return s.toLocaleDateString(undefined, MD) + ', ' + s.toLocaleTimeString(undefined, HM) +
+        ' – ' + end.toLocaleDateString(undefined, MD) + ', ' + end.toLocaleTimeString(undefined, HM);
+    }
     if (e.all_day) return 'All day';
-    var t = new Date(e.starts_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    if (e.ends_at && sameDay(new Date(e.starts_at), new Date(e.ends_at))) {
-      t += ' – ' + new Date(e.ends_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    var t = s.toLocaleTimeString(undefined, HM);
+    if (e.ends_at && sameDay(s, new Date(e.ends_at))) {
+      t += ' – ' + new Date(e.ends_at).toLocaleTimeString(undefined, HM);
     }
     return t;
   }
@@ -76,6 +104,43 @@
     '</div>';
   }
 
+  /* Clip each multi-day event to one week row and stack the results into lanes.
+     A banner cannot wrap across a grid row, so an event crossing a week boundary
+     becomes several segments; only the true first/last one gets a rounded end,
+     which is what makes the middle segments read as "continues". */
+  var MAX_LANES = 2;
+  function bandSegments(list, wkStart) {
+    var ws = wkStart.getTime();
+    var we = new Date(wkStart.getFullYear(), wkStart.getMonth(), wkStart.getDate() + 6).getTime();
+    var segs = [];
+    list.forEach(function (e) {
+      var sp = evSpan(e), s = sp.s.getTime(), t = sp.e.getTime();
+      if (t < ws || s > we) return;
+      var c0 = s <= ws ? 0 : dayIndex(wkStart, sp.s);
+      var c1 = t >= we ? 6 : dayIndex(wkStart, sp.e);
+      // The banner is only clickable on a day this month actually shows.
+      var day = 0;
+      for (var k = c0; k <= c1 && !day; k++) {
+        var d = new Date(wkStart.getFullYear(), wkStart.getMonth(), wkStart.getDate() + k);
+        if (d.getMonth() === cal.m && d.getFullYear() === cal.y) day = d.getDate();
+      }
+      segs.push({ e: e, c0: c0, c1: c1, day: day, isStart: s >= ws, isEnd: t <= we });
+    });
+    segs.sort(function (a, z) { return a.c0 - z.c0 || z.c1 - a.c1; });
+    var laneEnd = [];
+    return segs.filter(function (sg) {
+      var lane = 0;
+      while (lane < MAX_LANES && laneEnd[lane] != null && laneEnd[lane] >= sg.c0) lane++;
+      if (lane >= MAX_LANES) return false;   // rare 3rd overlap stays a plain chip
+      laneEnd[lane] = sg.c1;
+      sg.lane = lane;
+      return true;
+    });
+  }
+  // Whole days between two local midnights. Rounded because a DST week is 167 or
+  // 169 hours, not 168, and a bare division would drift by a column.
+  function dayIndex(from, to) { return Math.round((to.getTime() - from.getTime()) / 864e5); }
+
   function renderMonth() {
     var main = document.getElementById('calMain');
     if (!main) return;
@@ -92,22 +157,58 @@
 
     var dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<span class="cal-dow">' + d + '</span>'; }).join('');
 
-    var cells = '';
-    for (var i = 0; i < startDow; i++) cells += '<span class="cal-cell cal-cell--pad"></span>';
-    for (var day = 1; day <= daysInMonth; day++) {
-      var date = new Date(cal.y, cal.m, day);
-      var evs = evsOn(date);
-      var chips = evs.slice(0, 2).map(function (e) {
-        return '<span class="cal-chip cal-chip--' + esc(e.category) + '">' + esc(e.title) + '</span>';
-      }).join('') + (evs.length > 2 ? '<span class="cal-more">+' + (evs.length - 2) + '</span>' : '');
-      var canClick = evs.length || IS_ADMIN;
-      cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') +
-        (evs.length ? ' cal-cell--has' : '') + (selDay === day ? ' cal-cell--sel' : '') +
-        '"' + (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
-        '<span class="cal-cell__n">' + day + '</span>' + chips + '</button>';
+    // One row per week so a multi-day banner can span with grid-column. Weeks are
+    // walked as real dates (not day numbers), which is what makes an event running
+    // in from the previous month paint correctly across the leading pad cells.
+    var gridStart = new Date(cal.y, cal.m, 1 - startDow);
+    var weeks = Math.ceil((startDow + daysInMonth) / 7);
+    var spanning = EV_ALL.filter(isMulti);
+    var rows = '';
+
+    for (var w = 0; w < weeks; w++) {
+      var wkStart = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + w * 7);
+      var segs = bandSegments(spanning, wkStart);
+      var lanes = segs.reduce(function (n, sg) { return Math.max(n, sg.lane + 1); }, 0);
+
+      var bands = segs.map(function (sg) {
+        return '<button class="cal-band cal-band--' + esc(sg.e.category) +
+          (sg.isStart ? ' cal-band--start' : '') + (sg.isEnd ? ' cal-band--end' : '') +
+          '" style="grid-column:' + (sg.c0 + 1) + '/' + (sg.c1 + 2) + ';grid-row:' + (sg.lane + 1) + '"' +
+          (sg.day ? ' data-day="' + sg.day + '"' : ' disabled') + '>' + esc(sg.e.title) + '</button>';
+      }).join('');
+
+      var cells = '';
+      for (var c = 0; c < 7; c++) {
+        var date = new Date(wkStart.getFullYear(), wkStart.getMonth(), wkStart.getDate() + c);
+        if (date.getMonth() !== cal.m || date.getFullYear() !== cal.y) {
+          cells += '<span class="cal-cell cal-cell--pad"></span>';
+          continue;
+        }
+        var day = date.getDate();
+        var evs = evsOn(date);
+        // Multi-day events are already drawn as the banner above; a chip too would
+        // double-render them. Clickability still keys off the full list.
+        var chipped = evs.filter(function (e) { return !isMulti(e); });
+        var chips = chipped.slice(0, 2).map(function (e) {
+          return '<span class="cal-chip cal-chip--' + esc(e.category) + '">' + esc(e.title) + '</span>';
+        }).join('') + (chipped.length > 2 ? '<span class="cal-more">+' + (chipped.length - 2) + '</span>' : '');
+        var canClick = evs.length || IS_ADMIN;
+        cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') +
+          (evs.length ? ' cal-cell--has' : '') + (selDay === day ? ' cal-cell--sel' : '') +
+          '"' + (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
+          '<span class="cal-cell__n">' + day + '</span>' +
+          // Reserve the height the banner overlay occupies so chips sit below it.
+          // Height comes from --lanes in CSS so it tracks the mobile breakpoint.
+          (lanes ? '<span class="cal-cell__bandpad"></span>' : '') +
+          chips + '</button>';
+      }
+
+      rows += '<div class="cal-week" style="--lanes:' + lanes + '">' +
+        (segs.length ? '<div class="cal-week__bands">' + bands + '</div>' : '') + cells + '</div>';
     }
 
-    main.innerHTML = head + '<div class="cal-grid">' + dows + cells + '</div><div class="cal-detail" id="calDetail"></div>';
+    main.innerHTML = head + '<div class="cal-grid">' + dows + '</div>' +
+      '<div class="cal-weeks">' + rows + '</div><div class="cal-detail" id="calDetail"></div>';
 
     main.querySelectorAll('[data-cal]').forEach(function (b) {
       b.onclick = function () {
@@ -118,7 +219,7 @@
         renderMonth();
       };
     });
-    main.querySelectorAll('.cal-cell[data-day]').forEach(function (c) {
+    main.querySelectorAll('[data-day]').forEach(function (c) {
       c.onclick = function () { showDay(parseInt(c.dataset.day, 10), true); };
     });
     if (selDay != null) showDay(selDay, false);
@@ -133,7 +234,7 @@
     if (!box) return;
     var html = '<h4>' + date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + '</h4>';
     html += evs.map(function (e) {
-      return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || e.category) + '</span>' +
+      return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || esc(e.category)) + '</span>' +
         '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' +
         (e.description ? '<p>' + esc(e.description) + '</p>' : '') + rsvpBar(e) +
         (IS_ADMIN ? '<div class="cal-adminrow"><button class="cal-mini" data-ev-edit="' + e.id + '">✎ Edit</button><button class="cal-mini cal-mini--del" data-ev-del="' + e.id + '">🗑 Delete</button></div>' : '') +
@@ -226,7 +327,10 @@
     var e = ev || {};
     var sd = e.starts_at ? new Date(e.starts_at) : (presetDate || new Date());
     var ed = e.ends_at ? new Date(e.ends_at) : null;
-    var dateVal = sd.getFullYear() + '-' + pad2(sd.getMonth() + 1) + '-' + pad2(sd.getDate());
+    var ymd = function (d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+    var dateVal = ymd(sd);
+    // Defaults to the start date, so an untouched single-day event still saves as one.
+    var endDateVal = ed ? ymd(ed) : dateVal;
     var startVal = e.starts_at && !e.all_day ? pad2(sd.getHours()) + ':' + pad2(sd.getMinutes()) : '';
     var endVal = ed && !e.all_day ? pad2(ed.getHours()) + ':' + pad2(ed.getMinutes()) : '';
     m.innerHTML = '<div class="pmodal__card card-form">' +
@@ -234,7 +338,8 @@
       '<h3 style="color:var(--heading);font-family:var(--display);margin-top:0">' + (ev ? 'Edit event' : 'Add event') + '</h3>' +
       '<div class="field"><label>Title *</label><input id="evmTitle" value="' + esc(e.title || '') + '" /></div>' +
       '<label class="evm-allday"><input type="checkbox" id="evmAllDay"' + (e.all_day ? ' checked' : '') + ' /> All-day event</label>' +
-      '<div class="field"><label>Date *</label><input id="evmDate" type="date" value="' + dateVal + '" /></div>' +
+      '<div class="field"><label>Starts on *</label><input id="evmDate" type="date" value="' + dateVal + '" /></div>' +
+      '<div class="field"><label>Ends on (leave as-is for a single day)</label><input id="evmEndDate" type="date" value="' + endDateVal + '" /></div>' +
       '<div class="evm-times" id="evmTimes"' + (e.all_day ? ' style="display:none"' : '') + '>' +
         '<div class="field"><label>Starts</label><input id="evmStart" type="time" value="' + startVal + '" /></div>' +
         '<div class="field"><label>Ends (optional)</label><input id="evmEnd" type="time" value="' + endVal + '" /></div>' +
@@ -267,11 +372,17 @@
       var isAll = allday.checked;
       var t1 = m.querySelector('#evmStart').value || '12:00';
       var t2 = m.querySelector('#evmEnd').value;
+      var edv = m.querySelector('#evmEndDate').value || dv;
+      if (edv < dv) { st.className = 'form-status err'; st.textContent = 'The end date cannot be before the start date.'; return; }
+      // An end timestamp exists when the event spans days, or when a time was given.
+      // Building it from edv rather than dv is the fix for multi-day events being
+      // silently collapsed onto their start date on every save through this modal.
+      var multiDay = edv !== dv;
       var row = {
         title: title,
         all_day: isAll,
         starts_at: new Date(dv + 'T' + (isAll ? '00:00' : t1)).toISOString(),
-        ends_at: (!isAll && t2) ? new Date(dv + 'T' + t2).toISOString() : null,
+        ends_at: (multiDay || (!isAll && t2)) ? new Date(edv + 'T' + (isAll || !t2 ? '23:59' : t2)).toISOString() : null,
         location: m.querySelector('#evmLoc').value.trim() || null,
         category: m.querySelector('#evmCat').value,
         description: m.querySelector('#evmDesc').value.trim() || null

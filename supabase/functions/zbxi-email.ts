@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
 
     await db(`digest_log`, {
       method: "POST",
-      body: JSON.stringify({ recipients: sent, test: false, note: ("composed: " + String(subject)).slice(0, 180) }),
+      body: JSON.stringify({ kind: "compose", recipients: sent, test: false, note: ("composed: " + String(subject)).slice(0, 180) }),
     });
 
     return json({ sent, attempted: list.length, skipped_optout: optedOut, errors: [...new Set(errors)] });
