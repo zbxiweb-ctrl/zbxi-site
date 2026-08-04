@@ -836,14 +836,33 @@
       return client.from('brothers').update({ email_opt_out: optOut }).eq('user_id', userId);
     },
 
-    /* ---- notifications ---- */
+    /* ---- notifications ----
+       Every one of these is scoped server-side to `recipient = auth.uid()` by
+       the notif_own_* policies; none of them takes a user id to filter on. */
     notifList: function () {
       return client.from('notifications').select('*')
         .order('created_at', { ascending: false }).limit(30)
         .then(function (r) { return r.data || []; });
     },
+    // The full history page. The weekly prune drops anything past 90 days, so
+    // 200 is far more than a real feed holds — one round-trip, no pagination.
+    notifListAll: function () {
+      return client.from('notifications').select('*')
+        .order('created_at', { ascending: false }).limit(200)
+        .then(function (r) { return r.data || []; });
+    },
+    notifMarkRead: function (id) {
+      return client.from('notifications').update({ read: true }).eq('id', id);
+    },
     notifMarkAllRead: function () {
       return client.from('notifications').update({ read: true }).eq('read', false);
+    },
+    notifDelete: function (id) { return client.from('notifications').delete().eq('id', id); },
+    // RLS already confines this to the caller's own rows, but an unfiltered
+    // DELETE is one loosened policy away from wiping the table. Name the
+    // recipient so the filter never depends on the policy alone.
+    notifClearAll: function (uid) {
+      return client.from('notifications').delete().eq('recipient', uid);
     },
 
     /* ---- leadership stats (admin only) ---- */

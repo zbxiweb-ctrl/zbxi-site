@@ -1253,6 +1253,41 @@ body.modal-open { overflow: hidden; }
 .bell__row span { flex: 1; line-height: 1.4; }
 .bell__row em { font-style: normal; color: var(--muted); font-size: .74rem; flex: none; }
 .bell__empty { padding: 1.2rem 1rem; color: var(--muted); font-size: .88rem; text-align: center; }
+.bell__all { display: block; padding: .65rem 1rem; text-align: center; font-size: .8rem; font-weight: 600; color: var(--gold-deep); border-top: 1px solid var(--hairline); }
+.bell__all:hover { background: var(--bg); }
+
+/* ---------- Notifications page (notifications.html) ----------
+   Same row anatomy as the bell dropdown, sized for a full page. Everything is
+   drawn from theme tokens so it flips with dark mode like the rest of the site. */
+.ntf { max-width: 680px; margin: 0 auto; }
+.ntf__bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ntf__count { font-family: var(--display); color: var(--heading); font-weight: 700; }
+.ntf__bar-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ntf__btn { padding: .42rem .85rem; font-size: .78rem; }
+.ntf__day { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 1.4rem 0 .5rem; }
+.ntf__day:first-of-type { margin-top: 0; }
+.ntf__row { display: flex; gap: .75rem; align-items: flex-start; padding: .85rem 1rem; background: var(--surface); border-radius: 12px; margin-bottom: .5rem; box-shadow: var(--shadow-sm); }
+.ntf__row.unread { background: var(--tint); }
+/* The unread mark has to survive on its own — a tinted background alone is not
+   a distinction for a colour-blind brother, and it disappears entirely in dark mode. */
+.ntf__row.unread .ntf__ic::after { content: ''; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; }
+.ntf__ic { position: relative; font-style: normal; flex: none; font-size: 1.05rem; line-height: 1.4; }
+.ntf__body { flex: 1; min-width: 0; }
+.ntf__txt { display: block; line-height: 1.45; color: var(--text); font-size: .9rem; word-wrap: break-word; }
+a.ntf__txt:hover { color: var(--gold-deep); }
+.ntf__time { display: block; font-style: normal; color: var(--muted); font-size: .74rem; margin-top: .3rem; }
+.ntf__reply { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; }
+.ntf__addr { font-size: .78rem; color: var(--muted); word-break: break-all; }
+/* 36px square, not a bare glyph — this is the one destructive control on the
+   page and it sits next to a link, so it needs a thumb-sized target of its own. */
+.ntf__x { flex: none; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: .82rem; line-height: 1; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; }
+.ntf__x:hover { color: #c0392b; background: var(--bg); }
+.ntf__x:disabled { opacity: .4; cursor: default; }
+.ntf__row--flash { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.ntf__empty { text-align: center; color: var(--muted); padding: 2.4rem 1rem; }
+.ntf__empty b { display: block; font-family: var(--display); color: var(--heading); font-size: 1.15rem; margin: .4rem 0 .35rem; }
+.ntf__empty span { display: block; font-size: .88rem; max-width: 34ch; margin: 0 auto; }
+.ntf__note { text-align: center; color: var(--muted); font-size: .76rem; margin-top: 1.4rem; }
 
 /* ---------- Admin stats ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.6rem; }

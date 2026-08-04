@@ -30,11 +30,22 @@
       // deep-link straight to the queue — landing on the default tab made the request look missing
       case 'title_request': return { ic: '🏅', text: '<b>' + esc(p.actor || 'A brother') + '</b> requested the title <b>' + esc(p.title || '') + ' · ' + esc(p.term || '') + '</b>', href: 'admin.html#titles' };
       case 'suggestion_reply': return { ic: '💡', text: 'The webmaster replied to your suggestion: “' + esc(p.text || '') + '”', href: 'board.html' };
-      case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect — tap to email him back (' + esc(p.email || '') + ')', href: p.email ? 'mailto:' + esc(p.email) : '#' };
-      case 'mentor_request': return { ic: '🎓', text: '<b>' + esc(p.actor || 'A brother') + '</b> is looking for a mentor in <b>' + esc(p.field || 'your field') + '</b>' + (p.note ? ': “' + esc(p.note) + '”' : '') + ' — tap to email him', href: p.email ? 'mailto:' + esc(p.email) + '?subject=' + encodeURIComponent('ΖΒΞ mentoring — ' + (p.field || '')) : '#' };
+      // These two used to be bare mailto: links. On a machine with no mail
+      // handler registered a mailto: click does literally nothing — which is
+      // exactly the "tap to email him back does nothing" report. Both now land
+      // on the notifications page, which shows the address as copyable text
+      // next to a pre-filled mail link, so the reply never depends on a handler.
+      case 'connect_request': return { ic: '🤝', text: '<b>' + esc(p.actor || 'A brother') + '</b> wants to connect — open to reply', href: 'notifications.html#n=' + esc(n.id) };
+      case 'mentor_request': return { ic: '🎓', text: '<b>' + esc(p.actor || 'A brother') + '</b> is looking for a mentor in <b>' + esc(p.field || 'your field') + '</b>' + (p.note ? ': “' + esc(p.note) + '”' : '') + ' — open to reply', href: 'notifications.html#n=' + esc(n.id) };
       default:            return { ic: '•', text: esc(n.kind), href: '#' };
     }
   }
+
+  // Shared with notifications-page.js so the kind→copy map has exactly one home.
+  // (Both surfaces render the same rows; a second copy would drift the moment a
+  // new kind is added on one of them.) `refresh` lets that page re-pull the
+  // badge after a bulk mark-read/clear, which otherwise sits stale until focus.
+  window.ZBXINotify = { describe: describe, esc: esc, when: when, refresh: function () { fetchNotifs(); } };
 
   var wrap = null, list = [], unread = 0;
 
@@ -50,12 +61,13 @@
     if (!list.length) { box.innerHTML = '<p class="bell__empty">No notifications yet.</p>'; return; }
     box.innerHTML = list.map(function (n) {
       var d = describe(n);
-      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" href="' + d.href + '" title="' + esc(new Date(n.created_at).toLocaleString()) + '">' +
+      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" data-id="' + esc(n.id) + '" href="' + d.href + '" title="' + esc(new Date(n.created_at).toLocaleString()) + '">' +
         '<i>' + d.ic + '</i><span>' + d.text + '</span><em>' + when(n.created_at) + '</em></a>';
     }).join('');
   }
 
   function fetchNotifs() {
+    if (!wrap) return;
     Z.getUser().then(function (u) {
       if (!u) return;
       Z.notifList().then(function (rows) {
@@ -74,7 +86,8 @@
     wrap.id = 'notifBell';
     wrap.innerHTML =
       '<button class="bell__btn" aria-label="Notifications">🔔<span class="bell__badge" style="display:none"></span></button>' +
-      '<div class="bell__menu"><div class="bell__head">Notifications</div><div class="bell__list"></div></div>';
+      '<div class="bell__menu"><div class="bell__head">Notifications</div><div class="bell__list"></div>' +
+      '<a class="bell__all" href="notifications.html">See all notifications →</a></div>';
     // Nav order must read: 🔔 bell → 🌙 theme toggle → profile chip. header-account.js
     // runs first and puts the toggle right before #navAccount, so insert the bell
     // ahead of the toggle (falling back to the chip when there's no toggle).
@@ -85,13 +98,27 @@
     var menu = wrap.querySelector('.bell__menu');
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var open = menu.classList.toggle('open');
-      if (open) {
-        renderList();
-        if (unread) {
-          Z.notifMarkAllRead().then(function () { unread = 0; badge(); });
-        }
-      }
+      if (menu.classList.toggle('open')) renderList();
+    });
+
+    /* Read is earned by opening the row, not by glancing at the bell. Opening
+       the menu used to mark EVERYTHING read, so anything you meant to come back
+       to lost its unread mark before you'd looked at it. Marking here (rather
+       than on the destination page) keeps it working for rows that link to
+       gallery/board/admin, which know nothing about notifications. */
+    wrap.querySelector('.bell__list').addEventListener('click', function (e) {
+      var row = e.target.closest('.bell__row');
+      if (!row) return;
+      var id = row.getAttribute('data-id');
+      var n = list.filter(function (x) { return x.id === id; })[0];
+      if (!n || n.read) return;                  // nothing to do — let the link go
+      // Hold the navigation until the write lands, otherwise unloading the page
+      // cancels it and the row comes back unread.
+      e.preventDefault();
+      var href = row.getAttribute('href');
+      n.read = true; unread = Math.max(0, unread - 1); badge();
+      var go = function () { location.href = href; };
+      Z.notifMarkRead(id).then(go, go);
     });
     document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) menu.classList.remove('open'); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menu.classList.remove('open'); });

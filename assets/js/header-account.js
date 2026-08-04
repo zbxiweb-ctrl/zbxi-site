@@ -125,6 +125,7 @@
         '<a href="' + MYPROFILE + '" id="navAccount2" role="menuitem"><i>⚙</i> Account</a>' +
         '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> Brother Profile</a>' +
         '<a href="welcome.html" role="menuitem"><i>🎉</i> Orientation</a>' +
+        '<a href="notifications.html" role="menuitem"><i>🔔</i> Notifications</a>' +
         '<div class="nav__menu-divider"></div>' +
         '<button type="button" class="nav__sub-toggle" id="navBrothersOnly" aria-expanded="false">' +
           '<i>🔒</i> Brothers Only <em class="nav__sub-caret">▾</em>' +
