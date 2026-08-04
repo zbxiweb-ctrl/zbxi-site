@@ -58,4 +58,9 @@ The "Are you a brother?" portal, admin approval (`admin.html`), and live family-
 
 ## Deploy
 
-From inside this folder: `vercel --prod` (or drag it into Netlify). It's fully static. To use `zbxi.org`, point the domain at the host after deploying.
+**`git push` to `main` is the deploy.** The repo is connected to Cloudflare Workers, which rebuilds and
+goes live in under a minute — there is no staging step, so a push puts changes in front of every brother.
+Site config lives in `wrangler.jsonc` (static assets + the custom 404) and `_headers` (CSP and caching).
+
+Note the database and the email functions are **not** part of that build: SQL goes to Supabase, and
+`supabase/functions/*.ts` are deployed to Supabase separately. See `OWNERSHIP.md`.

@@ -10,9 +10,10 @@ This document is the "keys to the kingdom" map for the ΖΒΞ website. Keep it c
 |---|---|---|---|---|
 | **Chapter account** | The central Google account that owns everything below | `zbxi.web@gmail.com` (example) | _fill in_ | Free |
 | **Domain** | The web address (e.g. `zbxigeneseo.org`) | Cloudflare Registrar (or Namecheap) | Chapter account | ~$10–12 / yr |
-| **Code** | This website's source | GitHub repo `github.com/<org>/zbxi-site` | Chapter GitHub org | Free |
-| **Hosting** | Runs & serves the site | Vercel project `2026-07-07-zbxi-fraternity` | _current maintainer_ + chapter account as member | Free (Hobby) |
-| **Members backend** | Brother accounts, profiles, family tree | Supabase project (see `supabase/schema.sql`) | Chapter account | Free tier |
+| **Code** | This website's source | GitHub repo `github.com/zbxiweb-ctrl/zbxi-site` (public) | Chapter GitHub account | Free |
+| **Hosting** | Runs & serves the site | **Cloudflare Workers**, worker `zbxi-site` (config: `wrangler.jsonc`) | Chapter Cloudflare account | Free |
+| **Members backend** | Brother accounts, profiles, family tree | Supabase project `zbxi-site` (see `supabase/schema.sql`) | Chapter account | Free tier |
+| **Email delivery** | Password resets, sign-up confirmations, the monthly digest, invites | Resend, sending domain `send.zetabetaxi.com` | Chapter account | Free (100/day, 3,000/mo) |
 | **Contact form** | Delivers messages to an inbox | Formspree | Chapter account | Free tier |
 
 ## Where the config lives
@@ -31,20 +32,31 @@ The whole site is plain HTML/CSS/JS in this repo — no build step.
 
 ## How to deploy
 
-- **Auto-deploy (preferred):** once the GitHub repo is connected to Vercel, every `git push` to the `main` branch redeploys automatically. Workflow: edit → `git add -A && git commit -m "…" && git push`.
-- **Manual (fallback):** from this folder, `npx vercel --prod`.
+- **Push to deploy.** The GitHub repo is connected to Cloudflare, so every `git push` to `main` rebuilds
+  and goes live in under a minute. Workflow: edit → `git add -A && git commit -m "…" && git push`.
+  **A push IS a production deploy** — there is no staging step.
+- **Headers/CSP** live in `_headers`; the not-found behaviour lives in `wrangler.jsonc`
+  (`assets.not_found_handling: "404-page"`). Both are read from the repo at build time.
+- **The database and the email functions deploy separately** from the website. SQL changes are applied to
+  Supabase, and the `supabase/functions/*.ts` edge functions are deployed to Supabase — neither is part of
+  the Cloudflare build, so pushing the site alone will not update them.
 
 ## How to transfer to a future officer (5-minute version)
 
 1. **Chapter account:** change the password of the central Google account and give it to the new maintainer/e-board. This alone conveys most control.
 2. **Domain:** it's already under the chapter account at the registrar — just ensure the new person has the account login. (Registrar transfers between accounts have ICANN timing rules; keeping it in the chapter account avoids that.)
 3. **GitHub:** add the new maintainer to the chapter GitHub org, or transfer the repo (GitHub → repo Settings → Transfer).
-4. **Vercel:** add them as a member of the Vercel project (Project → Settings → Members), or re-import the GitHub repo into their Vercel.
-5. **Supabase / Formspree:** both are under the chapter account — hand over the login; optionally add them as project members.
+4. **Cloudflare:** hand over the chapter Cloudflare login (it holds both the hosting and the DNS). If they'd rather use their own account, re-connect the GitHub repo to it and repoint the domain.
+5. **Supabase / Resend / Formspree:** all under the chapter account — hand over the login; optionally add them as project members. **Rotate the Resend API key and the Supabase keys on handover**, and remove any GitHub deploy keys under repo Settings → Deploy keys.
 
 ## Cost reality (for the chapter)
 
-Build $0 · Vercel $0 (Hobby tier — fine for a non-revenue club) · Supabase $0 · Formspree $0 · **Domain ≈ $10–12/yr** — the only recurring cost. Compare to vendor quotes of $2,500–4,000. Only upgrade Vercel to Pro ($20/mo) if the site ever sells something.
+Cloudflare $0 · Supabase $0 · Resend $0 · Formspree $0 · **Domain ≈ $10–12/yr** — the only recurring cost. Compare to vendor quotes of $2,500–4,000.
+
+Where the free tiers actually bite, in the order you'll hit them:
+1. **Resend: 100 emails/day.** With 100 brothers holding accounts, a single all-brothers email is already at the ceiling — and password-reset emails come out of the same allowance, so a big send can stop brothers resetting their passwords that day. Resend Pro is $20/mo.
+2. **Supabase Free keeps no database backups.** Pro ($25/mo) adds point-in-time recovery.
+3. Storage and bandwidth have years of headroom; ignore them.
 
 ## Maintainers log
 

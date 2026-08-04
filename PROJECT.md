@@ -4,7 +4,7 @@ type: website
 status: active
 tags: [website, fraternity, zbxi, geneseo]
 created: 2026-07-07
-url: "https://2026-07-07-zbxi-fraternity.vercel.app"
+url: "https://zetabetaxi.com"
 ---
 
 # Zeta Beta Xi (ΖΒΞ) — Fraternity Website
