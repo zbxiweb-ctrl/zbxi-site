@@ -177,6 +177,37 @@ async function send(to: string, subject: string, html: string, unsubUrl: string)
   return r.ok ? { ok: true } : { ok: false, error: await r.text() };
 }
 
+// The literal slot the drainer swaps for each brother's own unsubscribe URL.
+const UNSUB_MARK = "{{UNSUB}}";
+
+// Hand a whole send to the queue instead of blasting it. The body is stored ONCE
+// on email_batches; email_queue gets one row per brother. zbxi-drain releases
+// them at the cap claim_email_batch() enforces (60/day), which is what keeps
+// >= 40/day of the Resend allowance free for password resets. See upgrade35.sql.
+async function enqueue(
+  kind: string,
+  subject: string,
+  htmlTemplate: string,
+  list: { email: string; unsub: string | null }[],
+  createdBy: string,
+  attachments?: unknown,
+): Promise<string> {
+  const batch = await db(`email_batches`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      kind, subject, html: htmlTemplate, created_by: createdBy,
+      ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
+    }),
+  });
+  const batchId = batch[0].id;
+  await db(`email_queue`, {
+    method: "POST",
+    body: JSON.stringify(list.map((r) => ({ batch_id: batchId, to_email: r.email, unsub_url: r.unsub }))),
+  });
+  return batchId;
+}
+
 // A plain admin-only email (no List-Unsubscribe) — operational alerts, not a
 // broadcast, so email_opt_out never applies.
 async function sendPlain(to: string, subject: string, html: string) {
@@ -282,29 +313,48 @@ Deno.serve(async (req) => {
     if (!list.length) return new Response(JSON.stringify({ sent: 0, note: "no recipients" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
     const subject = `ΖΒΞ — ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })} brotherhood digest`;
-    let sent = 0;
-    const errors: string[] = [];
-    for (const r of list) {
-      const unsub = unsubBase + r.token;
-      const res = await send(r.email, subject, html(unsub), unsub);
-      if (res.ok) sent++;
-      else if (res.dry) errors.push("RESEND_API_KEY not set");
-      else errors.push(String(res.error).slice(0, 120));
+
+    // A rehearsal is ONE email to the admin and its whole value is instant
+    // feedback, so it still goes out directly rather than waiting for a cron tick.
+    if (test) {
+      let sent = 0;
+      const errors: string[] = [];
+      for (const r of list) {
+        const unsub = unsubBase + r.token;
+        const res = await send(r.email, subject, html(unsub), unsub);
+        if (res.ok) sent++;
+        else if (res.dry) errors.push("RESEND_API_KEY not set");
+        else errors.push(String(res.error).slice(0, 120));
+      }
+      await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: sent, test: true, note: (empty ? "quiet month; " : "") + (errors[0] || "") || null }) });
+      return new Response(JSON.stringify({ sent, attempted: list.length, test: true, counts, errors: [...new Set(errors)] }), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
     }
 
-    await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: sent, test, note: (empty ? "quiet month; " : "") + (errors[0] || "") || null }) });
+    // The real send is QUEUED, never blasted. There are ~100 recipients and
+    // Resend allows 100/day across the whole account, so a direct loop consumed
+    // the entire day and silently blocked every password reset until midnight.
+    const batchId = await enqueue(
+      "digest", subject, html(UNSUB_MARK),
+      list.map((r) => ({ email: r.email, unsub: unsubBase + r.token })),
+      ADM,
+    );
+
+    await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: list.length, test: false, note: ((empty ? "quiet month; " : "") + `queued batch ${batchId}`).slice(0, 180) }) });
 
     // Storage nudge rides the real send only (never the dry preview). One bucket
-    // list, reused for both the alert decision and the summary. test=1 is a
-    // rehearsal, so it reports the figure but never actually alerts.
+    // list, reused for both the alert decision and the summary. It stays on the
+    // direct path deliberately: one admin-only alert a month is nowhere near the
+    // cap, and an operational warning that arrives days late is useless.
     const storage = await galleryUsage();
     let storageAlerted = false;
-    if (!test && storage && storage.bytes > R2_ALERT_BYTES) {
+    if (storage && storage.bytes > R2_ALERT_BYTES) {
       const res = await sendPlain(ADM, `ΖΒΞ — gallery storage at ${gb(storage.bytes).toFixed(1)} GB of ${R2_LIMIT_GB} GB`, storageAlertHtml(storage.bytes));
       storageAlerted = !!res.ok;
     }
 
-    return new Response(JSON.stringify({ sent, attempted: list.length, test, counts, storageGb: storage ? +gb(storage.bytes).toFixed(2) : null, storageAlerted, errors: [...new Set(errors)] }), {
+    return new Response(JSON.stringify({ queued: list.length, batchId, test: false, counts, storageGb: storage ? +gb(storage.bytes).toFixed(2) : null, storageAlerted }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (e) {

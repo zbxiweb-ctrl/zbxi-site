@@ -157,7 +157,14 @@
           return Z.sendEmail(p).then(function (r) { return r.json(); });
         }).then(function (j) {
           if (!j) return;
-          say(j.sent ? '✓ Sent to ' + j.sent + ' of ' + j.attempted + ' brothers.' : '⚠ ' + (j.error || (j.errors || []).join('; ') || 'Send failed.'), !j.sent);
+          // Queued, not sent on the spot: about 60 leave per day so a big send
+          // can never consume the whole daily allowance and block the password
+          // resets that share it. Nothing more to do — it finishes on its own.
+          if (!j.queued) { say('⚠ ' + (j.error || (j.errors || []).join('; ') || 'Send failed.'), true); return; }
+          var days = Math.ceil(j.queued / 60);
+          say('✓ Queued for ' + j.queued + ' brother' + (j.queued === 1 ? '' : 's') +
+              ' — about 60 go out per day, so this finishes in ' + days + ' day' + (days === 1 ? '' : 's') +
+              '. You can close this page.');
         }).catch(function (e) { if (String(e.message) !== 'handled') say('⚠ Send failed.', true); })
           .finally(function () { busy(sendBtn, false, 'Send'); });
       };

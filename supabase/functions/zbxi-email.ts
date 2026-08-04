@@ -109,6 +109,39 @@ function shell(subject: string, message: string, unsubUrl: string) {
 </table></td></tr></table></body></html>`;
 }
 
+// The literal slot the drainer swaps for each brother's own unsubscribe URL.
+const UNSUB_MARK = "{{UNSUB}}";
+
+// Hand a whole send to the queue instead of blasting it. The body — and the up
+// to 4 MB of attachments — is stored ONCE on email_batches; email_queue gets one
+// small row per brother. Storing attachments per recipient would be ~1.4 GB for
+// the full roster. zbxi-drain releases rows at the cap claim_email_batch()
+// enforces (60/day), keeping >= 40/day of the Resend allowance free for password
+// resets. See upgrade35.sql.
+async function enqueue(
+  kind: string,
+  subject: string,
+  htmlTemplate: string,
+  list: { email: string; unsub: string | null }[],
+  createdBy: string,
+  attachments?: unknown,
+): Promise<string> {
+  const batch = await db(`email_batches`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      kind, subject, html: htmlTemplate, created_by: createdBy,
+      ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}),
+    }),
+  });
+  const batchId = batch[0].id;
+  await db(`email_queue`, {
+    method: "POST",
+    body: JSON.stringify(list.map((r) => ({ batch_id: batchId, to_email: r.email, unsub_url: r.unsub }))),
+  });
+  return batchId;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
@@ -194,19 +227,22 @@ Deno.serve(async (req) => {
 
     if (!list.length) return json({ sent: 0, note: "no recipients" });
 
-    let sent = 0;
-    const errors: string[] = [];
-    for (const r of list) {
-      const err = await send(r.email, unsubBase + r.token);
-      if (err) errors.push(err); else sent++;
-    }
+    // QUEUED, not blasted. A roster-wide send is ~100 emails and Resend allows
+    // 100/day across the whole account — including the password-reset mail
+    // Supabase Auth sends. Looping here spent the day's entire allowance in
+    // seconds and locked brothers out of resetting their passwords.
+    const batchId = await enqueue(
+      "compose", String(subject), shell(subject, message, UNSUB_MARK),
+      list.map((r) => ({ email: r.email, unsub: unsubBase + r.token })),
+      caller || "cron", resendAttachments,
+    );
 
     await db(`digest_log`, {
       method: "POST",
-      body: JSON.stringify({ kind: "compose", recipients: sent, test: false, note: ("composed: " + String(subject)).slice(0, 180) }),
+      body: JSON.stringify({ kind: "compose", recipients: list.length, test: false, note: ("composed: " + String(subject)).slice(0, 180) }),
     });
 
-    return json({ sent, attempted: list.length, skipped_optout: optedOut, errors: [...new Set(errors)] });
+    return json({ queued: list.length, batchId, skipped_optout: optedOut });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

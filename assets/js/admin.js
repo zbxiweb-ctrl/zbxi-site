@@ -807,14 +807,15 @@
         if (emails.length > 25) { st.className = 'form-status err'; st.textContent = 'Send at most 25 at a time.'; return; }
         var dupes = emails.filter(function (e) { var i = invited[e.toLowerCase()]; return i && i.sent_at; });
         if (dupes.length && !confirm('Already invited: ' + dupes.join(', ') + '\n\nSend again anyway?')) return;
-        btn.disabled = true; btn.textContent = 'Sending…';
+        btn.disabled = true; btn.textContent = 'Queueing…';
         st.className = 'form-status'; st.textContent = '';
         Z.inviteBrothers(emails, null).then(function (r) {
           if (r.error) { st.className = 'form-status err'; st.textContent = r.error; }
           else {
             var failed = (r.results || []).filter(function (x) { return !x.ok; });
             st.className = failed.length ? 'form-status err' : 'form-status ok';
-            st.textContent = '✓ Sent ' + r.sent + ' invitation' + (r.sent === 1 ? '' : 's') +
+            st.textContent = '✓ Queued ' + r.queued + ' invitation' + (r.queued === 1 ? '' : 's') +
+              ' — they go out over the next day or so.' +
               (failed.length ? ' · ' + failed.length + ' failed: ' + failed[0].error : '');
             setTimeout(function () { renderList(); }, 1200);
           }
@@ -835,13 +836,20 @@
       function runDigest(test, btn) {
         var st = document.getElementById('digStatus');
         if (!test && !confirm('Send the digest to EVERY brother with an account?\n\nSend yourself a test first if you haven\'t.')) return;
-        btn.disabled = true; var label = btn.textContent; btn.textContent = 'Sending…';
+        btn.disabled = true; var label = btn.textContent; btn.textContent = test ? 'Sending…' : 'Queueing…';
         st.className = 'form-status'; st.textContent = '';
         Z.digestSend(test).then(function (r) {
           if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
           if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
           st.className = 'form-status ok';
-          st.textContent = '✓ Digest sent to ' + r.sent + ' ' + (test ? 'inbox (you)' : 'brother' + (r.sent === 1 ? '' : 's'));
+          // A test still sends immediately; the real digest is queued and
+          // trickles out at about 60/day so it can never eat the whole of
+          // Resend's daily allowance and block brothers' password resets.
+          st.textContent = test
+            ? '✓ Digest sent to your inbox.'
+            : '✓ Queued for ' + r.queued + ' brother' + (r.queued === 1 ? '' : 's') +
+              ' — about 60 go out per day, so this finishes in ' + Math.ceil(r.queued / 60) +
+              ' day' + (Math.ceil(r.queued / 60) === 1 ? '' : 's') + '. You can close this page.';
         }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
           .finally(function () { btn.disabled = false; btn.textContent = label; });
       }
@@ -2329,7 +2337,7 @@
         '<p>Tick <b>All-day</b> for things without a start time. If you type a location, it becomes a map link automatically. Brothers RSVP with one tap so you know who\'s coming.</p>') +
       sec('✉️ Invite brothers (the most valuable thing you can do)', '<p>Most brothers on the tree have <b>no account</b> — so they never see the gallery, the board, the directory, or the digest. The <b>✉️ Invite</b> tab fixes that:</p><ol>' +
         '<li>Paste up to 25 email addresses, one per line.</li>' +
-        '<li>Press <b>Send invitations</b>. Each brother gets a personal email saying his name is already on the tree, with a button to claim it.</li>' +
+        '<li>Press <b>Send invitations</b>. Each brother gets a personal email saying his name is already on the tree, with a button to claim it. These are queued alongside the newsletter, so they arrive within a day rather than instantly.</li>' +
         '<li>The link is smart: if he already has an account it opens <b>Log in</b>; if not, it opens <b>Create account</b> with his email filled in.</li>' +
         '<li>When he signs up he lands in your <b>Pending</b> tab — approve him once. The invite list marks him <b>● Joined</b>.</li></ol>' +
         '<p>Only invite brothers you know. This is a personal invitation, not a mailing list.</p>') +
@@ -2337,6 +2345,7 @@
         '<li><b>👁 Preview it</b> — see exactly what this month\'s email looks like. Sends nothing.</li>' +
         '<li><b>✉️ Send a test to me</b> — mails it only to you. Always do this first.</li>' +
         '<li><b>📬 Send to all brothers</b> — sends it now, ahead of schedule. Rarely needed.</li></ul>' +
+        '<p><b>Big sends trickle out, on purpose.</b> Our email service allows 100 messages a day for the whole site, and password-reset emails come out of that same allowance. So a message to every brother is <i>queued</i> and goes out at about 60 a day instead of all at once — that way a newsletter can never stop a brother resetting his password. You\'ll see “Queued for N brothers”; it finishes on its own and you can close the page. <b>Send a test to me</b> and <b>Preview</b> are instant, as always.</p>' +
         '<p>Every email has a one-click unsubscribe, and brothers can toggle it themselves under <b>My Profile → Account</b>. If nothing happened in the chapter that month, the email says so gracefully rather than arriving empty.</p>') +
       sec('🏅 Update the Greek Excellence awards', '<p>The gold medallions on the homepage come from the <b>🏅 Awards</b> tab. When Geneseo announces next year\'s Greek awards: <b>+ Add award</b> → type the year (e.g. “2025–26”), pick the pillar, give it its title. The homepage switches to the newest year automatically and keeps older years as an archive you can flip through.</p>') +
       sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +

@@ -4,8 +4,8 @@
 // which is what makes the digest and the directory worth anything.
 const SB = Deno.env.get("SUPABASE_URL")!;
 const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RESEND = Deno.env.get("RESEND_API_KEY") || "";
-const FROM = Deno.env.get("DIGEST_FROM") || "Zeta Beta Xi <onboarding@resend.dev>";
+// No RESEND_API_KEY / DIGEST_FROM here any more: this function no longer talks
+// to Resend at all, it only enqueues. zbxi-drain owns the provider credentials.
 // Admin identity comes from the DB's single source of truth, public.admin_email()
 // (see upgrade14.sql), cached per cold start. No hard-coded email here.
 let _adminEmail: string | null = null;
@@ -40,6 +40,30 @@ async function db(path: string, init: RequestInit = {}) {
   // PostgREST returns 201 + empty body on insert; never JSON.parse("").
   const body = await r.text();
   return body ? JSON.parse(body) : null;
+}
+
+// Hand a message to the queue instead of calling Resend here. zbxi-drain
+// releases rows at the cap claim_email_batch() enforces (60/day), which is what
+// keeps >= 40/day of the Resend allowance free for password resets.
+// See upgrade35.sql.
+async function enqueue(
+  kind: string,
+  subject: string,
+  htmlTemplate: string,
+  list: { email: string; unsub: string | null }[],
+  createdBy: string,
+): Promise<string> {
+  const batch = await db(`email_batches`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ kind, subject, html: htmlTemplate, created_by: createdBy }),
+  });
+  const batchId = batch[0].id;
+  await db(`email_queue`, {
+    method: "POST",
+    body: JSON.stringify(list.map((r) => ({ batch_id: batchId, to_email: r.email, unsub_url: r.unsub }))),
+  });
+  return batchId;
 }
 
 async function isAdmin(req: Request) {
@@ -118,28 +142,32 @@ Deno.serve(async (req) => {
       const row = (await up.json())[0];
       const link = `${SITE}/?invite=${row.token}#brothers-portal`;
 
+      // QUEUED here, not sent. This endpoint accepts 25 addresses per call, so
+      // four clicks was 100 emails — Resend's ENTIRE daily allowance, which is
+      // shared with the password-reset mail Supabase Auth sends. Of all the
+      // senders this was the one most able to lock brothers out by accident.
+      //
+      // Every invite carries its own claim link, so each gets its own one-row
+      // batch instead of sharing a template. unsub_url is null on purpose: a
+      // transactional invite must not carry a List-Unsubscribe header.
       let error: string | null = null;
-      if (!RESEND) {
-        error = "RESEND_API_KEY not set";
-      } else {
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: FROM, to: email, subject: "Your place in the ΖΒΞ family tree is waiting", html: body(name, link) }),
-        });
-        if (!r.ok) error = (await r.text()).slice(0, 140);
+      try {
+        await enqueue("invite", "Your place in the ΖΒΞ family tree is waiting",
+                      body(name, link), [{ email, unsub: null }], await adminEmail());
+      } catch (e) {
+        error = String(e).slice(0, 140);
       }
 
-      // Stamp the outcome so the admin sees exactly what happened.
-      await fetch(`${SB}/rest/v1/invites?id=eq.${row.id}`, {
+      // sent_at now means "accepted for delivery"; zbxi-drain performs the send
+      // within a day. `error` still records a failure to queue at all.
+      await db(`invites?id=eq.${row.id}`, {
         method: "PATCH",
-        headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
         body: JSON.stringify({ sent_at: error ? null : new Date().toISOString(), error }),
       });
       results.push({ email, ok: !error, error });
     }
 
-    return new Response(JSON.stringify({ sent: results.filter((r) => r.ok).length, results }), {
+    return new Response(JSON.stringify({ queued: results.filter((r) => r.ok).length, results }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (e) {
