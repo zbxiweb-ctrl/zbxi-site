@@ -188,8 +188,9 @@
     var have = {};
     state.tools.forEach(function (t) { have[t.id] = true; });
     if (have.events) Z.eventsList().then(function (rows) {
-      var now = Date.now();
-      var n = rows.filter(function (e) { return new Date(e.starts_at).getTime() >= now; }).length;
+      // Counts by END, not start — an event happening RIGHT NOW is still upcoming
+      // as far as this tile is concerned, and used to silently drop off it.
+      var n = rows.filter(function (e) { return !window.ZBXIEvent.isPast(e); }).length;
       setMeta('events', n ? n + ' upcoming' : 'None upcoming');
     }).catch(function () { setMeta('events', 'Open →'); });
     if (have.suggest) Z.suggestionsMine().then(function (rows) {
@@ -214,10 +215,11 @@
     Z.eventsList().then(function (rows) {
       state.events = rows;
       var list = rows.length ? rows.map(function (e) {
-        var d = new Date(e.starts_at);
-        var when = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
-          ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        var past = d.getTime() < Date.now();
+        // Both via event-when.js. This row used to format from starts_at alone,
+        // so a 13-day Reunion read as one moment; and `past` keyed on the START,
+        // so a still-running event greyed itself out from its second day.
+        var when = window.ZBXIEvent.when(e);
+        var past = window.ZBXIEvent.isPast(e);
         return '<div class="admin-row' + (past ? ' admin-row--past' : '') + '" data-ev="' + e.id + '">' +
           '<div class="admin-row__ph">📅</div>' +
           '<div class="admin-row__info"><b>' + esc(e.title) + (e.all_day ? ' <span class="tab-count">all-day</span>' : '') + '</b>' +
@@ -225,8 +227,12 @@
           '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
+      // "Open the calendar" mirrors the Gallery tool's affordance — this tool
+      // manages the same events brothers see on /events, and there was no way to
+      // get there from here.
       q.innerHTML = '<p class="admin-hint">Add and edit the chapter calendar. Every event is visible to signed-in brothers.</p>' +
-        '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
+        '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button> ' +
+        '<a class="btn btn--ghost" href="events.html">Open the calendar →</a></p>' + list;
       document.getElementById('evNew').onclick = function () { openEventEdit(null); };
       q.querySelectorAll('[data-ev]').forEach(function (el) {
         var ev = state.events.filter(function (x) { return x.id === el.dataset.ev; })[0];

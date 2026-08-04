@@ -583,10 +583,11 @@
         '</div>' +
         '<p class="form-status" id="annStatus">' + (ann.active ? '● Banner is currently LIVE on the site.' : '') + '</p></div>';
       var list = rows.length ? rows.map(function (e) {
-        var d = new Date(e.starts_at);
-        var when = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
-          ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        var past = d.getTime() < Date.now();
+        // Both via event-when.js — this was a byte-identical copy of the Officer
+        // Console's block, so a multi-day event read as one moment here too, and
+        // `past` keyed on the START greyed out events that were still running.
+        var when = window.ZBXIEvent.when(e);
+        var past = window.ZBXIEvent.isPast(e);
         return '<div class="admin-row' + (past ? ' admin-row--past' : '') + '" data-ev="' + e.id + '">' +
           '<div class="admin-row__ph">📅</div>' +
           '<div class="admin-row__info"><b>' + esc(e.title) + (e.all_day ? ' <span class="tab-count">all-day</span>' : '') + '</b>' +

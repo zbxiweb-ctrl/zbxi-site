@@ -19,20 +19,14 @@
   var RSVPS = [], RSVP_DIR = {}, CAN_RSVP = false;
   var cal = (function () { var d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; })();
 
-  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
-  function evEnd(e) { return e.ends_at ? new Date(e.ends_at) : new Date(new Date(e.starts_at).getTime() + 3 * 3600 * 1000); }
-
   /* -- multi-day events -----------------------------------------------------
-     An event covers every day from its start date through its end date. Compare
-     whole DAYS, not timestamps: a 6pm–2am event ends on the following calendar
-     day and must paint on both. */
-  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-  function evSpan(e) {
-    var s = startOfDay(new Date(e.starts_at));
-    var t = startOfDay(evEnd(e));
-    return { s: s, e: t < s ? s : t };
-  }
-  function isMulti(e) { var sp = evSpan(e); return sp.e.getTime() > sp.s.getTime(); }
+     These now live in event-when.js so the Officer and Admin consoles share one
+     copy — they each had their own that ignored ends_at entirely. Aliased rather
+     than inlined so every call site below stays untouched. */
+  var EVW = window.ZBXIEvent;
+  var sameDay = EVW.sameDay, evEnd = EVW.end, startOfDay = EVW.startOfDay;
+  var evSpan = EVW.span, isMulti = EVW.isMulti, evTime = EVW.time;
+
   function evsOn(date) {
     var d = startOfDay(date).getTime();
     return EV_ALL.filter(function (e) {
@@ -41,23 +35,6 @@
     });
   }
 
-  function evTime(e) {
-    var MD = { month: 'short', day: 'numeric' }, HM = { hour: 'numeric', minute: '2-digit' };
-    var s = new Date(e.starts_at);
-    if (isMulti(e)) {
-      // Without the date on both ends, a 13-day event reads as a one-hour one.
-      var end = evEnd(e);
-      if (e.all_day) return s.toLocaleDateString(undefined, MD) + ' – ' + end.toLocaleDateString(undefined, MD);
-      return s.toLocaleDateString(undefined, MD) + ', ' + s.toLocaleTimeString(undefined, HM) +
-        ' – ' + end.toLocaleDateString(undefined, MD) + ', ' + end.toLocaleTimeString(undefined, HM);
-    }
-    if (e.all_day) return 'All day';
-    var t = s.toLocaleTimeString(undefined, HM);
-    if (e.ends_at && sameDay(s, new Date(e.ends_at))) {
-      t += ' – ' + new Date(e.ends_at).toLocaleTimeString(undefined, HM);
-    }
-    return t;
-  }
   function evLoc(e) {
     if (!e.location) return '';
     return ' · <a class="ev-loc" target="_blank" rel="noopener" href="https://maps.google.com/?q=' +

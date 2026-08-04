@@ -98,12 +98,21 @@ function body(first: string | null, activity: string) {
 async function activityHtml(): Promise<string> {
   const now = new Date().toISOString();
   const [events, threads] = await Promise.all([
-    db(`events?select=title,starts_at,location&starts_at=gte.${encodeURIComponent(now)}&order=starts_at.asc&limit=2`),
+    // Include an event that is happening RIGHT NOW: filtering on starts_at alone
+    // hid a multi-day event from every brother approved after its first morning.
+    // ends_at null means no end was given, so fall back to starts_at.
+    db(`events?select=title,starts_at,ends_at,location&or=(ends_at.gte.${encodeURIComponent(now)},and(ends_at.is.null,starts_at.gte.${encodeURIComponent(now)}))&order=starts_at.asc&limit=2`),
     db(`forum_threads?select=title,created_at&order=created_at.desc&limit=3`),
   ]);
   const rows: string[] = [];
-  for (const e of events as { title: string; starts_at: string; location: string | null }[]) {
-    const when = new Date(e.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  for (const e of events as { title: string; starts_at: string; ends_at: string | null; location: string | null }[]) {
+    const md = (s: string) => new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+    const dayOf = (s: string) => new Date(s).toLocaleDateString("en-US", { timeZone: "America/New_York" });
+    // Show the range when it spans calendar days, so a 13-day reunion does not
+    // read as a single afternoon.
+    const when = (e.ends_at && dayOf(e.ends_at) !== dayOf(e.starts_at))
+      ? md(e.starts_at) + " – " + md(e.ends_at)
+      : md(e.starts_at);
     rows.push(`<div style="font:400 13px/1.8 Helvetica,Arial;color:#3d4657">📅 <b>${esc(e.title)}</b> — ${esc(when)}${e.location ? " · " + esc(e.location) : ""}</div>`);
   }
   for (const t of threads as { title: string }[]) {

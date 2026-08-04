@@ -2007,6 +2007,26 @@ body.tree-lock { overflow: hidden; }
 .nav__menu {
   width: 262px; padding: 0 0 .45rem; border-radius: 16px; overflow: hidden;
   animation: menuIn .18s ease both;
+  /* The menu hangs off a position:fixed header, so anything below the bottom of
+     the viewport is UNREACHABLE — page scrolling cannot move a fixed element, and
+     with no height cap the menu had no scrollbar of its own either. A drag just
+     fell through to the document and scrolled the page behind it. Expanding
+     "Brothers Only" adds ~335px, which pushed "Sign out" off-screen on every
+     phone AND on any window under ~811px tall for the admin (a 1280x800 desktop
+     failed too — this was never mobile-only).
+     84px = the 59-61px the menu starts at + ~25px so it never kisses the edge.
+     svh, not vh or dvh: svh is the SMALL viewport — iOS Safari with its toolbars
+     showing — so it fits whether the bars are up or hidden, and unlike dvh it
+     will not resize mid-scroll. The plain vh line above is the fallback for iOS
+     before 15.4, which ignores the svh line entirely.
+     overflow: hidden above stays — it is what clips the head gradient to the
+     16px radius; overflow-y: auto after it computes to x-hidden / y-auto.
+     overscroll-behavior stops a flick that reaches the end of the list from
+     chaining into the page behind (same trick as .bmodal__card). */
+  max-height: calc(100vh - 84px);
+  max-height: calc(100svh - 84px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @keyframes menuIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .nav__menu-head {

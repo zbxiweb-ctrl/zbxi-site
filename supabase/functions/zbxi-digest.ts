@@ -83,7 +83,12 @@ async function build(adminUserId: string | null) {
   // then rejects (22007). nowISO is toISOString() ...Z form, so it has no +.
   const [newMembersRaw, events, jobs, photos, classes] = await Promise.all([
     db(`brothers?status=eq.verified&user_id=not.is.null&created_at=gt.${encodeURIComponent(since)}&select=full_name,pledge_class,user_id&limit=12`),
-    db(`events?starts_at=gt.${nowISO}&order=starts_at.asc&limit=5&select=title,starts_at,location,all_day`),
+    // "Coming up" must include an event that is HAPPENING RIGHT NOW. Filtering on
+    // starts_at alone dropped a multi-day event the morning after it began — the
+    // Reunion would have disappeared from the digest for 12 of its 13 days.
+    // An event is still relevant while ends_at is in the future; when ends_at is
+    // null there is no end, so fall back to starts_at.
+    db(`events?or=(ends_at.gte.${nowISO},and(ends_at.is.null,starts_at.gte.${nowISO}))&order=starts_at.asc&limit=5&select=title,starts_at,ends_at,location,all_day`),
     db(`forum_threads?category=eq.opportunities&created_at=gt.${encodeURIComponent(since)}&order=created_at.desc&limit=5&select=id,title`),
     db(`gallery_posts?created_at=gt.${encodeURIComponent(since)}&select=id`),
     db(`brothers?pledge_class=not.is.null&select=pledge_class`),
@@ -119,6 +124,17 @@ async function build(adminUserId: string | null) {
     return `${day} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}`;
   };
 
+  // Spell out the whole range for a multi-day event. Compares CALENDAR DAYS in
+  // chapter-local time, not raw timestamps, so a 6pm-2am event is one line and a
+  // 13-day reunion is a range. (The browser has this in event-when.js; an edge
+  // function cannot share it, hence the small local copy.)
+  const nyDay = (s: string) => new Date(s).toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  const fmtWhen = (e: any) => {
+    const start = fmtDate(e.starts_at, e.all_day);
+    if (!e.ends_at || nyDay(e.ends_at) === nyDay(e.starts_at)) return start;
+    return `${start} – ${fmtDate(e.ends_at, e.all_day)}`;
+  };
+
   const sec = (title: string, rows: string[]) =>
     rows.length
       ? `<h3 style="font:700 15px Georgia,serif;color:#0A1F44;margin:26px 0 8px;border-bottom:1px solid #e8dfc6;padding-bottom:6px">${title}</h3>
@@ -126,7 +142,7 @@ async function build(adminUserId: string | null) {
       : "";
 
   const blocks = [
-    sec("🗓️ Coming up", (events as any[]).map((e) => `<b>${esc(e.title)}</b> — ${fmtDate(e.starts_at, e.all_day)}${e.location ? ` · ${esc(e.location)}` : ""}`)),
+    sec("🗓️ Coming up", (events as any[]).map((e) => `<b>${esc(e.title)}</b> — ${fmtWhen(e)}${e.location ? ` · ${esc(e.location)}` : ""}`)),
     sec("💼 New on the Opportunities board", (jobs as any[]).map((t) => `<a href="${SITE}/board.html#thread=${t.id}" style="color:#A07E2D">${esc(t.title)}</a>`)),
     sec("🎉 New brothers on the site", newMembers.map((b) => {
       const cls = b.pledge_class && String(b.pledge_class).toLowerCase() !== "none" ? ` · ${esc(b.pledge_class)}` : "";
