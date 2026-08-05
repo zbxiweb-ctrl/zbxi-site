@@ -1349,6 +1349,15 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .stat-list__row b { color: var(--heading); flex: none; }
 .stat-list__row span { color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat-list__row em { font-style: normal; color: var(--muted); font-size: .78rem; flex: none; }
+/* History tab: flag deletions and permission changes with an edge rather than
+   coloured text, so it reads identically in light and dark mode. */
+.stat-list__row--warn { border-left: 3px solid #b4342b; padding-left: calc(1rem - 3px); }
+/* The row is a fixed-height flex line; on a phone let it wrap instead of
+   truncating the actor and the action away to nothing. */
+@media (max-width: 620px) {
+  .stat-list__row { flex-wrap: wrap; gap: .2rem .8rem; }
+  .stat-list__row span { flex: 1 0 100%; white-space: normal; }
+}
 
 /* ---------- v4 responsive ---------- */
 @media (max-width: 900px) {

@@ -105,6 +105,7 @@
       { id: 'email',      ic: '📧', label: 'Email'      },
       { id: 'events',     ic: '📅', label: 'Events'     },
       { id: 'guide',      ic: '📖', label: 'Guide'      },
+      { id: 'history',    ic: '📜', label: 'History'    },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
       { id: 'officers',   ic: '🛡', label: 'Officers'   },
       { id: 'stats',      ic: '📊', label: 'Stats'      },
@@ -338,6 +339,7 @@
     if (state.tab === 'suggest') return renderSuggestTab(q);
     if (state.tab === 'officers') return renderOfficersTab(q);
     if (state.tab === 'stats') return renderStatsTab(q);
+    if (state.tab === 'history') return renderHistoryTab(q);
     if (state.tab === 'guide') return renderGuideTab(q);
     var rows = state.data[state.tab].slice();
     if (state.q) {
@@ -2360,12 +2362,89 @@
         '<li>The site itself (hosting, domain) runs itself — nothing to renew except the domain (~$12/yr at Namecheap).</li></ul>');
   }
 
+  /* ---------------- history tab ----------------
+     The chapter's audit trail. This exists because an event once vanished and
+     nothing could say who removed it: every entry here is written by a database
+     trigger, so it cannot be edited, skipped or switched off from the website. */
+  var histSeriousOnly = false;
+
+  function renderHistoryTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading the history…</p>';
+    Z.activityList(300).then(function (acts) {
+      acts = acts || [];
+      var shown = histSeriousOnly
+        ? acts.filter(function (a) { return ACT_SERIOUS[a.action]; })
+        : acts;
+
+      // No heading here — the console already prints the tab name above this.
+      var html =
+        '<div class="admin-hint">Every change to chapter records, newest first and kept for a year. ' +
+        'Written by the database itself — <b>nobody can edit it or switch it off from the site</b>, ' +
+        'including you.</div>' +
+        '<p style="margin:.4rem 0 1rem"><label style="color:var(--on-dark);font-size:.84rem;display:inline-flex;align-items:center;gap:.45rem;cursor:pointer">' +
+          '<input type="checkbox" id="histSerious"' + (histSeriousOnly ? ' checked' : '') + '> ' +
+          'Deletions &amp; permission changes only</label></p>';
+
+      html += shown.length
+        ? '<div class="stat-list">' + shown.map(function (a) {
+            var d = new Date(a.created_at);
+            var when = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+                       d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            // detail is user-supplied (event titles, poll questions, names) -> esc()
+            return '<div class="stat-list__row' + (ACT_SERIOUS[a.action] ? ' stat-list__row--warn' : '') + '">' +
+              '<b>' + esc(actorName(a.user_id) || 'A brother') + ' · ' + esc(ACT_LABEL[a.action] || a.action) + '</b>' +
+              '<span>' + esc(a.detail || '') + '</span><em>' + when + '</em></div>';
+          }).join('') + '</div>'
+        : '<p class="admin-empty">' + (histSeriousOnly
+            ? 'No deletions or permission changes recorded.'
+            : 'Nothing recorded yet.') + '</p>';
+
+      q.innerHTML = html;
+      document.getElementById('histSerious').onchange = function () {
+        histSeriousOnly = this.checked;
+        renderHistoryTab(q);
+      };
+    })['catch'](function () {
+      q.innerHTML = '<p class="form-status err">Could not load the history.</p>';
+    });
+  }
+
   /* ---------------- stats tab ---------------- */
   var ACT_LABEL = {
     profile_created: 'created a profile', profile_updated: 'updated a profile',
     gallery_post: 'posted to the gallery', gallery_comment: 'commented on a photo',
-    thread_created: 'started a discussion', reply_posted: 'replied to a discussion'
+    thread_created: 'started a discussion', reply_posted: 'replied to a discussion',
+    // upgrade40 — deletions and privilege changes. An unmapped action falls back
+    // to its raw key below, so a missed label degrades gracefully.
+    event_created: 'added an event', event_updated: 'edited an event', event_deleted: 'DELETED an event',
+    poll_created: 'created a poll', poll_updated: 'edited a poll', poll_deleted: 'DELETED a poll',
+    album_created: 'created a gallery section', album_renamed: 'renamed a gallery section',
+    album_deleted: 'DELETED a gallery section',
+    gallery_post_deleted: 'DELETED a gallery photo', member_deleted: 'DELETED a brother record',
+    member_approved: 'approved a brother', member_rejected: 'rejected a brother',
+    status_changed: 'changed a brother’s status',
+    grant_enabled: 'GAVE an officer a permission', grant_disabled: 'REMOVED an officer permission',
+    title_granted: 'granted a title', title_removed: 'removed a title'
   };
+
+  /* The rows you actually open this tab for: anything destructive, and anything
+     that changes who can do what. Drives the filter and the red edge. */
+  var ACT_SERIOUS = {
+    event_deleted: 1, poll_deleted: 1, album_deleted: 1, member_deleted: 1,
+    gallery_post_deleted: 1, grant_enabled: 1, grant_disabled: 1,
+    member_approved: 1, member_rejected: 1, status_changed: 1,
+    title_granted: 1, title_removed: 1
+  };
+
+  /* auth.uid() is null when a write came from the server (the gallery edge
+     function, or a maintenance script), so say "(server)" rather than leaving
+     the actor blank and looking like a bug. */
+  function actorName(uid) {
+    if (!uid) return '(server)';
+    var all = state.data.pending.concat(state.data.verified, state.data.rejected);
+    var b = all.filter(function (x) { return x.user_id === uid; })[0];
+    return b ? b.full_name : null;
+  }
 
   function renderStatsTab(q) {
     q.innerHTML = '<p class="admin-empty">Crunching the numbers…</p>';
@@ -2404,11 +2483,7 @@
 
       /* ---- monthly engagement digest ---- */
       var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-      var nameOf = function (uid) {
-        var all = state.data.pending.concat(state.data.verified, state.data.rejected);
-        var b = all.filter(function (x) { return x.user_id === uid; })[0];
-        return b ? b.full_name : null;
-      };
+      var nameOf = actorName;   // shared with the History tab (defined above)
       var monthActs = acts.filter(function (a) { return new Date(a.created_at).getTime() >= monthStart; });
       var byActor = {};
       monthActs.forEach(function (a) { if (a.user_id) byActor[a.user_id] = (byActor[a.user_id] || 0) + 1; });
