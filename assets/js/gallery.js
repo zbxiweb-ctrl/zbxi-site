@@ -27,10 +27,10 @@
 
   if (!Z || !Z.configured) { locked('Members only', true); return; }
 
-  // canMod = may delete anyone's post/comment: the admin, OR a President whose
-  // seat has gallery.moderate switched on. canPost = may create a post: the admin
-  // OR a seat with gallery.post switched on. The DB enforces both (the gallery
-  // insert/delete policies check officer_can); these flags only shape the UI.
+  // canPost = may create a post: EVERY approved brother, since upgrade41. canMod =
+  // may edit or delete anyone else's post/comment: the admin, OR a President whose
+  // seat has gallery.moderate switched on. The DB enforces both (the gallery
+  // insert/update/delete policies); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
   var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false;
 
@@ -58,11 +58,12 @@
   }
 
   /* ---------- grid ---------- */
-  function albumPicker() {
-    var mid = miscId();
-    return '<select class="zselect gupload__album" id="guAlbum" aria-label="Album">' +
+  // Shared by the composer (defaults to Miscellaneous) and the inline post editor
+  // (defaults to the post's own section), so the two controls stay identical.
+  function albumPicker(id, selId) {
+    return '<select class="zselect gupload__album" id="' + id + '" aria-label="Album">' +
       albums.map(function (a) {
-        return '<option value="' + esc(a.id) + '"' + (a.id === mid ? ' selected' : '') + '>' + esc(a.name) + '</option>';
+        return '<option value="' + esc(a.id) + '"' + (a.id === selId ? ' selected' : '') + '>' + esc(a.name) + '</option>';
       }).join('') + '</select>';
   }
 
@@ -73,7 +74,7 @@
             '<img id="guPrev" class="gupload__prev" alt="Preview of the photo you chose" hidden>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
-            (albums.length ? albumPicker() : '') +
+            (albums.length ? albumPicker('guAlbum', miscId()) : '') +
             '<input id="guCaption" aria-label="Photo caption" placeholder="Write a caption…" maxlength="300">' +
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
@@ -125,7 +126,7 @@
     return '<div class="ggrid">' + shown.map(function (p) {
       var u = urls[p.image_path];
       var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="' + esc(p.caption || 'Gallery photo') + '">' : '<span class="ggrid__ph">…</span>';
-      return '<button class="ggrid__cell" data-post="' + p.id + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
+      return '<button class="ggrid__cell" data-post="' + esc(p.id) + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
         '<span class="ggrid__hover">♥ ' + likeCount(p.id) + '</span></button>';
     }).join('') + '</div>';
   }
@@ -248,13 +249,72 @@
   var modal = document.getElementById('postModal');
   function g(name) { return modal.querySelector('[data-g=' + name + ']'); }
 
+  /* Caption + section line. Its own function because the inline editor rebuilds
+     it after a save, and openPost() paints it on the way in. */
+  function paintCaption(p) {
+    g('caption').textContent = p.caption || '';
+    var an = albumName(p);
+    g('date').textContent = (an ? an + ' · ' : '') + when(p.created_at);
+  }
+
+  function closeEdit(p) {
+    var box = g('editform');
+    box.hidden = true; box.innerHTML = '';
+    g('caption').hidden = false;
+    paintCaption(p);
+  }
+
+  /* Inline edit — caption and section, nothing else. That limit is not a UI
+     convention: upgrade41 revoked UPDATE on every other column of gallery_posts,
+     so who posted a photo and which image it points at cannot be changed from the
+     website at all, by anyone, including a moderator. */
+  function openEdit(p) {
+    var box = g('editform');
+    g('caption').hidden = true;
+    box.hidden = false;
+    box.innerHTML =
+      '<textarea id="geCap" rows="2" maxlength="300" aria-label="Caption" placeholder="Write a caption…"></textarea>' +
+      '<div class="gedit-form__row">' +
+        (albums.length ? albumPicker('geAlbum', albumOf(p)) : '') +
+        '<button class="btn btn--gold" id="geSave" type="button">Save</button>' +
+        '<button class="btn btn--ghost" id="geCancel" type="button">Cancel</button>' +
+      '</div>' +
+      '<p class="form-status" id="geStatus" role="status"></p>';
+
+    // .value, not interpolated into the markup — a caption is user text and must
+    // never be parsed as HTML on its way into the form.
+    var cap = box.querySelector('#geCap');
+    cap.value = p.caption || '';
+    cap.focus();
+
+    box.querySelector('#geCancel').onclick = function () { closeEdit(p); };
+    box.querySelector('#geSave').onclick = function () {
+      var btn = box.querySelector('#geSave');
+      var st = box.querySelector('#geStatus');
+      var sel = box.querySelector('#geAlbum');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      st.className = 'form-status'; st.textContent = '';
+      Z.galleryUpdate(p.id, cap.value.trim(), sel ? sel.value : null).then(function (r) {
+        if (r.error) throw r.error;
+        p.caption = r.data.caption; p.album_id = r.data.album_id;
+        closeEdit(p);
+        renderBody();   // section chips and their counts can both change
+      })['catch'](function (err) {
+        btn.disabled = false; btn.textContent = 'Save';
+        st.className = 'form-status err';
+        st.textContent = (err && err.message) || 'Could not save that change.';
+      });
+    };
+  }
+
   function openPost(p) {
     g('img').src = urls[p.image_path] || '';
     g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
-    g('caption').textContent = p.caption || '';
-    var an = albumName(p);
-    g('date').textContent = (an ? an + ' · ' : '') + when(p.created_at);
+    closeEdit(p);   // paints the caption, and drops a form left open on the last post
+    var ed = g('edit');
+    ed.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
+    ed.onclick = function () { openEdit(p); };
     var del = g('delete');
     del.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
     del.onclick = function () {
@@ -301,7 +361,7 @@
         var mine = me && (c.author_user === me.id || canMod);
         return '<div class="gcomment">' + chip(c.author_user) +
           '<p>' + esc(c.body) + '</p>' +
-          '<small>' + when(c.created_at) + (mine ? ' · <a href="#" data-delc="' + c.id + '">delete</a>' : '') + '</small></div>';
+          '<small>' + when(c.created_at) + (mine ? ' · <a href="#" data-delc="' + esc(c.id) + '">delete</a>' : '') + '</small></div>';
       }).join('');
       box.querySelectorAll('[data-delc]').forEach(function (a) {
         a.onclick = function (e) {
@@ -341,14 +401,13 @@
     canMod = isAdmin;
     Z.amApprovedBrother().then(function (ok) {
       if (!ok) { locked('Awaiting verification', false); return; }
+      canPost = true;   // being an approved brother IS the permission (upgrade41)
       Promise.all([
         Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false),
-        Z.officerCan ? Z.officerCan('gallery.post') : Promise.resolve(false),
         Z.officerCan ? Z.officerCan('gallery.albums') : Promise.resolve(false)
       ]).then(function (r) {
         canMod = isAdmin || r[0];
-        canPost = isAdmin || r[1];
-        canAlbums = isAdmin || r[2];
+        canAlbums = isAdmin || r[1];
         if (!root.querySelector('.sk')) root.innerHTML = gallerySkeleton();  // unless already painted above
         loadAll().catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';

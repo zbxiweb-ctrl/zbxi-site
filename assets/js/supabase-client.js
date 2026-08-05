@@ -447,6 +447,15 @@
         .catch(function () { return {}; });   // signed-out / error -> {} (posts show the placeholder)
     },
     galleryCreate: function (row) { return client.from('gallery_posts').insert(row).select().single(); },
+    // Edit your own post (or anyone's, with gallery.moderate). Only these two
+    // fields are sent, and only these two are UPDATE-grantable to `authenticated`
+    // — upgrade41 revoked the rest, so a wider patch is refused by Postgres itself
+    // rather than by this line.
+    galleryUpdate: function (id, caption, albumId) {
+      return client.from('gallery_posts')
+        .update({ caption: caption || null, album_id: albumId || null })
+        .eq('id', id).select().single();
+    },
     galleryDeletePost: function (id, imagePath) {
       return this._gallery({ op: 'delete-post', id: id });   // fn deletes the row (RLS) + the R2 object
     },

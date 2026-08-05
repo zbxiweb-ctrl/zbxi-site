@@ -2230,10 +2230,11 @@
     { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['active_president'] },
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
     { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
-    { key: 'gallery.post',        label: 'Post to the gallery',    desc: 'Create new gallery posts (otherwise only the admin can).', seats: ['alumni_president'] },
+    // No 'gallery.post' entry: since upgrade41 every approved brother can post, so
+    // a switch here would claim to control something it no longer controls.
     { key: 'gallery.albums',      label: 'Manage gallery sections', desc: 'Create, rename, and delete gallery sections, right on the gallery page. Deleting a section keeps its photos — they move to Miscellaneous.', seats: ['alumni_president'] },
     { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['active_president', 'alumni_president'] },
-    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Delete inappropriate gallery posts and comments.',       seats: ['active_president', 'alumni_president'] },
+    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Edit or delete ANY brother\'s gallery photo or comment. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['active_president', 'alumni_president'] },
     { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['active_president', 'alumni_president'] }
   ];
 
@@ -2420,6 +2421,7 @@
     poll_created: 'created a poll', poll_updated: 'edited a poll', poll_deleted: 'DELETED a poll',
     album_created: 'created a gallery section', album_renamed: 'renamed a gallery section',
     album_deleted: 'DELETED a gallery section',
+    gallery_post_edited: 'edited a gallery photo',
     gallery_post_deleted: 'DELETED a gallery photo', member_deleted: 'DELETED a brother record',
     member_approved: 'approved a brother', member_rejected: 'rejected a brother',
     status_changed: 'changed a brother’s status',

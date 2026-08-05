@@ -9,7 +9,7 @@
 // single enforcer — permission checks run as RPCs WITH THE CALLER'S JWT.
 //
 //   POST { op:'sign-view',   paths:[key,...] } -> { urls:{key:GET url} }  (approved brother/admin)
-//   POST { op:'sign-upload', ext? }            -> { key, url:PUT url }    (admin OR officer gallery.post)
+//   POST { op:'sign-upload', ext? }            -> { key, url:PUT url }    (approved brother/admin)
 //   POST { op:'delete-post', id }              -> { ok } | 404            (RLS decides via the caller's JWT)
 //   POST { op:'usage' }                        -> { objects, bytes }      (admin JWT OR x-zbxi-cron header)
 import { AwsClient } from "npm:aws4fetch@1.0.20";
@@ -74,6 +74,26 @@ async function callerRpc(req: Request, fn: string, args: unknown = {}): Promise<
   return r.ok ? await r.json() : null;
 }
 
+// Is this object key still named by any surviving row? Asked with service_role so
+// the answer covers rows the caller cannot see. Fails CLOSED: if either lookup
+// errors we report "still referenced" and keep the bytes, because a wrongly-kept
+// object is recoverable and a wrongly-deleted photo is not.
+async function stillReferenced(key: string): Promise<boolean> {
+  const q = `image_path=eq.${encodeURIComponent(key)}&select=id&limit=1`;
+  for (const table of ["gallery_posts", "forum_threads"]) {
+    try {
+      const r = await fetch(`${SB}/rest/v1/${table}?${q}`, {
+        headers: { apikey: SRK, Authorization: `Bearer ${SRK}` },
+      });
+      if (!r.ok) return true;
+      if ((await r.json()).length > 0) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function presign(key: string, method: "GET" | "PUT", expires: number): Promise<string> {
   const u = new URL(`${R2_BASE}/${key}`);
   u.searchParams.set("X-Amz-Expires", String(expires));
@@ -135,7 +155,11 @@ Deno.serve(async (req) => {
     }
 
     if (op === "sign-upload") {
-      const ok = isAdmin || (await callerRpc(req, "officer_can", { perm: "gallery.post" })) === true;
+      // Same gate as sign-view: any approved brother. upgrade41 opened the gallery
+      // to every brother, and this is the op that hands out the R2 upload URL — the
+      // RLS change alone would let a brother create the row but never the image.
+      // Board thread photos ride this op too, so they open with it, by design.
+      const ok = isAdmin || (await callerRpc(req, "is_approved_brother")) === true;
       if (!ok) return json({ error: "forbidden" }, 403);
       // Key derives from the VERIFIED caller uid — a client can't upload into
       // someone else's folder (mirrors the storage owner-prefix RLS).
@@ -156,7 +180,16 @@ Deno.serve(async (req) => {
       const rows = dr.ok ? await dr.json() : [];
       if (!Array.isArray(rows) || !rows.length) return json({ error: "not found" }, 404);
       const key = rows[0].image_path;
-      if (typeof key === "string" && KEY_RE.test(key)) {
+      // Deleting the ROW is authorised by RLS; deleting the OBJECT is a separate
+      // question, because image_path used to be free text and a row could name
+      // someone else's image. upgrade42 constrains that at the DB, and these two
+      // checks are the independent belt: the key must belong to the row's author,
+      // and nothing else may still be pointing at it (a thread photo, or another
+      // post of his own). Otherwise leave the bytes alone — an orphaned object
+      // costs a few KB; deleting a brother's photo out from under him does not.
+      if (typeof key === "string" && KEY_RE.test(key) &&
+          key.startsWith(String(rows[0].author_user) + "/") &&
+          !(await stillReferenced(key))) {
         await r2.fetch(`${R2_BASE}/${key}`, { method: "DELETE" }).catch(() => {});
       }
       return json({ ok: true });
