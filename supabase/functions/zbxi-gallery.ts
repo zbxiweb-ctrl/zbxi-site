@@ -194,6 +194,11 @@ Deno.serve(async (req) => {
       // here if it's over the cap, and bind it into the signature so the upload
       // can't turn out to be anything else. See presignUpload.
       const n = Number(size);
+      // No size at all means a page loaded before this shipped, still holding the
+      // old JS. Say that, rather than letting the check below tell a brother his
+      // perfectly small photo is too large — the assets revalidate on every load,
+      // so a refresh genuinely fixes it.
+      if (!size) return json({ error: "stale page: please refresh and try again" }, 409);
       if (!Number.isInteger(n) || n <= 0 || n > MAX_UPLOAD) {
         return json({ error: "image too large", max: MAX_UPLOAD }, 413);
       }

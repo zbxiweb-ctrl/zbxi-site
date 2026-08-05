@@ -438,6 +438,7 @@
     galleryUpload: function (userId, blob, ext) {
       return this._gallery({ op: 'sign-upload', ext: ext || 'jpg', size: blob.size })
         .then(function (r) {
+          if (r.status === 409) throw new Error('This page is out of date — refresh and try again.');
           if (r.status === 413) throw new Error('That image is too large (5MB max).');
           if (!r.ok) throw new Error('upload not allowed');
           return r.json();
