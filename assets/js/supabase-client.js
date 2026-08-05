@@ -431,11 +431,19 @@
     },
     // userId/imagePath are kept for the callers' sake but IGNORED — the edge fn
     // derives the key from the verified caller uid (upload) and from the row (delete).
+    // Declares the blob's exact byte length up front: the edge fn refuses anything
+    // over the cap and signs the URL against that length and content type, so the
+    // PUT that follows can only be this image. Send back exactly the type the fn
+    // signed, or R2 rejects the signature.
     galleryUpload: function (userId, blob, ext) {
-      return this._gallery({ op: 'sign-upload', ext: ext || 'jpg' })
-        .then(function (r) { if (!r.ok) throw new Error('upload not allowed'); return r.json(); })
+      return this._gallery({ op: 'sign-upload', ext: ext || 'jpg', size: blob.size })
+        .then(function (r) {
+          if (r.status === 413) throw new Error('That image is too large (5MB max).');
+          if (!r.ok) throw new Error('upload not allowed');
+          return r.json();
+        })
         .then(function (j) {
-          return fetch(j.url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob })
+          return fetch(j.url, { method: 'PUT', headers: { 'Content-Type': j.type || 'image/jpeg' }, body: blob })
             .then(function (pr) { if (!pr.ok) throw new Error('upload failed'); return j.key; });
         });
     },

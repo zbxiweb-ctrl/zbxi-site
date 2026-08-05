@@ -40,6 +40,14 @@ const json = (body: unknown, status = 200) =>
 // crafted `paths` entry can't reach outside the gallery's own objects.
 const KEY_RE = /^[0-9a-f-]{36}\/\d{10,}\.(jpg|jpeg|png|webp)$/i;
 
+// Ceiling for a single upload, enforced in the SIGNATURE (see presignUpload), not
+// by asking the client nicely. Matches the 5 MB the composer advertises; the
+// client downscales to 1600px first, so a real photo lands far under this.
+const MAX_UPLOAD = 5 * 1024 * 1024;
+const CTYPE: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+};
+
 let _adminEmail: string | null = null;
 async function adminEmail(): Promise<string> {
   if (_adminEmail) return _adminEmail;
@@ -101,6 +109,24 @@ async function presign(key: string, method: "GET" | "PUT", expires: number): Pro
   return signed.url;
 }
 
+// An upload URL that can only accept EXACTLY `len` bytes of exactly `ctype`.
+// content-length and content-type are folded into the signature, so they are not
+// a limit the client is asked to respect — a PUT that doesn't match is rejected by
+// R2 before a byte is stored. That matters because the browser's own "max 5MB"
+// check is just a line of JavaScript, and since upgrade41 every brother holds this
+// URL rather than two trusted accounts. A browser sets Content-Length itself from
+// the blob, so it cannot be forged from page script either.
+async function presignUpload(key: string, len: number, ctype: string): Promise<string> {
+  const u = new URL(`${R2_BASE}/${key}`);
+  u.searchParams.set("X-Amz-Expires", "600");
+  const signed = await r2.sign(u.toString(), {
+    method: "PUT",
+    headers: { "content-type": ctype, "content-length": String(len) },
+    aws: { signQuery: true, allHeaders: true },
+  });
+  return signed.url;
+}
+
 // Total bytes + object count in the bucket, via S3 ListObjectsV2 (Class A op —
 // 1M free/mo; called a handful of times a month). Paginates the whole bucket and
 // sums <Size>; a regex is safe against S3's fixed XML schema.
@@ -131,7 +157,7 @@ Deno.serve(async (req) => {
   if (!me && !cronOk) return json({ error: "forbidden" }, 403);
 
   try {
-    const { op, paths = [], ext = "jpg", id = null } = await req.json().catch(() => ({}));
+    const { op, paths = [], ext = "jpg", id = null, size = 0 } = await req.json().catch(() => ({}));
     const isAdmin = !!me && me.email === (await adminEmail());
 
     if (op === "usage") {
@@ -164,8 +190,16 @@ Deno.serve(async (req) => {
       // Key derives from the VERIFIED caller uid — a client can't upload into
       // someone else's folder (mirrors the storage owner-prefix RLS).
       const safeExt = /^(jpg|jpeg|png|webp)$/i.test(String(ext)) ? String(ext).toLowerCase() : "jpg";
+      // The client declares the exact byte length it is about to send; refuse it
+      // here if it's over the cap, and bind it into the signature so the upload
+      // can't turn out to be anything else. See presignUpload.
+      const n = Number(size);
+      if (!Number.isInteger(n) || n <= 0 || n > MAX_UPLOAD) {
+        return json({ error: "image too large", max: MAX_UPLOAD }, 413);
+      }
+      const ctype = CTYPE[safeExt];
       const key = `${me.id}/${Date.now()}.${safeExt}`;
-      return json({ key, url: await presign(key, "PUT", 600) });
+      return json({ key, type: ctype, url: await presignUpload(key, n, ctype) });
     }
 
     if (op === "delete-post") {

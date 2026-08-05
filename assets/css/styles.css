@@ -1557,6 +1557,32 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .welcome-step p { color: var(--muted); font-size: .95rem; margin-bottom: .8rem; }
 .welcome-step p a { color: var(--gold-deep); text-decoration: underline; }
 .welcome-step .btn { padding: .6rem 1.3rem; font-size: .88rem; }
+.welcome-h { color: var(--heading); font-family: var(--display); font-size: 1.5rem; margin: 0 0 .3rem; }
+.welcome-sub { color: var(--muted); font-size: .95rem; margin: 0 0 1.2rem; }
+
+/* Feature cards — one per thing the membership unlocks, each the whole link so
+   the tap target is the card, not just the heading. auto-fit keeps it 3-up on a
+   desktop, 2-up on a tablet and 1-up on a phone with no breakpoints of its own. */
+.welcome-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); }
+.welcome-card { display: block; background: var(--surface); border-radius: var(--radius); padding: 1.3rem 1.4rem;
+  box-shadow: var(--shadow-sm); text-decoration: none; border: 1px solid transparent;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.welcome-card:hover, .welcome-card:focus-visible { transform: translateY(-3px); box-shadow: var(--shadow-md);
+  border-color: rgba(200,162,75,.45); }
+.welcome-card__ic { font-size: 1.5rem; line-height: 1; display: block; margin-bottom: .55rem; }
+.welcome-card h3 { color: var(--heading); font-size: 1.08rem; margin: 0 0 .35rem; }
+.welcome-card p { color: var(--muted); font-size: .89rem; margin: 0; }
+/* On the paragraph, not the card: as a block-level ::after it sat on a line of its
+   own looking stranded. Here it trails the last sentence the way a link should. */
+.welcome-card p::after { content: ' →'; color: var(--gold-deep); font-weight: 700; white-space: nowrap; }
+
+.welcome-note { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  padding: 1.4rem 1.6rem; margin-top: 1.6rem; }
+.welcome-note h3 { color: var(--heading); font-size: 1.15rem; margin: 0 0 .7rem; }
+.welcome-note ul { margin: 0; padding-left: 1.1rem; }
+.welcome-note li { color: var(--muted); font-size: .92rem; margin-bottom: .5rem; }
+.welcome-note li b { color: var(--text); }
+.welcome-note a { color: var(--gold-deep); text-decoration: underline; }
 
 /* ---------- v5 responsive ---------- */
 @media (max-width: 860px) {
@@ -2495,7 +2521,14 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .stat-card,
 :root[data-theme="dark"] .stat-list,
 :root[data-theme="dark"] .guide-sec,
+/* The step circle is --navy, and the navy tokens flip to black in dark mode — so
+   it came out DARKER than the near-black card it sits on and the number all but
+   disappeared. A gold wash keeps the existing gold numeral readable. */
+:root[data-theme="dark"] .welcome-step__n { background: rgba(200,162,75,.18); }
+
 :root[data-theme="dark"] .welcome-step,
+:root[data-theme="dark"] .welcome-card,
+:root[data-theme="dark"] .welcome-note,
 :root[data-theme="dark"] .spot-card,
 :root[data-theme="dark"] .poll-card,
 :root[data-theme="dark"] .cal-detail__ev,
