@@ -1498,13 +1498,23 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 /* z-index is load-bearing: .cal-cell is position:relative and comes later in the
    DOM, so without it the day cells paint over the banners and only slivers show
    through the 4px gutters. */
-.cal-week__bands { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 16px; column-gap: 4px; row-gap: 2px; padding-top: 22px; pointer-events: none; }
-.cal-band { pointer-events: auto; align-self: start; height: 16px; line-height: 16px; font-size: .62rem; font-weight: 700; color: #fff; background: var(--navy-2); border: 0; padding: 0 .35rem; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--sans); }
+/* padding-top must clear the date number's whole line box (~21px here), not just
+   touch it — at 22px the bar sat 0.4px off the digits and read as crowding them. */
+.cal-week__bands { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 17px; column-gap: 4px; row-gap: 3px; padding-top: 25px; pointer-events: none; }
+.cal-band { pointer-events: auto; align-self: start; height: 15px; line-height: 15px; font-size: .62rem; font-weight: 600; letter-spacing: .01em; color: #fff; background: var(--navy-2); border: 0; padding: 0 .5rem; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--sans); box-shadow: 0 1px 2px rgba(var(--chrome), .16); }
 .cal-band[disabled] { cursor: default; }
-.cal-cell__bandpad { flex: none; height: calc(var(--lanes, 0) * 18px); }
-.cal-band--start { border-radius: 4px 0 0 4px; }
-.cal-band--end { border-radius: 0 4px 4px 0; }
-.cal-band--start.cal-band--end { border-radius: 4px; }
+/* Must track grid-auto-rows + row-gap above (17 + 3 = 20 per lane), plus the
+   gap the taller padding-top opens under the date number. If this under-reserves,
+   a chip slides beneath the banner. */
+.cal-cell__bandpad { flex: none; height: calc(var(--lanes, 0) * 20px + 4px); }
+/* Fully rounded ends, and ONLY where the event actually begins or ends — a
+   segment that carries into the next week stays square, so the shape itself
+   tells you it continues. A 4px radius on a 15px bar read as square, which is
+   what made this look like a highlighter stroke. The margin keeps the cap off
+   the cell border instead of running the full width edge to edge. */
+.cal-band--start { border-radius: 999px 0 0 999px; margin-left: 3px; }
+.cal-band--end { border-radius: 0 999px 999px 0; margin-right: 3px; }
+.cal-band--start.cal-band--end { border-radius: 999px; }
 .cal-cell { position: relative; min-height: 74px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: .35rem .4rem; text-align: left; font-family: var(--sans); cursor: default; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
 .cal-cell--pad { background: transparent; border: 0; }
 .cal-cell--today { border-color: var(--gold); box-shadow: 0 0 0 1.5px var(--gold); }
@@ -1543,10 +1553,18 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   .cal-chip { display: none; }
   /* Banners STAY on mobile — a spanning bar is the one affordance that still
      reads in a narrow grid, and hiding it would defeat the point. */
-  .cal-week__bands { padding-top: 18px; grid-auto-rows: 13px; }
-  .cal-band { height: 13px; line-height: 13px; font-size: .5rem; padding: 0 .2rem; }
-  .cal-cell__bandpad { height: calc(var(--lanes, 0) * 15px); }
-  .cal-cell--has::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold-deep); position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); }
+  /* 18px put the banner 3.6px ON TOP of the date number (measured at 428px) —
+     the number is ~21px of padding + line box. Clear it, then leave a hair of
+     air so the bar reads as sitting under the date rather than crowding it. */
+  .cal-week__bands { padding-top: 23px; grid-auto-rows: 13px; }
+  .cal-band { height: 12px; line-height: 12px; font-size: .5rem; padding: 0 .35rem; letter-spacing: 0; }
+  .cal-band--start { margin-left: 2px; }
+  .cal-band--end { margin-right: 2px; }
+  .cal-cell__bandpad { height: calc(var(--lanes, 0) * 16px + 2px); }
+  /* --dot, not --has: only days with an event the banner ISN'T already showing.
+     Chips are hidden at this width, so the dot stays the sole marker for
+     single-day events. */
+  .cal-cell--dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold-deep); position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); }
   .admin-tabgroup__label { width: 100%; }
   .welcome-step { flex-direction: column; }
 }

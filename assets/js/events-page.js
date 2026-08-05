@@ -175,7 +175,13 @@
         }).join('') + (chipped.length > 2 ? '<span class="cal-more">+' + (chipped.length - 2) + '</span>' : '');
         var canClick = evs.length || CAN_MANAGE;
         cells += '<button class="cal-cell' + (sameDay(date, today) ? ' cal-cell--today' : '') +
-          (evs.length ? ' cal-cell--has' : '') + (selDay === day ? ' cal-cell--sel' : '') +
+          (evs.length ? ' cal-cell--has' : '') +
+          // The mobile dot marks days whose event ISN'T already drawn as a
+          // banner. Without this every banded day carried a dot repeating what
+          // the bar above it already said, which is most of why the row looked
+          // cluttered. Separate class from --has, which drives cursor + hover.
+          (chipped.length ? ' cal-cell--dot' : '') +
+          (selDay === day ? ' cal-cell--sel' : '') +
           '"' + (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
           '<span class="cal-cell__n">' + day + '</span>' +
           // Reserve the height the banner overlay occupies so chips sit below it.
