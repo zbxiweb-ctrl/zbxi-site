@@ -25,7 +25,13 @@
       case 'comment':     return { ic: '💬', text: '<b>' + esc(p.actor || 'A brother') + '</b> commented: “' + esc(p.text || '') + '”', href: 'gallery.html' };
       case 'reply':       return { ic: '↩', text: '<b>' + esc(p.actor || 'A brother') + '</b> replied to “' + esc(p.title || 'your thread') + '”', href: 'board.html' + (p.thread_id ? '#thread=' + p.thread_id : '') };
       case 'approved':    return { ic: '🎉', text: 'You\'re <b>approved</b> — tap for your member orientation', href: 'welcome.html' };
-      case 'new_pending': return { ic: '⏳', text: '<b>' + esc(p.name || 'A brother') + '</b> is awaiting verification', href: 'admin.html' };
+      // Since upgrade44 an Alumni President can clear the queue too, and admin.html
+      // is a wall for him. The trigger stamps the right console into the payload
+      // when it writes the row — the browser must not try to work it out, because
+      // "am I the admin?" is an async question and the list renders before the
+      // answer lands. Rows written before upgrade44 have no href: they were all
+      // the admin's, so that is the fallback.
+      case 'new_pending': return { ic: '⏳', text: '<b>' + esc(p.name || 'A brother') + '</b> is awaiting verification', href: p.href === 'officer.html#members' ? p.href : 'admin.html' };
       case 'suggestion':  return { ic: '💡', text: '<b>' + esc(p.actor || 'A brother') + '</b> dropped a suggestion: “' + esc(p.text || '') + '”', href: 'admin.html#suggest' };
       // deep-link straight to the queue — landing on the default tab made the request look missing
       case 'title_request': return { ic: '🏅', text: '<b>' + esc(p.actor || 'A brother') + '</b> requested the title <b>' + esc(p.title || '') + ' · ' + esc(p.term || '') + '</b>', href: 'admin.html#titles' };
@@ -61,7 +67,12 @@
     if (!list.length) { box.innerHTML = '<p class="bell__empty">No notifications yet.</p>'; return; }
     box.innerHTML = list.map(function (n) {
       var d = describe(n);
-      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" data-id="' + esc(n.id) + '" href="' + d.href + '" title="' + esc(new Date(n.created_at).toLocaleString()) + '">' +
+      // esc() on href too: since upgrade44 one kind reads its destination from the
+      // notification payload rather than a literal in describe(). That payload is
+      // trigger-written and the value is whitelisted above, so this is defence in
+      // depth — but an unescaped href is not a thing to leave sitting next to a
+      // value that now comes from a table.
+      return '<a class="bell__row' + (n.read ? '' : ' unread') + '" data-id="' + esc(n.id) + '" href="' + esc(d.href) + '" title="' + esc(new Date(n.created_at).toLocaleString()) + '">' +
         '<i>' + d.ic + '</i><span>' + d.text + '</span><em>' + when(n.created_at) + '</em></a>';
     }).join('');
   }

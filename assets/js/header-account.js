@@ -166,11 +166,17 @@
         if (signout.parentNode.querySelector('a[href="officer.html"]')) return;
         var a = document.createElement('a');
         a.href = 'officer.html'; a.setAttribute('role', 'menuitem'); a.className = 'nav__menu-admin';
-        a.innerHTML = '<i>🛡</i> Officer Console <em>→</em>';
+        a.innerHTML = '<i>🛡</i> Officer Console <span class="nav__menu-badge" id="navOfficerBadge" style="display:none"></span><em>→</em>';
         var div = document.createElement('div');
         div.className = 'nav__menu-divider';
         signout.parentNode.insertBefore(a, signout);
         signout.parentNode.insertBefore(div, signout);
+        // Same "N pending" nudge the admin gets. pendingQueue() returns nothing
+        // unless this officer actually holds members.approve, so no extra check.
+        if (Z.pendingQueue) Z.pendingQueue().then(function (rows) {
+          var b = document.getElementById('navOfficerBadge');
+          if (b && rows.length) { b.style.display = ''; b.textContent = rows.length + ' pending'; }
+        }).catch(function () {});
       }).catch(function () {});
     }
 

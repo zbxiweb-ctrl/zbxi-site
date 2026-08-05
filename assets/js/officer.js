@@ -1,8 +1,16 @@
-/* Officer Console — day-to-day chapter tools for the two Presidents.
+/* Officer Console — day-to-day chapter tools for the Alumni Presidents.
    Shows ONLY the tools the Admin has switched on for this President's seat
    (officer_grants). This is UI gating; the DATABASE is the real gate —
    officer_can() is baked into the safe-table RLS policies (see upgrade17.sql),
    so a President who somehow reached a hidden tool is still refused server-side.
+
+   upgrade44 retired the Active President seat: my_officer_seat() can no longer
+   return 'active_president', so that holder lands on the "not an officer"
+   message. His public title is unaffected.
+
+   Approvals is the one tool that touches a DANGEROUS table (brothers). It does
+   not get RLS treatment like the others — it goes through two SECURITY DEFINER
+   functions whose whole job is to be narrow. See upgrade44.sql.
 
    By design this keeps its OWN copies of the editors it borrows from the Admin
    Console (events / committees / awards / suggestions) so the working Admin
@@ -31,9 +39,11 @@
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
   function msg(title, body) { return '<div class="admin-msg"><h2>' + esc(title) + '</h2><p>' + body + '</p></div>'; }
 
-  // The five Core tools, in the order they appear in the rail. `perm` is the
-  // grant key; `render` is this console's own copy of the editor.
+  // The Core tools, in the order they appear in the rail. `perm` is the grant
+  // key; `render` is this console's own copy of the editor. Approvals leads —
+  // a brother waiting at the front door is the only time-sensitive item here.
   var TOOLS = [
+    { perm: 'members.approve',     id: 'members',    ic: '✅', label: 'Approvals',   render: renderApprovalsTab },
     { perm: 'events.manage',       id: 'events',     ic: '📅', label: 'Events',      render: renderEventsTab },
     { perm: 'committees.manage',   id: 'committees', ic: '👥', label: 'Committees',  render: renderCommitteesTab },
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },
@@ -55,8 +65,7 @@
       var dir = res[2] || {};
       state.verified = Object.keys(dir).map(function (k) { return dir[k]; });
       state.myName = (dir[u.id] && dir[u.id].full_name) || (u.email || '').split('@')[0];
-      state.seatLabel = state.seat === 'active_president' ? 'Active President'
-        : state.seat === 'alumni_president' ? 'Alumni President' : '';
+      state.seatLabel = state.seat === 'alumni_president' ? 'Alumni President' : '';
       grants.forEach(function (g) { if (g.seat === state.seat && g.enabled) state.grants[g.permission] = true; });
       state.tools = TOOLS.filter(function (t) { return state.grants[t.perm]; });
       renderConsole();
@@ -66,8 +75,8 @@
   /* ---------------- console shell ---------------- */
   function renderConsole() {
     if (!state.seat) {
-      root.innerHTML = msg('For chapter Presidents',
-        'This console is available to the <b>Active</b> and <b>Alumni Presidents</b>. If that’s you and you’re seeing this, ask the webmaster to confirm your title is set. <a href="index.html">Back to the site</a>.');
+      root.innerHTML = msg('For the Alumni Presidents',
+        'This console is available to the <b>Alumni Presidents</b>. If that’s you and you’re seeing this, ask the webmaster to confirm your title is set. <a href="index.html">Back to the site</a>.');
       return;
     }
 
@@ -187,6 +196,9 @@
   function fillHomeCounts() {
     var have = {};
     state.tools.forEach(function (t) { have[t.id] = true; });
+    if (have.members) Z.pendingQueue().then(function (rows) {
+      setMeta('members', rows.length ? rows.length + ' waiting' : 'All caught up');
+    }).catch(function () { setMeta('members', 'Open →'); });
     if (have.events) Z.eventsList().then(function (rows) {
       // Counts by END, not start — an event happening RIGHT NOW is still upcoming
       // as far as this tile is concerned, and used to silently drop off it.
@@ -205,6 +217,83 @@
     }).catch(function () { setMeta('awards', 'Open →'); });
     if (have.gallery) setMeta('gallery', 'Moderate →');
     if (have.email) setMeta('email', 'Compose →');
+  }
+
+  /* ================= APPROVALS (upgrade44) =================================
+     The signup queue. Every field here comes from pending_queue(), which is the
+     only way an officer can see a pending brother at all — and it returns the
+     seven vetting fields rather than the whole row.
+
+     The roster flag is a NORMALISED EXACT name match, computed server-side. It
+     is deliberately weaker than the fuzzy matcher in the Admin Console, so the
+     copy says "check the roster", not "this man is a stranger". */
+  function initials(name) {
+    return String(name || '').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean)
+      .slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase() || 'ΖΒΞ';
+  }
+
+  // 'titled' is checked FIRST and beats the roster branches: it is the one flag
+  // that changes what this officer is able to do rather than what he should think
+  // about. Approving a titled profile would appoint an officer, so upgrade45
+  // refuses it server-side — say so here, or he just hits an error he can't read.
+  function vetLine(b) {
+    if (b.b_flag === 'titled') return '<span class="admin-row__when admin-flag">🚩 This profile carries a chapter title — only the webmaster can approve it.</span>';
+    if (b.b_claimed) return '<span class="admin-row__when">✓ Claimed an existing roster entry</span>';
+    if (b.b_flag === 'duplicate') return '<span class="admin-row__when cls-warn">≈ Close to a brother already on the roster — possible duplicate.</span>';
+    return '<span class="admin-row__when admin-flag">🚩 Name not found on the chapter roster — verify before approving.</span>';
+  }
+
+  function renderApprovalsTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading the queue…</p>';
+    Z.pendingQueue().then(function (rows) {
+      var intro = '<p class="admin-hint">Brothers who signed up and are waiting to be let in. Until you approve him, ' +
+        'a brother can’t see the members side of the site at all. <b>Check the name against the chapter roster first</b> — ' +
+        'approving opens the whole directory to him. Approving also sends him a welcome email.</p>';
+      if (!rows.length) {
+        q.innerHTML = intro + '<p class="admin-empty">🎉 Nobody is waiting. All caught up.</p>';
+        return;
+      }
+      q.innerHTML = intro + rows.map(function (b) {
+        return '<div class="admin-row" data-p="' + esc(b.b_id) + '">' +
+          '<div class="admin-row__ph">' + esc(initials(b.b_name)) + '</div>' +
+          '<div class="admin-row__info"><b>' + esc(b.b_name) + '</b>' +
+            '<span>' + esc(b.b_class || 'no pledge class given') + '</span>' +
+            (b.b_signed_up ? '<span class="admin-row__when">Signed up ' + esc(stamp(b.b_signed_up)) + '</span>' : '') +
+            '<span class="admin-row__email">✉️ ' + esc(b.b_email || 'no email on file') + '</span>' +
+            vetLine(b) +
+          '</div>' +
+          '<div class="admin-row__act">' + btn('ok', 'Approve', 'gold') + btn('no', 'Reject', 'danger') + '</div>' +
+        '</div>';
+      }).join('');
+
+      q.querySelectorAll('[data-p]').forEach(function (el) {
+        var id = el.dataset.p;
+        var b = rows.filter(function (x) { return x.b_id === id; })[0];
+        function decide(decision) {
+          el.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+          Z.decidePending(id, decision).then(function () {
+            // The welcome email rides behind a successful approval and never
+            // blocks it — same contract as the Admin Console.
+            if (decision === 'verified') Z.notifyApproved(id).catch(function () {});
+            renderTab();
+          }).catch(function (e) {
+            el.querySelectorAll('button').forEach(function (x) { x.disabled = false; });
+            // ZBXIAsk escapes body/title itself — pass raw text, never esc()'d.
+            ZBXIAsk.alert({ title: 'Could not save that', body: (e && e.message) || 'Please try again.' });
+          });
+        }
+        each(el, '[data-ok]', function () {
+          ZBXIAsk.confirm({ title: 'Approve ' + b.b_name + '?',
+            body: 'He gets access to the full directory, family tree, gallery and board, and a welcome email.',
+            ok: 'Approve' }, function () { decide('verified'); });
+        });
+        each(el, '[data-no]', function () {
+          ZBXIAsk.confirm({ title: 'Reject ' + b.b_name + '?',
+            body: 'He stays locked out. Nothing is deleted — the webmaster can restore him from the Admin Console.',
+            ok: 'Reject', danger: true }, function () { decide('rejected'); });
+        });
+      });
+    }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load the queue: ' + esc(e.message || '') + '</p>'; });
   }
 
   /* ================= EVENTS (own copy; no announcement-banner editor) ======= */

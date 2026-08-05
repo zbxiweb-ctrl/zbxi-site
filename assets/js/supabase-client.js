@@ -761,6 +761,24 @@
       });
     },
 
+    /* ---- the signup queue, for whoever may clear it (upgrade44) --------------
+       Both go through SECURITY DEFINER functions rather than the brothers table:
+       an officer cannot READ a pending brother (brothers_brother_read was dropped
+       in upgrade26) and cannot WRITE his status (tg_guard_status pins it, without
+       an error). The functions re-check is_admin() OR officer_can('members.approve')
+       server-side, so these are UI convenience, not the gate. */
+    pendingQueue: function () {
+      return client.rpc('pending_queue')
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    // decision: 'verified' | 'rejected'. RAISES server-side if the caller may not
+    // decide, or if the brother is no longer waiting — so a failure is visible
+    // rather than a button that quietly does nothing.
+    decidePending: function (id, decision) {
+      return client.rpc('decide_pending_brother', { p_id: id, p_decision: decision })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
+
     /* ---- email: digest + invites (Edge Functions; see supabase/functions/) ---- */
     _fn: function (slug) { return (window.ZBXI_CONFIG.SUPABASE_URL) + '/functions/v1/' + slug; },
     _token: function () {

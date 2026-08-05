@@ -1,8 +1,10 @@
 // zbxi-approved — one transactional "you're approved" welcome email, fired by
 // the admin console right after a brother's profile is approved. Same navy/gold
 // shell as the invite email; body = orientation steps + recent chapter activity.
-// Auth: the admin's JWT (like zbxi-invite) or the x-zbxi-cron secret (like the
-// digest — also how it's tested without a browser session).
+// Auth: the admin's JWT (like zbxi-invite), an officer holding members.approve
+// (upgrade44 — he can approve, so he must be able to send the welcome), or the
+// x-zbxi-cron secret (like the digest — also how it's tested without a browser
+// session).
 //   ?dry=1  -> return the HTML instead of sending (preview)
 //   ?test=1 -> send to the admin's own inbox instead of the brother
 const SB = Deno.env.get("SUPABASE_URL")!;
@@ -51,6 +53,22 @@ async function isAdmin(req: Request) {
   if (!r.ok) return false;
   const u = await r.json();
   return String(u?.email || "").toLowerCase() === await adminEmail();
+}
+
+// Since upgrade44 an Alumni President with members.approve can approve a brother,
+// and the welcome email has to ride behind HIS approval too — gated on the admin
+// alone it would 403 and the brother would silently never hear he was let in.
+// Asked AS THE CALLER (his JWT), so the database's own grant logic decides; a
+// brother without the grant gets false and is refused exactly as before.
+async function canApprove(req: Request): Promise<boolean> {
+  const auth = req.headers.get("Authorization");
+  if (!auth) return false;
+  const r = await fetch(`${SB}/rest/v1/rpc/officer_can`, {
+    method: "POST",
+    headers: { apikey: SRK, Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ perm: "members.approve" }),
+  });
+  return r.ok && (await r.json()) === true;
 }
 
 const STEP = (n: string, title: string, text: string) => `
@@ -128,7 +146,9 @@ async function activityHtml(): Promise<string> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   const cronOk = CRON_SECRET && req.headers.get("x-zbxi-cron") === CRON_SECRET;
-  if (!cronOk && !(await isAdmin(req))) return json({ error: "forbidden" }, 403);
+  if (!cronOk && !(await isAdmin(req)) && !(await canApprove(req))) {
+    return json({ error: "forbidden" }, 403);
+  }
 
   try {
     const url = new URL(req.url);

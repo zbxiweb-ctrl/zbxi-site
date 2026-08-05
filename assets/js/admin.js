@@ -2218,37 +2218,47 @@
   /* ---------------- officers tab ----------------
      Admin-only grid of permission toggles. Flipping a box writes officer_grants;
      the DB (officer_can() on the safe-table policies) is the real enforcement —
-     this UI just decides what a President is allowed to do. The 4 dangerous
-     powers (approve brothers, assign titles, invite, settings) are NOT here, so
-     there is no toggle that could grant them. */
+     this UI just decides what a President is allowed to do.
+
+     'members.approve' (upgrade44) is the ONE permission that reaches a dangerous
+     table. It is deliberately not wired like the others: `brothers` RLS was left
+     admin-only, and the officer instead gets two narrow SECURITY DEFINER
+     functions that can do nothing but flip a PENDING row. Assigning titles,
+     inviting, and settings stay admin-only with no toggle at all. */
+  // upgrade44 retired the Active President seat — my_officer_seat() can no longer
+  // return it, so a row here would be a switch wired to nothing.
   var OFFICER_SEATS = [
-    { id: 'active_president', label: 'Active President', scope: 'active' },
     { id: 'alumni_president', label: 'Alumni President', scope: 'alumni' }
   ];
   var OFFICER_PERMS = [
-    { key: 'events.manage',       label: 'Manage events',          desc: 'Create, edit, and delete calendar events.',              seats: ['active_president', 'alumni_president'] },
-    { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['active_president'] },
-    { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['active_president', 'alumni_president'] },
-    { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['active_president', 'alumni_president'] },
+    { key: 'members.approve',     label: 'Approve new brothers',   desc: 'Clear the signup queue: let a brother in, or turn him away. He can ONLY decide someone who is still waiting — he cannot revoke an approved brother, restore a rejected one, rename anyone, or hand out titles. Every decision is logged under his name in History.', seats: ['alumni_president'] },
+    { key: 'events.manage',       label: 'Manage events',          desc: 'Create, edit, and delete calendar events.',              seats: ['alumni_president'] },
+    { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['alumni_president'] },
+    { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['alumni_president'] },
+    { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['alumni_president'] },
     // No 'gallery.post' entry: since upgrade41 every approved brother can post, so
     // a switch here would claim to control something it no longer controls.
     { key: 'gallery.albums',      label: 'Manage gallery sections', desc: 'Create, rename, and delete gallery sections, right on the gallery page. Deleting a section keeps its photos — they move to Miscellaneous.', seats: ['alumni_president'] },
-    { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['active_president', 'alumni_president'] },
-    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Edit or delete ANY brother\'s gallery photo or comment. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['active_president', 'alumni_president'] },
-    { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['active_president', 'alumni_president'] }
+    { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['alumni_president'] },
+    { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Edit or delete ANY brother\'s gallery photo or comment. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] },
+    { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] }
   ];
 
+  // EVERY holder, not the first one. Grants are per SEAT, so if two brothers hold
+  // the title, ticking a box hands the power to both — naming only one made the
+  // column read like a single person's permissions.
   function officerSeatHolder(scope) {
-    var b = state.data.verified.filter(function (x) {
+    var names = state.data.verified.filter(function (x) {
       return x.role === 'President' && x.role_scope === scope;
-    })[0];
-    return b ? b.full_name : null;
+    }).map(function (x) { return x.full_name; });
+    return names.length ? names.join(' & ') : null;   // caller esc()s this
   }
 
   function renderOfficersTab(q) {
-    q.innerHTML = '<p class="admin-hint">Switch on only the tools you want each President to run day-to-day. ' +
-      'Everything is <b>off by default</b>, and you can change it anytime — flipping a switch off removes that power immediately. ' +
-      'Approving brothers, assigning titles, sending invites, and every other sensitive task always stay with you.</p>' +
+    q.innerHTML = '<p class="admin-hint">Switch on only the tools you want the Alumni President to run day-to-day. ' +
+      'You can change it anytime — flipping a switch off removes that power immediately. ' +
+      'Assigning titles, sending invites, deleting brothers, and every other sensitive task always stay with you. ' +
+      '<b>Approving new brothers is the one exception</b>, and only while its switch is on.</p>' +
       '<div id="ogGrid"><p class="admin-empty">Loading…</p></div>';
 
     Z.officerGrantsList().then(function (grants) {
