@@ -439,7 +439,10 @@
       return this._gallery({ op: 'sign-upload', ext: ext || 'jpg', size: blob.size })
         .then(function (r) {
           if (r.status === 409) throw new Error('This page is out of date — refresh and try again.');
-          if (r.status === 413) throw new Error('That image is too large (5MB max).');
+          // The server cap applies to the DOWNSCALED image, which lands ~400KB, so
+          // this should be unreachable from the site — don't quote 5MB at someone
+          // whose picker just told them 25MB.
+          if (r.status === 413) throw new Error('That image could not be processed. Try a different photo.');
           if (!r.ok) throw new Error('upload not allowed');
           return r.json();
         })

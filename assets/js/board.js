@@ -582,10 +582,22 @@
     // right picture. Revoke the old object URL on every re-pick so it can't leak.
     var thrPhoto = document.querySelector('#thrForm input[name=photo]');
     var thrPrev = document.getElementById('thrPhotoPrev');
+    // 25MB matches the gallery composer, and for the same reason: downscale()
+    // decodes the whole image into a canvas, so an enormous file is a memory
+    // problem long before it's a storage one (it uploads at ~400KB either way).
+    // There was no guard here at all, which mattered less when only two accounts
+    // could attach a photo; every brother can now.
+    var MAX_PICK = 25 * 1024 * 1024;
     if (thrPhoto && thrPrev) thrPhoto.addEventListener('change', function () {
       if (thrPrev.src) URL.revokeObjectURL(thrPrev.src);
       var f = thrPhoto.files[0];
       if (!f) { thrPrev.hidden = true; thrPrev.removeAttribute('src'); return; }
+      if (f.size > MAX_PICK) {
+        thrPhoto.value = ''; thrPrev.hidden = true; thrPrev.removeAttribute('src');
+        var s = document.getElementById('thrStatus');
+        if (s) { s.className = 'form-status err'; s.textContent = 'That image is too big to process on a phone (max 25MB). Try a smaller version.'; }
+        return;
+      }
       thrPrev.src = URL.createObjectURL(f);
       thrPrev.hidden = false;
     });

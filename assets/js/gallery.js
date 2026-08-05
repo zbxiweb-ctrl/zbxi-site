@@ -70,7 +70,7 @@
   function uploaderHtml() {
     return '<div class="gupload">' +
         '<form id="guForm">' +
-          '<label class="gupload__drop" id="guDrop">📷 <b>Share a photo with the brotherhood</b><span id="guName">Click to choose an image (max 5MB)</span>' +
+          '<label class="gupload__drop" id="guDrop">📷 <b>Share a photo with the brotherhood</b><span id="guName">Click to choose an image (max 25MB)</span>' +
             '<img id="guPrev" class="gupload__prev" alt="Preview of the photo you chose" hidden>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
@@ -216,10 +216,22 @@
        reads as "it just doesn't work". Whether the duplicate is suppressed
        depends on the browser's user-activation rules, which is why this hit some
        brothers and not others. Measured: 2 picker activations before, 1 after. */
+    /* This limit is about MEMORY, not storage. Every photo is re-encoded to a
+       ≤1600px JPEG before it leaves the browser, so a 20MB original and a 2MB one
+       both upload at roughly 400KB — the old 5MB gate was turning away camera
+       photos and panoramas that would have ended up tiny. What a big file really
+       costs is the decode: downscale() paints the whole image into a canvas, and
+       ~25MB (50-80 megapixels) is about where an older phone runs out of room and
+       the tab dies. Hence 25, and hence the wording below. */
+    var MAX_PICK = 25 * 1024 * 1024;
     fileIn.addEventListener('change', function () {
       var f = fileIn.files[0];
-      if (!f) { showPreview(null); nameEl.textContent = 'Click to choose an image (max 5MB)'; btn.disabled = true; return; }
-      if (f.size > 5 * 1024 * 1024) { showPreview(null); st.className = 'form-status err'; st.textContent = 'That image is over 5MB.'; btn.disabled = true; return; }
+      if (!f) { showPreview(null); nameEl.textContent = 'Click to choose an image (max 25MB)'; btn.disabled = true; return; }
+      if (f.size > MAX_PICK) {
+        showPreview(null); st.className = 'form-status err';
+        st.textContent = 'That image is too big to process on a phone (max 25MB). Try a smaller version.';
+        btn.disabled = true; return;
+      }
       st.textContent = ''; st.className = 'form-status'; nameEl.textContent = f.name; showPreview(f); btn.disabled = false;
     });
     form.onsubmit = function (e) {
