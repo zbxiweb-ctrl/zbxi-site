@@ -109,7 +109,25 @@
     var menu = wrap.querySelector('.bell__menu');
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
-      if (menu.classList.toggle('open')) renderList();
+      if (menu.classList.toggle('open')) { announceOpen(); renderList(); }
+    });
+
+    /* ---- one header menu at a time -------------------------------------------
+       The bell, the account menu and the mobile nav each call stopPropagation on
+       their own toggle, so their own "click outside closes me" handler can't fire
+       on the very click that opened them. The side effect was that the OTHER
+       menus never heard that click either — so all three could sit open on top of
+       each other, which on a phone is a wall of overlapping panels.
+
+       Opening now announces itself and every other menu stands down. Deliberately
+       an event rather than a shared registry: each file stays independent, no new
+       script tag on 18 pages, and a page that doesn't load one of them just has
+       nobody listening. */
+    function announceOpen() {
+      document.dispatchEvent(new CustomEvent('zbxi:menu', { detail: 'bell' }));
+    }
+    document.addEventListener('zbxi:menu', function (e) {
+      if (e.detail !== 'bell') menu.classList.remove('open');
     });
 
     /* Read is earned by opening the row, not by glancing at the bell. Opening

@@ -13,7 +13,11 @@
     var setNav = function (open) {
       links.classList.toggle('open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      // Opening announces itself so the bell / account menu stand down. See the
+      // long note in notify.js for why propagation alone can't do this.
+      if (open) document.dispatchEvent(new CustomEvent('zbxi:menu', { detail: 'nav' }));
     };
+    document.addEventListener('zbxi:menu', function (e) { if (e.detail !== 'nav') setNav(false); });
     toggle.addEventListener('click', function (e) {
       e.stopPropagation();                    // keep the document handler from instantly re-closing
       setNav(!links.classList.contains('open'));

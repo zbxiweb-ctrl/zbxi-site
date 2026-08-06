@@ -79,13 +79,17 @@
     var btn = document.getElementById('navLoginBtn');
     var menu = document.getElementById('navLoginMenu');
     function close() { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
-    function open() { menu.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    function open() {
+      menu.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+      document.dispatchEvent(new CustomEvent('zbxi:menu', { detail: 'login' }));  // see notify.js
+    }
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       menu.classList.contains('open') ? close() : open();
     });
     document.addEventListener('click', function (e) { if (!el.contains(e.target)) close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    document.addEventListener('zbxi:menu', function (e) { if (e.detail !== 'login') close(); });
 
     // On the homepage, open the inline auth card directly (no navigation).
     if (onIndex && window.ZBXIPortal) {
@@ -183,13 +187,17 @@
     var btn = document.getElementById('navChipBtn');
     var menu = document.getElementById('navMenu');
     function close() { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
-    function open() { menu.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+    function open() {
+      menu.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+      document.dispatchEvent(new CustomEvent('zbxi:menu', { detail: 'account' }));  // see notify.js
+    }
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       menu.classList.contains('open') ? close() : open();
     });
     document.addEventListener('click', function (e) { if (!el.contains(e.target)) close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    document.addEventListener('zbxi:menu', function (e) { if (e.detail !== 'account') close(); });
     // Let the in-page anchors close the menu naturally
     menu.querySelectorAll('a[href^="#"]').forEach(function (a) { a.addEventListener('click', close); });
 
