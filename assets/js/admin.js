@@ -128,8 +128,9 @@
 
   var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, clsScroll: 0, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
 
-  // Active/Alumni logic — same rule the public pages use: grad year in the
-  // future (or this academic year) = Active. Grad year comes from the profile
+  // Active/Alumni logic — same rule the public pages use: a manual `standing`
+  // (set here or by the brother in his own profile) wins; otherwise grad year in
+  // the future (or this academic year) = Active. Grad year comes from the profile
   // or is inferred from the pledge class year + 4.
   var _now = new Date();
   var CUTOFF = _now.getFullYear() + (_now.getMonth() >= 5 ? 1 : 0);
@@ -144,9 +145,11 @@
   }
   function statusChip(b) {
     var grad = b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null);
-    return (grad != null && grad >= CUTOFF)
-      ? '<span class="schip schip--active">● Active</span>'
-      : '<span class="schip">Alumni</span>';
+    var isActive = b.standing ? b.standing === 'active' : (grad != null && grad >= CUTOFF);
+    var why = ' title="' + (b.standing ? 'Set manually' : 'From the grad year') + '"';
+    return isActive
+      ? '<span class="schip schip--active"' + why + '>● Active</span>'
+      : '<span class="schip"' + why + '>Alumni</span>';
   }
 
   function slimMasthead() { var m = document.getElementById('masthead'); if (m) m.classList.add('is-slim'); }
@@ -476,6 +479,11 @@
       '<h3>Edit brother</h3>' +
       '<div class="form-row">' + fld('Full name', 'full_name', b.full_name) + fld('Pledge class', 'pledge_class', b.pledge_class) + '</div>' +
       '<div class="form-row">' + fld('Grad year', 'grad_year', b.grad_year, 'number') + fld('Major', 'major', b.major) + '</div>' +
+      '<div class="field"><label>Active / Alumni</label><select data-f="standing">' +
+        [['', 'Auto — from the grad year'], ['active', '🎓 Active brother'], ['alumni', '🏛 Alumni brother']]
+          .map(function (o) { return '<option value="' + o[0] + '"' + ((b.standing || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
+      '</select>' +
+      '<p class="form-note" style="margin:.4rem 0 0">Auto uses the grad year. Picking one overrides it everywhere on the site. He can still change it himself in his own profile.</p></div>' +
       '<div class="form-row">' + fld('Hometown', 'hometown', b.hometown) + fld('Role (e-board)', 'role', b.role) + '</div>' +
       '<div class="form-row">' + fld('Role term', 'role_term', b.role_term) +
         '<div class="field"><label>Board (for the title)</label><select data-f="role_scope">' +
@@ -2337,8 +2345,11 @@
         '<li><b>📋 Unclaimed</b> tab → <b>+ Add pledge class</b>.</li>' +
         '<li>Type the class name (e.g. “Gamma Sigma · Fall \'26”), paste the names one per line.</li>' +
         '<li>On step 2, pick each new brother\'s big → <b>Add brothers</b>. Done — tree and rosters update instantly.</li></ol>') +
-      sec('🔁 Someone shows on the wrong page (Active vs Alumni)', '<p>The site decides automatically from the <b>grad year</b>: future grad year = Active page, past = Alumni page. The green/gray chip next to each name here shows the current result.</p>' +
-        '<ol><li>Find the brother (search box) → <b>Edit</b>.</li><li>Fix the <b>Grad year</b> → Save. The chip and the public pages flip immediately.</li></ol>') +
+      sec('🔁 Someone shows on the wrong page (Active vs Alumni)', '<p>By default the site decides from the <b>grad year</b>: future grad year = Active page, past = Alumni page. The green/gray chip next to each name here shows the current result — hover it to see whether it came from the grad year or was set by hand.</p>' +
+        '<ol><li>Find the brother (search box) → <b>Edit</b>.</li>' +
+        '<li>Either fix the <b>Grad year</b>, or use the <b>Active / Alumni</b> dropdown to put him on a page outright — handy for a brother who took a year off, transferred, or graduated early. Leave it on <b>Auto</b> to go back to the grad year.</li>' +
+        '<li>Save. The chip and the public pages flip immediately.</li></ol>' +
+        '<p class="form-note">A brother can also set this himself in his own profile, and it is the same setting — so if he changes it after you, his choice is the one that sticks.</p>') +
       sec('🌳 Fix the family tree (wrong big, typo, add/remove someone)', '<p>Use the dedicated <b>🌳 Tree</b> tab — it shows each family line as an indented list with plain buttons on every brother: <b>Rename</b>, <b>Change big</b>, <b>+ Little</b>, <b>Remove</b>. There\'s a “❓ How do I use this?” button inside with step-by-step instructions. Every save is live on the public tree instantly.</p>') +
       sec('👑 Run the executive boards', '<p>Use the <b>👑 E-Board</b> tab. The Active and Alumni boards are separate — each has four seats. Click <b>Assign</b> on a seat, pick the brother and term; the previous holder automatically moves to “Previous officers” (shown on the Alumni page with title filters). Each semester, hit <b>🔄 Semester rollover</b> once, then assign the new boards.</p>') +
       sec('👥 Committees & private spaces', '<p><b>👥 Committees</b> tab: create a committee (e.g. Rush Committee), add brothers with accounts. Each committee gets a private space on the Board that only its members and you can see. Current officers are auto-kept in the “E-Board Officers” committee.</p>') +
