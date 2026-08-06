@@ -37,6 +37,26 @@
     return '<button class="' + cls + '" data-' + action + '>' + label + '</button>';
   }
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
+
+  /* A missing big is only a PROBLEM if the brother should have one. The 1993
+     founding class ARE the roots of the tree, legitimately — every one of them
+     has no big by definition. Counting them as work to do turns the founding
+     class into a permanent 12-item false alarm, which is exactly what the first
+     version of this card did.
+
+     classYear + needsBig are lifted verbatim from admin.js (which has had the
+     rule right since it was written) rather than re-derived, so the two consoles
+     can never disagree about what "needs a big" means. */
+  function classYear(cls) {
+    var s = String(cls || '');
+    var m4 = s.match(/(19|20)\d{2}/);
+    if (m4) return parseInt(m4[0], 10);
+    var m2 = s.match(/'(\d{2})/);
+    if (!m2) return null;
+    var yy = parseInt(m2[1], 10);
+    return yy >= 93 ? 1900 + yy : 2000 + yy;
+  }
+  function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
   function msg(title, body) { return '<div class="admin-msg"><h2>' + esc(title) + '</h2><p>' + body + '</p></div>'; }
 
   // The Core tools, in the order they appear in the rail. `perm` is the grant
@@ -236,10 +256,11 @@
       var out = rows.filter(function (r) { return r.sent_at && !r.accepted_at; }).length;
       setMeta('invite', out ? out + ' awaiting reply' : 'Invite brothers →');
     }).catch(function () { setMeta('invite', 'Invite brothers →'); });
-    // Brothers with no big are the roster's real gap, and the tree shows it.
+    // needsBig, NOT !big_id — see the note by the helper. The founders have no
+    // big and never will; saying so on this card invents a to-do list.
     if (have.records) Z.listFamilyPublic().then(function (rows) {
-      var n = rows.filter(function (b) { return !b.big_id; }).length;
-      setMeta('records', rows.length + ' on the roster' + (n ? ' · ' + n + ' with no big' : ''));
+      var n = rows.filter(needsBig).length;
+      setMeta('records', rows.length + ' on the roster' + (n ? ' · ' + n + ' need a big' : ''));
     }).catch(function () { setMeta('records', 'Open →'); });
     if (have.gallery) setMeta('gallery', 'Moderate →');
     if (have.email) setMeta('email', 'Compose →');
@@ -482,29 +503,64 @@
       var byId = {};
       all.forEach(function (b) { byId[b.id] = b; });
 
+      // The worklist. Without it this tab told an officer that N brothers need a
+      // big and then made him guess their names to find them. Hidden entirely
+      // when there is nothing to do, so it never nags — same rule as admin.js.
+      var need = all.filter(needsBig);
+      var onlyNeed = false;
+
       q.innerHTML =
         '<p class="admin-hint">Fix a misspelled name, a wrong pledge class or graduation year, and record who someone’s ' +
         '<b>big brother</b> is — that last one is what draws the family tree. You cannot change a brother’s status, his ' +
         'chapter title, or which account he is attached to; those stay with the webmaster.</p>' +
-        '<div class="field"><label>Find a brother</label><input id="recFind" placeholder="Type a name or pledge class…" autocomplete="off"></div>' +
+        (need.length ? '<div class="admin-addbar"><button class="btn btn--ghost" id="recNeedBig">⚠️ ' +
+          need.length + ' need a big</button></div>' : '') +
+        // --on-navy-2, not the default: .field label is var(--heading) (navy),
+        // which is right inside a cream modal and INVISIBLE here -- this is the
+        // only .field in either console painted straight onto the navy shell.
+        // Measured before and after: contrast 1.1 -> 11.4. Using the token rather
+        // than a literal is what makes it flip correctly in dark mode.
+        '<div class="field"><label style="color:var(--on-navy-2)">Find a brother</label>' +
+        '<input id="recFind" placeholder="Type a name or pledge class…" autocomplete="off"></div>' +
         '<div id="recList"></div>';
 
       function draw(filter) {
         var f = String(filter || '').trim().toLowerCase();
-        var rows = !f ? [] : all.filter(function (b) {
-          return String(b.full_name || '').toLowerCase().indexOf(f) > -1 ||
-                 String(b.pledge_class || '').toLowerCase().indexOf(f) > -1;
-        }).slice(0, 40);
         var list = document.getElementById('recList');
-        if (!f) {
-          list.innerHTML = '<p class="admin-empty">Start typing to find one of the ' + all.length + ' brothers on the roster.</p>';
+        var rows;
+        if (onlyNeed) {
+          rows = need.filter(function (b) {
+            return !f || String(b.full_name || '').toLowerCase().indexOf(f) > -1 ||
+                   String(b.pledge_class || '').toLowerCase().indexOf(f) > -1;
+          });
+        } else {
+          rows = !f ? [] : all.filter(function (b) {
+            return String(b.full_name || '').toLowerCase().indexOf(f) > -1 ||
+                   String(b.pledge_class || '').toLowerCase().indexOf(f) > -1;
+          }).slice(0, 40);
+        }
+        if (!f && !onlyNeed) {
+          list.innerHTML = '<p class="admin-empty">Start typing to find one of the ' + all.length +
+            ' brothers on the roster' + (need.length ? ', or use the button above to see the ' +
+            need.length + ' who need a big' : '') + '.</p>';
           return;
         }
-        if (!rows.length) { list.innerHTML = '<p class="admin-empty">Nobody matches “' + esc(filter) + '”.</p>'; return; }
+        if (!rows.length) {
+          list.innerHTML = '<p class="admin-empty">' + (f
+            ? 'Nobody matches “' + esc(filter) + '”' + (onlyNeed ? ' among those needing a big' : '') + '.'
+            : '🎉 Every brother who should have a big has one.') + '</p>';
+          return;
+        }
         list.innerHTML = rows.map(function (b) {
           var big = b.big_id && byId[b.big_id] ? byId[b.big_id].full_name : null;
+          // Three states, not two. A founder has no big and never will — calling
+          // that "no big recorded" flags the founding class as broken data on the
+          // one screen an officer is told to go fix things on.
+          var bigCell = big ? 'Big: ' + big
+                       : needsBig(b) ? '⚠️ no big recorded'
+                       : 'root of the family tree';
           var meta = [b.pledge_class, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null),
-                      (big ? 'Big: ' + big : '⚠️ no big recorded')].filter(Boolean).map(esc).join(' · ');
+                      bigCell].filter(Boolean).map(esc).join(' · ');
           return '<div class="admin-row" data-r="' + esc(b.id) + '">' +
             '<div class="admin-row__ph">' + esc(initials(b.full_name)) + '</div>' +
             '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b><span>' + meta + '</span></div>' +
@@ -518,6 +574,14 @@
       var find = document.getElementById('recFind');
       var t = null;
       find.oninput = function () { clearTimeout(t); var v = find.value; t = setTimeout(function () { draw(v); }, 120); };
+
+      var nb = document.getElementById('recNeedBig');
+      if (nb) nb.onclick = function () {
+        onlyNeed = !onlyNeed;
+        nb.className = 'btn ' + (onlyNeed ? 'btn--gold' : 'btn--ghost');
+        nb.textContent = onlyNeed ? '← Search everyone' : '⚠️ ' + need.length + ' need a big';
+        draw(find.value);
+      };
       draw('');
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load the roster: ' + esc((e && e.message) || '') + '</p>'; });
   }
