@@ -2231,7 +2231,10 @@
     { id: 'alumni_president', label: 'Alumni President', scope: 'alumni' }
   ];
   var OFFICER_PERMS = [
-    { key: 'members.approve',     label: 'Approve new brothers',   desc: 'Clear the signup queue: let a brother in, or turn him away. He can ONLY decide someone who is still waiting — he cannot revoke an approved brother, restore a rejected one, rename anyone, or hand out titles. Every decision is logged under his name in History.', seats: ['alumni_president'] },
+    { key: 'members.approve',     label: 'Approve new brothers',   desc: 'Clear the signup queue: let a brother in, or turn him away. He can ONLY decide someone who is still waiting — he cannot revoke a brother YOU approved, restore a rejected one, rename anyone, or hand out titles. He can put back a decision HE made himself, which is how he fixes a misclick without coming to you. Every decision is logged under his name in History.', seats: ['alumni_president'] },
+    { key: 'members.invite',      label: 'Invite brothers',        desc: 'Email brothers an invitation to claim their profile — up to 25 at a time, and he sees the list of who has been invited and who has joined. The alumni address book is his, not yours, so this is the one that grows the site. He cannot email the whole chapter (that is "Email the brothers") and cannot send the monthly digest.', seats: ['alumni_president'] },
+    { key: 'members.edit',        label: 'Fix roster records',     desc: 'Correct a misspelled name, a wrong pledge class or graduation year, and record who a brother\'s big is — the last one is what draws the family tree. FOUR fields, nothing else: he cannot change anyone\'s status, title, or which account a profile belongs to. This is the widest power on this page; every change is logged.', seats: ['alumni_president'] },
+    { key: 'history.view',        label: 'See the history log',    desc: 'Read-only view of anything that DELETED something or changed who can do what — including your own actions. Everyday activity (photos, comments, profile edits) is not shown. He cannot undo anything from it; it is a record, not a control panel.', seats: ['alumni_president'] },
     { key: 'events.manage',       label: 'Manage events',          desc: 'Create, edit, and delete calendar events.',              seats: ['alumni_president'] },
     { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['alumni_president'] },
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['alumni_president'] },
@@ -2257,8 +2260,9 @@
   function renderOfficersTab(q) {
     q.innerHTML = '<p class="admin-hint">Switch on only the tools you want the Alumni President to run day-to-day. ' +
       'You can change it anytime — flipping a switch off removes that power immediately. ' +
-      'Assigning titles, sending invites, deleting brothers, and every other sensitive task always stay with you. ' +
-      '<b>Approving new brothers is the one exception</b>, and only while its switch is on.</p>' +
+      '<b>Assigning titles, deleting brothers, and attaching a profile to an account always stay with you</b>, ' +
+      'whatever is ticked below — an officer can never hand out a chapter title or an officer seat, ' +
+      'including to himself.</p>' +
       '<div id="ogGrid"><p class="admin-empty">Loading…</p></div>';
 
     Z.officerGrantsList().then(function (grants) {
@@ -2435,6 +2439,9 @@
     gallery_post_deleted: 'DELETED a gallery photo', member_deleted: 'DELETED a brother record',
     member_approved: 'approved a brother', member_rejected: 'rejected a brother',
     status_changed: 'changed a brother’s status',
+    // upgrade47: an officer's roster correction. It used to log as
+    // profile_updated, indistinguishable from a brother editing his own bio.
+    record_edited: 'corrected a roster record',
     grant_enabled: 'GAVE an officer a permission', grant_disabled: 'REMOVED an officer permission',
     title_granted: 'granted a title', title_removed: 'removed a title'
   };
@@ -2444,7 +2451,7 @@
   var ACT_SERIOUS = {
     event_deleted: 1, poll_deleted: 1, album_deleted: 1, member_deleted: 1,
     gallery_post_deleted: 1, grant_enabled: 1, grant_disabled: 1,
-    member_approved: 1, member_rejected: 1, status_changed: 1,
+    member_approved: 1, member_rejected: 1, status_changed: 1, record_edited: 1,
     title_granted: 1, title_removed: 1
   };
 

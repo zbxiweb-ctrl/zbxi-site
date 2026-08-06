@@ -75,6 +75,22 @@ async function isAdmin(req: Request) {
   return String(u?.email || "").toLowerCase() === await adminEmail();
 }
 
+// Since upgrade46 an Alumni President with members.invite may send invites — the
+// chapter's alumni address book lives with him, not with the webmaster.
+// Asked AS THE CALLER (his JWT), so the database's own grant logic decides and
+// this function never has to know what a seat is. A brother without the grant
+// gets false and is refused exactly as before. Same shape as zbxi-approved.ts.
+async function callerCan(req: Request, perm: string): Promise<boolean> {
+  const auth = req.headers.get("Authorization");
+  if (!auth) return false;
+  const r = await fetch(`${SB}/rest/v1/rpc/officer_can`, {
+    method: "POST",
+    headers: { apikey: SRK, Authorization: auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ perm }),
+  });
+  return r.ok && (await r.json()) === true;
+}
+
 const body = (name: string | null, link: string) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
@@ -107,7 +123,7 @@ const body = (name: string | null, link: string) => `<!doctype html><html><body 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (!(await isAdmin(req))) {
+  if (!(await isAdmin(req)) && !(await callerCan(req, "members.invite"))) {
     return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...CORS, "Content-Type": "application/json" } });
   }
 

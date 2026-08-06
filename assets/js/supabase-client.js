@@ -779,6 +779,57 @@
         .then(function (r) { if (r.error) throw r.error; return r.data; });
     },
 
+    /* ---- correcting a decision, and the roster (upgrade46) -------------------
+       Same shape and the same reasoning as the two above: narrow SECURITY
+       DEFINER verbs, never a widened policy on `brothers`. */
+    // What the Undo button lists. d_locked = carries a chapter title, so Undo is
+    // not offered on it (the server refuses too — this only avoids the dead press).
+    myRecentDecisions: function () {
+      return client.rpc('my_recent_decisions')
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    // Reverses a decision back to 'pending'. RAISES unless the caller made that
+    // decision himself — decided_by is stamped by a trigger and cannot be spoofed.
+    undoMyDecision: function (id) {
+      return client.rpc('undo_my_decision', { p_id: id })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
+    // Roster facts only. There is deliberately no parameter for role, status,
+    // user_id or roster_name, so no argument can reach them.
+    // _bust because this writes the roster: the family tree and the Records list
+    // both serve from the 30-min sessionStorage cache, and without this an
+    // officer's own correction would keep reading back the old name.
+    officerUpdateBrother: function (id, f) {
+      return this._bust(client.rpc('officer_update_brother', {
+        p_id: id,
+        p_full_name: f.full_name,
+        p_pledge_class: f.pledge_class || null,
+        p_grad_year: f.grad_year == null || f.grad_year === '' ? null : parseInt(f.grad_year, 10),
+        p_big_id: f.big_id || null
+      })).then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
+    // Officers read invites through a function, NOT the table. invitesList()
+    // above is select('*'), and the table carries `token` -- a credential that
+    // mints an already-confirmed account for that email (zbxi-claim.ts). RLS is
+    // row-level and cannot hide a column, so the officer path has to be a verb
+    // that never selects it. The admin keeps the table read (invites_admin_all).
+    // Shaped to match invitesList() so the Invite tab renders either the same.
+    officerInvitesList: function () {
+      return client.rpc('officer_invites_list').then(function (r) {
+        if (r.error) throw r.error;
+        return (r.data || []).map(function (x) {
+          return { email: x.i_email, sent_at: x.i_sent_at, accepted_at: x.i_accepted,
+                   error: x.i_error, created_at: x.i_created };
+        });
+      });
+    },
+    // The serious half of the audit log (deletions, approvals, permission and
+    // title changes). Everyday activity is filtered out server-side.
+    activityFeed: function () {
+      return client.rpc('activity_feed')
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+
     /* ---- email: digest + invites (Edge Functions; see supabase/functions/) ---- */
     _fn: function (slug) { return (window.ZBXI_CONFIG.SUPABASE_URL) + '/functions/v1/' + slug; },
     _token: function () {

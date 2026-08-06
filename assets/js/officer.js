@@ -44,6 +44,10 @@
   // a brother waiting at the front door is the only time-sensitive item here.
   var TOOLS = [
     { perm: 'members.approve',     id: 'members',    ic: '✅', label: 'Approvals',   render: renderApprovalsTab },
+    // Membership flow, in the order it actually happens: invite a man, approve
+    // him, then fix whatever was typed wrong. (upgrade46)
+    { perm: 'members.invite',      id: 'invite',     ic: '✉️', label: 'Invite',      render: renderInviteTab },
+    { perm: 'members.edit',        id: 'records',    ic: '🗂', label: 'Records',     render: renderRecordsTab },
     { perm: 'events.manage',       id: 'events',     ic: '📅', label: 'Events',      render: renderEventsTab },
     { perm: 'committees.manage',   id: 'committees', ic: '👥', label: 'Committees',  render: renderCommitteesTab },
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },
@@ -51,7 +55,10 @@
     { perm: 'gallery.moderate',    id: 'gallery',    ic: '🖼', label: 'Gallery',     render: renderGalleryTab },
     // Shared composer (email-tab.js); the zbxi-email fn re-checks the grant
     // server-side, so this entry only decides whether the tab is visible.
-    { perm: 'email.send',          id: 'email',      ic: '📧', label: 'Email',       render: function (q) { window.ZBXIEmailTab.render(q); } }
+    { perm: 'email.send',          id: 'email',      ic: '📧', label: 'Email',       render: function (q) { window.ZBXIEmailTab.render(q); } },
+    // Last on the rail on purpose: it is a thing you look something up in, not a
+    // job with a queue. Read-only, and the serious actions only. (upgrade46)
+    { perm: 'history.view',        id: 'history',    ic: '📜', label: 'History',     render: renderHistoryTab }
   ];
 
   var state = { seat: null, seatLabel: '', grants: {}, tools: [], tab: null, events: [], verified: [] };
@@ -136,6 +143,14 @@
         '<b>Admin Console → Officers</b>. As soon as one is enabled, it will appear in the list on the left.</p>';
       return;
     }
+    // The bell links here as officer.html#members (tg_notify_status, upgrade44),
+    // but nothing consumed the hash, so an officer following "someone is waiting"
+    // landed on the Overview and had to find Approvals himself. Only honoured for
+    // a tool he actually holds — an unknown or forbidden hash falls through to
+    // the normal default rather than showing him an empty pane.
+    var want = (location.hash || '').replace('#', '');
+    if (want && state.tools.filter(function (t) { return t.id === want; }).length) state.tab = want;
+
     if (state.tab !== 'home' && !state.tools.filter(function (t) { return t.id === state.tab; }).length) state.tab = 'home';
     enter(state.tab);
   }
@@ -215,8 +230,20 @@
     if (have.awards) Z.awardsList().then(function (rows) {
       setMeta('awards', rows.length + (rows.length === 1 ? ' award' : ' awards'));
     }).catch(function () { setMeta('awards', 'Open →'); });
+    // Invites count the ones still OUTSTANDING — sent and not yet joined. That
+    // is the number worth chasing; total-ever is a vanity figure.
+    if (have.invite) Z.officerInvitesList().then(function (rows) {
+      var out = rows.filter(function (r) { return r.sent_at && !r.accepted_at; }).length;
+      setMeta('invite', out ? out + ' awaiting reply' : 'Invite brothers →');
+    }).catch(function () { setMeta('invite', 'Invite brothers →'); });
+    // Brothers with no big are the roster's real gap, and the tree shows it.
+    if (have.records) Z.listFamilyPublic().then(function (rows) {
+      var n = rows.filter(function (b) { return !b.big_id; }).length;
+      setMeta('records', rows.length + ' on the roster' + (n ? ' · ' + n + ' with no big' : ''));
+    }).catch(function () { setMeta('records', 'Open →'); });
     if (have.gallery) setMeta('gallery', 'Moderate →');
     if (have.email) setMeta('email', 'Compose →');
+    if (have.history) setMeta('history', 'Look something up →');
   }
 
   /* ================= APPROVALS (upgrade44) =================================
@@ -250,7 +277,8 @@
         'a brother can’t see the members side of the site at all. <b>Check the name against the chapter roster first</b> — ' +
         'approving opens the whole directory to him. Approving also sends him a welcome email.</p>';
       if (!rows.length) {
-        q.innerHTML = intro + '<p class="admin-empty">🎉 Nobody is waiting. All caught up.</p>';
+        q.innerHTML = intro + '<p class="admin-empty">🎉 Nobody is waiting. All caught up.</p>' + UNDO_SLOT;
+        renderUndoBlock();
         return;
       }
       q.innerHTML = intro + rows.map(function (b) {
@@ -264,7 +292,8 @@
           '</div>' +
           '<div class="admin-row__act">' + btn('ok', 'Approve', 'gold') + btn('no', 'Reject', 'danger') + '</div>' +
         '</div>';
-      }).join('');
+      }).join('') + UNDO_SLOT;
+      renderUndoBlock();
 
       q.querySelectorAll('[data-p]').forEach(function (el) {
         var id = el.dataset.p;
@@ -294,6 +323,270 @@
         });
       });
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load the queue: ' + esc(e.message || '') + '</p>'; });
+  }
+
+  /* ---- undo: the correction path for the queue (upgrade46) ------------------
+     Rides on members.approve rather than a switch of its own — being able to
+     approve but not to fix your own mistake is the state this replaced.
+
+     A decision is undoable only if decided_by matches the caller, which a
+     trigger stamps and a client cannot spoof. So this list is short by
+     construction: it is HIS decisions, not the chapter's. Anything decided
+     before upgrade46, or by the server, has a null decided_by and can never
+     appear here. */
+  var UNDO_SLOT = '<div id="undoBlock"></div>';
+
+  function renderUndoBlock() {
+    var box = document.getElementById('undoBlock');
+    if (!box) return;
+    Z.myRecentDecisions().then(function (rows) {
+      if (!rows.length) { box.innerHTML = ''; return; }
+      box.innerHTML =
+        '<h3 class="stat-h">Decisions you made</h3>' +
+        '<p class="admin-hint">Changed your mind, or clicked the wrong button? Putting a brother back in the queue ' +
+        'undoes the decision — it does not delete anything. You can only undo your own decisions.</p>' +
+        rows.map(function (r) {
+          var chip = r.d_status === 'verified'
+            ? '<span class="schip schip--active">● Approved</span>'
+            : '<span class="schip schip--warn">Rejected</span>';
+          return '<div class="admin-row" data-u="' + esc(r.d_id) + '">' +
+            '<div class="admin-row__ph">' + esc(initials(r.d_name)) + '</div>' +
+            '<div class="admin-row__info"><b>' + esc(r.d_name) + ' ' + chip + '</b>' +
+              (r.d_at ? '<span class="admin-row__when">' + esc(stamp(r.d_at)) + '</span>' : '') +
+              (r.d_locked ? '<span class="admin-row__when admin-flag">🚩 Carries a chapter title — only the webmaster can change this one.</span>' : '') +
+            '</div>' +
+            // Not offered on a titled row rather than offered-and-refused: the
+            // server raises either way, but a dead button reads as a broken site.
+            (r.d_locked ? '' : '<div class="admin-row__act">' + btn('undo', 'Put back in the queue', '') + '</div>') +
+          '</div>';
+        }).join('');
+
+      box.querySelectorAll('[data-u]').forEach(function (el) {
+        var id = el.dataset.u;
+        var r = rows.filter(function (x) { return x.d_id === id; })[0];
+        each(el, '[data-undo]', function () {
+          ZBXIAsk.confirm({
+            title: 'Put ' + r.d_name + ' back in the queue?',
+            body: r.d_status === 'verified'
+              ? 'He loses access to the members side again until someone approves him. He is not deleted, and he keeps his account.'
+              : 'He goes back to waiting, so he can be approved instead. Nothing was deleted when you rejected him.',
+            ok: 'Put back'
+          }, function () {
+            el.querySelectorAll('button').forEach(function (x) { x.disabled = true; });
+            Z.undoMyDecision(id).then(function () { renderTab(); }).catch(function (e) {
+              el.querySelectorAll('button').forEach(function (x) { x.disabled = false; });
+              ZBXIAsk.alert({ title: 'Could not undo that', body: (e && e.message) || 'Please try again.' });
+            });
+          });
+        });
+      });
+    }).catch(function () { box.innerHTML = ''; });   // never break the queue above it
+  }
+
+  /* ================= INVITE (upgrade46) =====================================
+     The chapter's alumni address book lives with the Alumni President, not with
+     the webmaster, so this is the tool that most needed handing over.
+
+     Deliberately NOT included from the Admin Console's version of this tab: the
+     monthly digest. zbxi-digest is still admin-gated, and a "Send to all
+     brothers" button that 403s would be worse than no button. */
+  function renderInviteTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading…</p>';
+    // officerInvitesList, NOT invitesList: the latter is select('*') on a table
+    // that carries `token`, which is a credential. See supabase-client.js.
+    Z.officerInvitesList().then(function (rows) {
+      var sent = rows.filter(function (r) { return r.sent_at; }).length;
+      var joined = rows.filter(function (r) { return r.accepted_at; }).length;
+      var invited = {};
+      rows.forEach(function (r) { invited[String(r.email).toLowerCase()] = r; });
+
+      q.innerHTML =
+        '<div class="acct-block"><h4>✉️ Invite brothers to claim their profile</h4>' +
+        '<p class="form-note" style="margin-top:0">Most brothers on the tree have no account yet — so they never see the gallery, ' +
+        'board or directory. Paste their emails (one per line, up to 25) and each gets a personal invite with a link to claim his name. ' +
+        '<b>Only invite brothers you know.</b> This is a personal invitation, not a mailing list.</p>' +
+        '<div class="field"><label>Email addresses</label><textarea id="invEmails" rows="5" placeholder="john.smith@gmail.com&#10;mike.jones@yahoo.com"></textarea></div>' +
+        '<button class="btn btn--gold" id="invSend">Send invitations</button>' +
+        '<p class="form-status" id="invStatus"></p></div>' +
+
+        '<h3 class="stat-h">Invitations (' + sent + ' sent · ' + joined + ' joined)</h3>' +
+        (rows.length
+          ? rows.map(function (r) {
+              var status = r.accepted_at ? '<span class="schip schip--active">● Joined</span>'
+                         : r.sent_at ? '<span class="schip">Sent</span>'
+                         : '<span class="schip schip--warn">Failed</span>';
+              var when = stamp(r.sent_at || r.created_at) + (r.accepted_at ? ' · joined ' + stamp(r.accepted_at) : '');
+              return '<div class="admin-row"><div class="admin-row__ph">✉️</div>' +
+                '<div class="admin-row__info"><b>' + esc(r.email) + ' ' + status + '</b>' +
+                '<span>' + esc(when) + (r.error ? ' · ⚠ ' + esc(r.error) : '') + '</span></div></div>';
+            }).join('')
+          : '<p class="admin-empty">No invitations sent yet.</p>');
+
+      document.getElementById('invSend').onclick = function () {
+        var b = this, st = document.getElementById('invStatus');
+        var emails = document.getElementById('invEmails').value.split(/[\s,;]+/)
+          .map(function (e) { return e.trim(); }).filter(Boolean);
+        if (!emails.length) { st.className = 'form-status err'; st.textContent = 'Paste at least one email address.'; return; }
+        if (emails.length > 25) { st.className = 'form-status err'; st.textContent = 'Send at most 25 at a time.'; return; }
+
+        var dupes = emails.filter(function (e) { var i = invited[e.toLowerCase()]; return i && i.sent_at; });
+        var go = function () {
+          b.disabled = true; b.textContent = 'Queueing…';
+          st.className = 'form-status'; st.textContent = '';
+          Z.inviteBrothers(emails, null).then(function (r) {
+            if (r.error) { st.className = 'form-status err'; st.textContent = r.error; b.disabled = false; b.textContent = 'Send invitations'; return; }
+            var failed = (r.results || []).filter(function (x) { return !x.ok; });
+            st.className = failed.length ? 'form-status err' : 'form-status ok';
+            st.textContent = '✓ Queued ' + r.queued + ' invitation' + (r.queued === 1 ? '' : 's') +
+              ' — they go out over the next day or so.' +
+              (failed.length ? ' · ' + failed.length + ' failed: ' + failed[0].error : '');
+            setTimeout(function () { renderTab(); }, 1200);
+          }).catch(function (e) {
+            st.className = 'form-status err'; st.textContent = String((e && e.message) || e);
+            b.disabled = false; b.textContent = 'Send invitations';
+          });
+        };
+        // ZBXIAsk escapes its own body — pass raw text.
+        if (dupes.length) {
+          ZBXIAsk.confirm({ title: 'Some of these were already invited',
+            body: 'Already invited: ' + dupes.join(', ') + '. Send again anyway?', ok: 'Send again' }, go);
+        } else { go(); }
+      };
+    }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load invitations: ' + esc((e && e.message) || '') + '</p>'; });
+  }
+
+  /* ================= RECORDS (upgrade46) ====================================
+     Roster facts only — name, pledge class, graduation year, and who his big is.
+     The form has no field for status, title, or account because the FUNCTION has
+     no parameter for them (officer_update_brother, upgrade46). Nothing here is
+     hidden UI that a determined browser could re-enable.
+
+     Reads family_public: it is the roster view every brother can already see,
+     and it carries exactly the four editable fields plus the id. Checked on the
+     live database — it holds all 359 verified brothers and no pending ones, so
+     a brother still in the queue is corrected after he is approved, not before. */
+  function bigOptionsFor(b, all) {
+    return ['<option value="">— none —</option>'].concat(
+      all.filter(function (v) { return v.id !== b.id; })
+        .sort(function (x, y) { return String(x.full_name).localeCompare(String(y.full_name)); })
+        .map(function (v) {
+          return '<option value="' + esc(v.id) + '"' + (b.big_id === v.id ? ' selected' : '') + '>' +
+            esc(v.full_name) + (v.pledge_class ? ' · ' + esc(v.pledge_class) : '') + '</option>';
+        })
+    ).join('');
+  }
+
+  function renderRecordsTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading the roster…</p>';
+    Z.listFamilyPublic().then(function (all) {
+      var byId = {};
+      all.forEach(function (b) { byId[b.id] = b; });
+
+      q.innerHTML =
+        '<p class="admin-hint">Fix a misspelled name, a wrong pledge class or graduation year, and record who someone’s ' +
+        '<b>big brother</b> is — that last one is what draws the family tree. You cannot change a brother’s status, his ' +
+        'chapter title, or which account he is attached to; those stay with the webmaster.</p>' +
+        '<div class="field"><label>Find a brother</label><input id="recFind" placeholder="Type a name or pledge class…" autocomplete="off"></div>' +
+        '<div id="recList"></div>';
+
+      function draw(filter) {
+        var f = String(filter || '').trim().toLowerCase();
+        var rows = !f ? [] : all.filter(function (b) {
+          return String(b.full_name || '').toLowerCase().indexOf(f) > -1 ||
+                 String(b.pledge_class || '').toLowerCase().indexOf(f) > -1;
+        }).slice(0, 40);
+        var list = document.getElementById('recList');
+        if (!f) {
+          list.innerHTML = '<p class="admin-empty">Start typing to find one of the ' + all.length + ' brothers on the roster.</p>';
+          return;
+        }
+        if (!rows.length) { list.innerHTML = '<p class="admin-empty">Nobody matches “' + esc(filter) + '”.</p>'; return; }
+        list.innerHTML = rows.map(function (b) {
+          var big = b.big_id && byId[b.big_id] ? byId[b.big_id].full_name : null;
+          var meta = [b.pledge_class, (b.grad_year ? "'" + String(b.grad_year).slice(-2) : null),
+                      (big ? 'Big: ' + big : '⚠️ no big recorded')].filter(Boolean).map(esc).join(' · ');
+          return '<div class="admin-row" data-r="' + esc(b.id) + '">' +
+            '<div class="admin-row__ph">' + esc(initials(b.full_name)) + '</div>' +
+            '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b><span>' + meta + '</span></div>' +
+            '<div class="admin-row__act">' + btn('edit', 'Edit', '') + '</div></div>';
+        }).join('');
+        list.querySelectorAll('[data-r]').forEach(function (el) {
+          each(el, '[data-edit]', function () { openRecordEdit(byId[el.dataset.r], all); });
+        });
+      }
+
+      var find = document.getElementById('recFind');
+      var t = null;
+      find.oninput = function () { clearTimeout(t); var v = find.value; t = setTimeout(function () { draw(v); }, 120); };
+      draw('');
+    }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load the roster: ' + esc((e && e.message) || '') + '</p>'; });
+  }
+
+  function openRecordEdit(b, all) {
+    if (!b) return;
+    var wrap = treeModal('Edit ' + esc(b.full_name),
+      '<div class="form-row">' +
+        '<div class="field"><label>Full name *</label><input data-f="full_name" value="' + esc(b.full_name) + '"></div>' +
+        '<div class="field"><label>Pledge class</label><input data-f="pledge_class" value="' + esc(b.pledge_class) + '"></div>' +
+      '</div>' +
+      '<div class="form-row">' +
+        '<div class="field"><label>Graduation year</label><input data-f="grad_year" type="number" value="' + esc(b.grad_year) + '"></div>' +
+        '<div class="field"><label>Big brother</label><select data-f="big_id">' + bigOptionsFor(b, all) + '</select></div>' +
+      '</div>' +
+      '<p class="form-note" style="margin:0 0 .8rem">Graduation year is what decides whether a brother is listed as Active or Alumni. ' +
+      'Changing a big redraws the family tree.</p>' +
+      '<button class="btn btn--navy" data-save style="width:100%">Save changes</button>');
+
+    var get = function (f) { return wrap.querySelector('[data-f="' + f + '"]'); };
+    wrap.querySelector('[data-save]').onclick = function () {
+      var st = wrap.querySelector('[data-status]');
+      st.className = 'form-status'; st.textContent = 'Saving…';
+      Z.officerUpdateBrother(b.id, {
+        full_name: get('full_name').value,
+        pledge_class: get('pledge_class').value,
+        grad_year: get('grad_year').value,
+        big_id: get('big_id').value
+      }).then(function () {
+        wrap.close();
+        renderTab();
+      }).catch(function (e) {
+        // The server refuses a loop in the tree, a big who isn't a verified
+        // brother, and an empty name. Show its own words — they are written to
+        // be read by a person.
+        st.className = 'form-status err'; st.textContent = (e && e.message) || 'Could not save that.';
+      });
+    };
+  }
+
+  /* ================= HISTORY (upgrade46) ====================================
+     Read-only, and the SERIOUS actions only — deletions, membership decisions,
+     permission and title changes. The filter is applied server-side by
+     activity_feed(); the everyday noise (profile edits, gallery posts, comments,
+     replies) is never sent to the browser at all. Officers hold real power now,
+     and being able to see what was done with it is what makes that safe. */
+  var OC_ACT = {
+    member_deleted: 'DELETED a brother record', member_approved: 'approved a brother',
+    member_rejected: 'rejected a brother', status_changed: 'changed a brother’s status',
+    record_edited: 'corrected a roster record',
+    grant_enabled: 'GAVE an officer a permission', grant_disabled: 'REMOVED an officer permission',
+    title_granted: 'granted a title', title_removed: 'removed a title',
+    event_deleted: 'DELETED an event', poll_deleted: 'DELETED a poll',
+    album_deleted: 'DELETED a gallery section', gallery_post_deleted: 'DELETED a gallery photo'
+  };
+
+  function renderHistoryTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading…</p>';
+    Z.activityFeed().then(function (rows) {
+      var intro = '<p class="admin-hint">Everything that <b>removed</b> something or <b>changed who can do what</b> — by you, ' +
+        'by the webmaster, or by another officer. Everyday activity (photos, comments, profile edits) is not listed here. ' +
+        'This is a record, not a control panel: nothing on this page can be undone from it.</p>';
+      if (!rows.length) { q.innerHTML = intro + '<p class="admin-empty">Nothing recorded yet.</p>'; return; }
+      q.innerHTML = intro + '<div class="stat-list">' + rows.map(function (a) {
+        return '<div class="stat-list__row stat-list__row--warn">' +
+          '<b>' + esc(a.a_actor) + ' · ' + esc(OC_ACT[a.a_action] || a.a_action) + '</b>' +
+          '<span>' + esc(a.a_detail || '') + '</span><em>' + esc(stamp(a.a_at)) + '</em></div>';
+      }).join('') + '</div>';
+    }).catch(function (e) { q.innerHTML = '<p class="form-status err">Could not load the history: ' + esc((e && e.message) || '') + '</p>'; });
   }
 
   /* ================= EVENTS (own copy; no announcement-banner editor) ======= */
