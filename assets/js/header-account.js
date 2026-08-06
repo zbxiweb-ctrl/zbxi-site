@@ -18,6 +18,7 @@
   var PORTAL = BASE + '#brothers-portal';
   // "Brother Profile" opens the profile popup (index handles the #my-profile hash).
   var MYPROFILE = BASE + '#my-profile';
+  var SUB_KEY = 'zbxi-brothers-only';   // remembers the Brothers Only accordion
 
   // The members-only surfaces, surfaced from the account dropdown once signed in.
   var BROTHERS_ONLY = [
@@ -111,6 +112,10 @@
     var avatar = (profile && profile.photo_url)
       ? '<img src="' + esc(profile.photo_url) + '" alt="" />'
       : esc(initial(name));
+    // Whether the "Brothers Only" accordion below is expanded. Defaults to
+    // collapsed; private mode / blocked storage falls back to that too.
+    var subOpen = false;
+    try { subOpen = localStorage.getItem(SUB_KEY) === '1'; } catch (e) { /* no storage */ }
 
     el.innerHTML =
       '<button class="nav__chip" id="navChipBtn" aria-haspopup="true" aria-expanded="false">' +
@@ -131,13 +136,25 @@
         '<a href="welcome.html" role="menuitem"><i>🎉</i> Orientation</a>' +
         '<a href="notifications.html" role="menuitem"><i>🔔</i> Notifications</a>' +
         '<div class="nav__menu-divider"></div>' +
-        // Starts OPEN. Collapsed by default, this submenu was the only route to
-        // Find a Mentor and Worldwide Map on the entire site, and a brother has
-        // no way to guess what's behind a closed accordion. It still collapses.
-        '<button type="button" class="nav__sub-toggle" id="navBrothersOnly" aria-expanded="true">' +
+        // Starts COLLAPSED, and remembers what you chose.
+        //
+        // It used to start open, because at the time this submenu was the only
+        // route to Find a Mentor and Worldwide Map and a brother can't guess
+        // what's behind a closed accordion. That stopped being true: the members
+        // pages carry their own top nav (Active / Alumni / Gallery / Board / Find
+        // a Mentor / Worldwide Map), the footer repeats those links on EVERY
+        // page, and Orientation has a card per feature. Three other routes, so a
+        // closed accordion now hides nothing — it just made the menu tall enough
+        // to fill a phone screen.
+        //
+        // Remembering the choice is the point: a brother who navigates by this
+        // menu expands it once, not on every page load (the menu is rebuilt from
+        // scratch on each navigation, so without this it would re-collapse
+        // forever).
+        '<button type="button" class="nav__sub-toggle" id="navBrothersOnly" aria-expanded="' + (subOpen ? 'true' : 'false') + '">' +
           '<i>🔒</i> Brothers Only <em class="nav__sub-caret">▾</em>' +
         '</button>' +
-        '<div class="nav__sub open" id="navBrothersSub">' +
+        '<div class="nav__sub' + (subOpen ? ' open' : '') + '" id="navBrothersSub">' +
           BROTHERS_ONLY.map(function (m) {
             return '<a href="' + m.href + '" role="menuitem"><i>' + m.ic + '</i> ' + m.label + '</a>';
           }).join('') +
@@ -210,13 +227,15 @@
       });
     });
 
-    // "Brothers Only" expands in place rather than navigating anywhere.
+    // "Brothers Only" expands in place rather than navigating anywhere, and the
+    // choice sticks across page loads (see the note where the markup is built).
     var sub = document.getElementById('navBrothersSub');
     var subBtn = document.getElementById('navBrothersOnly');
     if (sub && subBtn) subBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       var openNow = sub.classList.toggle('open');
       subBtn.setAttribute('aria-expanded', openNow ? 'true' : 'false');
+      try { localStorage.setItem(SUB_KEY, openNow ? '1' : '0'); } catch (e2) { /* no storage */ }
     });
 
     var out = document.getElementById('navSignOut');
