@@ -68,9 +68,15 @@
     if (!el.getAttribute('role')) el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'true');
     // Prefer the first form field, else the close button, else first focusable.
+    // A modal whose job is to SHOW something rather than collect something opts
+    // out with data-a11y-focus="close": the photo viewer's only field is "Add a
+    // comment…", so focusing it raised the iOS keyboard and scrolled the card to
+    // the bottom — you arrived underneath the photo you tapped.
     var items = focusableIn(el);
-    var target = el.querySelector('input:not([type="hidden"]), select, textarea')
-      || el.querySelector('[data-x], [data-close], [data-nh], [data-mr], [data-pm-close], .admin-modal__close, .pmodal__close, .bmodal__close, .gmodal__close, .postModal__close')
+    var closeBtn = el.querySelector('[data-x], [data-close], [data-nh], [data-mr], [data-pm-close], .admin-modal__close, .pmodal__close, .bmodal__close, .gmodal__close, .postModal__close');
+    var target = (el.getAttribute('data-a11y-focus') === 'close' ? null
+                  : el.querySelector('input:not([type="hidden"]), select, textarea'))
+      || closeBtn
       || items[0];
     if (target) { try { target.focus(); } catch (e) {} }
 

@@ -1166,12 +1166,36 @@ body.modal-open { overflow: hidden; }
 .gallery a img { aspect-ratio: 1; object-fit: cover; width: 100%; transition: transform .35s; }
 .gallery a:hover img { transform: scale(1.06); }
 
-.gupload { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1.2rem; margin-bottom: 2rem; }
-.gupload__drop { display: block; text-align: center; padding: 1.2rem; cursor: pointer; color: var(--heading); border-radius: 10px; transition: background .15s; }
+/* An ATTRIBUTE has to beat a CLASS here. .gupload__prev sets display:block and
+   .gedit-form display:flex, and a class rule outranks the UA stylesheet's
+   [hidden]{display:none} — so both stayed on screen while "hidden". For the
+   preview that meant a src-less <img> was told to render, and a src-less <img>
+   draws its ALT TEXT in a broken frame: the "Preview of the photo you chose"
+   box sitting in the middle of the composer. */
+.gupload__prev[hidden], .gedit-form[hidden] { display: none; }
+
+.gupload { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem; margin-bottom: 2rem; }
+.gupload__drop { display: block; text-align: center; padding: 1.6rem 1.2rem; cursor: pointer; color: var(--heading); border-radius: 11px; transition: background .15s; }
 .gupload__drop:hover { background: var(--bg-2); }
-.gupload__drop b { display: block; font-family: var(--display); font-size: 1.1rem; }
-.gupload__drop span { color: var(--muted); font-size: .85rem; }
-.gupload__prev { display: block; max-width: 100%; max-height: 220px; margin: .8rem auto 0; border-radius: 10px; box-shadow: var(--shadow-sm); }
+.gupload__drop b { display: block; font-family: var(--display); font-size: 1.12rem; letter-spacing: .01em; }
+/* The camera mark: a gold ring, drawn not typed — an emoji renders differently
+   on every platform and this is the first thing on the page. */
+.gupload__mark { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto .6rem;
+  border: 1.5px solid var(--gold-bright); border-radius: 50%; color: var(--gold-deep); }
+.gupload__mark svg { width: 21px; height: 21px; display: block; }
+.gupload__hint { display: block; color: var(--muted); font-size: .84rem; margin-top: .3rem; }
+.gupload__drop:focus-within { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* Chosen state: the plate becomes the photo, so it is obvious the file landed. */
+.gupload__chosen { display: block; }
+.gupload__chosen[hidden] { display: none; }
+.gupload__prev { display: block; max-width: 100%; max-height: 260px; margin: 0 auto; border-radius: 11px; box-shadow: var(--shadow-sm); }
+.gupload__meta { display: flex; align-items: baseline; justify-content: center; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
+.gupload__meta b { display: inline; font-family: inherit; font-size: .92rem; font-weight: 600; max-width: 60vw;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gupload__meta span { color: var(--muted); font-size: .82rem; }
+.gupload__change { display: inline-block; margin-top: .45rem; color: var(--gold-deep); font-size: .85rem;
+  font-weight: 600; text-decoration: underline; }
 /* Thumbnail shown beside a plain file input once an image is chosen (board
    thread photo, profile photo). --round matches the circular avatar crop. */
 .file-prev { display: block; max-width: 100%; max-height: 180px; margin-top: .6rem; border-radius: 10px; box-shadow: var(--shadow-sm); }
@@ -1216,6 +1240,25 @@ body.modal-open { overflow: hidden; }
 .galbum-mgr__acts--fixed { color: var(--muted); font-size: .82rem; font-style: italic; }
 .galbum-mgr__add { margin: .7rem 0 .3rem; }
 
+/* Sections as photo plates — the gallery's front door. The name sits on a solid
+   band BENEATH the cover, never over it: a scrim on a photograph is banned in
+   this workspace, and a 30-year archive of dim indoor shots is exactly where an
+   overlay label goes unreadable. The gold hairline between cover and plate is
+   the only ornament. */
+.gsecs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; margin: 0 0 1.6rem; }
+.gsec { display: block; padding: 0; text-align: left; cursor: pointer; overflow: hidden;
+  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 14px;
+  box-shadow: var(--shadow-sm); transition: transform .2s, border-color .2s, box-shadow .2s; }
+.gsec:hover, .gsec:focus-visible { border-color: var(--gold-bright); transform: translateY(-2px); box-shadow: var(--shadow-md, var(--shadow-sm)); }
+.gsec__cover { aspect-ratio: 4 / 3; background: var(--navy); display: grid; place-items: center; overflow: hidden; }
+.gsec__cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
+.gsec:hover .gsec__cover img { transform: scale(1.04); }
+.gsec__crest { width: 42%; height: auto; opacity: .3; object-fit: contain; }
+.gsec__plate { padding: .7rem .9rem .8rem; border-top: 1px solid var(--gold-bright); }
+.gsec__name { display: block; font-family: var(--display); font-size: 1.02rem; color: var(--heading); line-height: 1.25; }
+.gsec__n { display: block; margin-top: .2rem; color: var(--muted); font-size: .8rem; }
+.gsec--all .gsec__cover { background: var(--navy); }
+
 .ggrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
 .ggrid__cell { position: relative; padding: 0; border: 0; background: var(--navy); border-radius: 12px; overflow: hidden; cursor: pointer; aspect-ratio: 1; box-shadow: var(--shadow-sm); }
 .ggrid__cell img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
@@ -1234,6 +1277,43 @@ body.modal-open { overflow: hidden; }
 .gmodal__author { padding-bottom: .7rem; border-bottom: 1px solid var(--hairline); }
 .gmodal__caption { color: var(--text); font-size: .95rem; margin: .8rem 0; }
 .gmodal__actions { display: flex; align-items: center; gap: .9rem; padding: .5rem 0 .8rem; border-bottom: 1px solid var(--hairline); }
+
+/* ---- viewer chrome: overlay bars (mobile), fullscreen, immersive ---- */
+/* The photo pane is the positioning context for everything that floats on it. */
+.gmodal__img { position: relative; }
+/* Bars are chrome ON a photograph, so the text carries its own shadow rather
+   than sitting on a gradient scrim over the image. */
+.gbar { position: absolute; left: 0; right: 0; z-index: 2; display: none; align-items: center; gap: .7rem;
+  padding: .55rem .7rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+.gbar--top { top: 0; }
+.gbar--bot { bottom: 0; }
+.gbar .gbar__sec { color: #fff; font-size: .82rem; text-shadow: inherit; opacity: .9; }
+.gbar .glike { color: #fff; text-shadow: inherit; }
+.gbar .glike.on { color: #ff8a7a; }
+.gbar__spacer { margin-left: auto; }
+/* The author chip is painted into the bar on mobile and into the side panel on
+   desktop; only one is ever displayed. */
+.gbar .author-chip b { color: #fff; text-shadow: inherit; }
+/* Grip and comment count belong to the mobile sheet; the desktop side panel
+   shows the comments themselves, so both stay off until the sheet exists. */
+.gsheet__grip, .gsheet__count { display: none; }
+
+.gfull { position: absolute; right: 10px; bottom: 10px; z-index: 3; width: 38px; height: 38px;
+  display: grid; place-items: center; border: 0; border-radius: 10px; cursor: pointer;
+  background: rgba(var(--chrome), .55); color: #fff; font-size: 1rem; line-height: 1;
+  backdrop-filter: blur(4px); transition: background .15s; }
+.gfull:hover { background: rgba(var(--chrome), .8); }
+.gfull:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* Immersive — the fallback for iOS Safari, which refuses requestFullscreen() on
+   anything that isn't a <video>. The sheet drops away and the photo takes the
+   whole card; the bars stay so there is always a visible way back out. */
+.gmodal--immersive .gmodal__side { transform: translateY(100%) !important; }
+.gmodal--immersive .gmodal__card { grid-template-columns: 1fr; background: #05070d; }
+.gmodal--immersive .gmodal__img img { max-height: none; height: 100%; }
+/* Native fullscreen paints the pane on a black backdrop, not the cream surface. */
+.gmodal__img:fullscreen { background: #05070d; }
+.gmodal__img:fullscreen img { max-height: 100vh; }
 .glike { border: 0; background: none; cursor: pointer; font-size: 1.05rem; color: var(--heading); font-weight: 600; }
 .glike.on { color: #c0392b; }
 .gdate { color: var(--muted); font-size: .82rem; }
@@ -1377,10 +1457,70 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 /* ---------- v4 responsive ---------- */
 @media (max-width: 900px) {
   .ggrid { grid-template-columns: repeat(3, 1fr); }
+  .gsecs { grid-template-columns: repeat(2, 1fr); }
   .give-grid { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
-  .gmodal__card { grid-template-columns: 1fr; overflow-y: auto; }
-  .gmodal__img img { max-height: 44vh; }
+
+  /* ---- the photo owns the screen ----
+     Was: photo capped at 44vh with the details stacked under it in a scrolling
+     card. Because a11y focus landed in "Add a comment…", that card opened
+     scrolled to its own bottom with the keyboard up — you arrived underneath the
+     photo you tapped. Now the photo fills the viewport and the details ride a
+     sheet that starts closed. */
+  .gmodal { padding: 0; }
+  .gmodal__card { grid-template-columns: 1fr; grid-template-rows: 1fr; width: 100%; max-height: none;
+    height: 100%; border-radius: 0; overflow: hidden; background: #05070d; }
+  .gmodal__img { height: 100%; }
+  .gmodal__img img { max-height: none; height: 100%; }
+  /* The close button keeps its own absolute corner (that is what desktop uses),
+     so the top bar just leaves room for it rather than containing it. */
+  .gbar { display: flex; }
+  .gbar--top { padding-right: 3.2rem; }
+  .gmodal__close { z-index: 5; }
+  .gmodal__author { display: none; }               /* lives in the top bar here */
+  .gmodal__actions .glike { display: none; }       /* ditto — but the date stays,
+                                                      the bar only carries the section */
+  /* The count line above already says "No comments yet"; the list's own
+     placeholder would say it a second time, six pixels below. */
+  .gcomments__empty { display: none; }
+  /* The ♥/section bar and ⛶ ride just above the closed sheet, so nothing the
+     brother can act on is buried behind it. */
+  .gbar--bot { bottom: var(--gpeek); }
+  .gfull { bottom: calc(var(--gpeek) + 2px); right: 8px; }
+  .gmodal--immersive .gbar--bot { bottom: 0; }
+  .gmodal--immersive .gfull { bottom: 2px; }
+  /* With the sheet up, both of these sit behind it — present but unclickable,
+     which is how a control earns a bug report. Take them out of the page while
+     the sheet is open; closing it brings them back. */
+  .gmodal--sheet .gbar--bot, .gmodal--sheet .gfull { opacity: 0; pointer-events: none; }
+  .gbar--bot, .gfull { transition: opacity .18s; }
+
+  /* The sheet. --gpeek is what stays on screen when it's closed: the grip, the
+     caption line and the comment count. */
+  .gmodal { --gpeek: 5.4rem; }
+  /* Everything past the count is hidden until the sheet is open. Measured, not
+     guessed: with a caption the actions row starts at 87px and the peek is 86px,
+     but a photo with NO caption pulls it up to ~61px — and "Delete post" must
+     never sit in a resting preview strip. visibility (not display) keeps the
+     layout identical so nothing jumps when the sheet opens. */
+  .gmodal:not(.gmodal--sheet) .gmodal__actions,
+  .gmodal:not(.gmodal--sheet) .gcomments,
+  .gmodal:not(.gmodal--sheet) .gcompose { visibility: hidden; }
+  .gmodal__side { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+    height: min(86%, 86dvh); padding: 0 1.1rem 1.1rem; background: var(--surface);
+    border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35);
+    transform: translateY(calc(100% - var(--gpeek))); overflow: hidden;
+    transition: transform .28s cubic-bezier(.32,.72,0,1); }
+  .gmodal--sheet .gmodal__side { transform: translateY(0); overflow-y: auto; }
+  .gsheet__grip { position: sticky; top: 0; z-index: 1; display: block; width: 100%; padding: .7rem 0 .5rem;
+    border: 0; background: var(--surface); cursor: pointer; }
+  .gsheet__grip::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto;
+    border-radius: 999px; background: var(--hairline); }
+  .gsheet__count { display: block; color: var(--muted); font-size: .82rem; margin: 0 0 .6rem; }
+  .gmodal__caption { margin: .1rem 0 .35rem; }
+  /* Closed, the caption is one line — the sheet is a preview, not a paragraph. */
+  .gmodal:not(.gmodal--sheet) .gmodal__caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) { .gmodal__side { transition: none; } }
 }
 @media (max-width: 560px) {
   .ggrid { grid-template-columns: repeat(2, 1fr); }

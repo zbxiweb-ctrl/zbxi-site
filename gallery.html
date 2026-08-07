@@ -83,13 +83,28 @@
   </footer>
 
   <!-- Post modal -->
-  <div class="gmodal" id="postModal" aria-hidden="true">
+  <!-- data-a11y-focus="close": this modal exists to SHOW a photo, so a11y.js must
+       not move focus into "Add a comment…" on open (that raised the iOS keyboard
+       and scrolled the card past the photo). -->
+  <div class="gmodal" id="postModal" aria-hidden="true" data-a11y-focus="close">
     <div class="gmodal__card">
       <button class="gmodal__close" data-close aria-label="Close">✕</button>
-      <div class="gmodal__img"><img data-g="img" alt="" /></div>
+      <div class="gmodal__img">
+        <img data-g="img" alt="" />
+        <!-- Overlay bars: mobile only (hidden above 900px, where the side panel
+             carries the same information). -->
+        <div class="gbar gbar--top"><span class="gauthor" data-g="barauthor"></span></div>
+        <div class="gbar gbar--bot">
+          <button class="glike" data-g="barlike" aria-label="Like this photo">♡ <span>0</span></button>
+          <span class="gbar__sec" data-g="barsec"></span>
+        </div>
+        <button class="gfull" data-g="full" aria-label="View fullscreen" title="View fullscreen">⛶</button>
+      </div>
       <div class="gmodal__side">
+        <button class="gsheet__grip" data-g="grip" aria-expanded="false" aria-label="Show caption and comments"></button>
         <div class="gmodal__author" data-g="author"></div>
         <p class="gmodal__caption" data-g="caption"></p>
+        <span class="gsheet__count" data-g="ccount"></span>
         <div class="gedit-form" data-g="editform" hidden></div>
         <div class="gmodal__actions">
           <button class="glike" data-g="like">♡ <span data-g="likecount">0</span></button>

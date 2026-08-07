@@ -32,7 +32,8 @@
   // seat has gallery.moderate switched on. The DB enforces both (the gallery
   // insert/update/delete policies); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
-  var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false;
+  // view: 'sections' = the cover-card front door, 'grid' = one section's photos.
+  var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false, view = 'sections';
 
   // Posts with no album_id fall into Miscellaneous (the fallback bucket) so a
   // deleted-album's photos are never orphaned. albumName() reads the same map.
@@ -67,11 +68,31 @@
       }).join('') + '</select>';
   }
 
+  // Drawn, not typed: an emoji camera renders differently on every platform and
+  // this mark is the first thing on the page.
+  var CAM_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.1-1.8A1 1 0 0 1 8.7 4.7h6.6a1 1 0 0 1 .9.5L17.3 7h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z"/>' +
+    '<circle cx="12" cy="13" r="3.4"/></svg>';
+
   function uploaderHtml() {
     return '<div class="gupload">' +
         '<form id="guForm">' +
-          '<label class="gupload__drop" id="guDrop">📷 <b>Share a photo with the brotherhood</b><span id="guName">Click to choose an image (max 25MB)</span>' +
-            '<img id="guPrev" class="gupload__prev" alt="Preview of the photo you chose" hidden>' +
+          '<label class="gupload__drop" id="guDrop">' +
+            '<span class="gupload__empty" id="guEmpty">' +
+              '<span class="gupload__mark">' + CAM_SVG + '</span>' +
+              '<b>Share a photo with the brotherhood</b>' +
+              '<span class="gupload__hint">JPG, PNG or HEIC · up to 25MB</span>' +
+            '</span>' +
+            // alt="" on purpose: the filename sits right below it, and an empty
+            // alt means a src-less <img> can never paint alt text in a broken
+            // frame again — which is what the old "Preview of the photo you
+            // chose" box was.
+            '<span class="gupload__chosen" id="guChosen" hidden>' +
+              '<img id="guPrev" class="gupload__prev" alt="">' +
+              '<span class="gupload__meta"><b id="guName"></b><span id="guSize"></span></span>' +
+              '<span class="gupload__change">Choose a different photo</span>' +
+            '</span>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
           '<div class="gupload__row">' +
             (albums.length ? albumPicker('guAlbum', miscId()) : '') +
@@ -116,6 +137,38 @@
       '</div></div>';
   }
 
+  /* ---------- sections view ----------
+     The gallery's front door. Cover = the newest photo in that section, taken
+     from data already in memory (posts / albums / urls) — no extra query. An
+     empty section still shows, marked with the crest, exactly as the chips dim
+     rather than hide. */
+  function postsIn(albumId) {
+    return albumId === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === albumId; });
+  }
+  function coverHtml(rows) {
+    var u;
+    for (var i = 0; i < rows.length; i++) { u = urls[rows[i].image_path]; if (u) break; u = null; }
+    return u
+      ? '<img src="' + esc(u) + '" loading="lazy" alt="">'
+      : '<img class="gsec__crest" src="assets/img/crest-float-gold.webp" alt="" loading="lazy">';
+  }
+  function secCard(id, name, extraClass) {
+    var rows = postsIn(id);
+    var n = rows.length;
+    return '<button class="gsec' + (extraClass || '') + '" data-sec="' + esc(id) + '" ' +
+        'aria-label="' + esc('Open ' + name) + '">' +
+        '<span class="gsec__cover">' + coverHtml(rows) + '</span>' +
+        '<span class="gsec__plate"><span class="gsec__name">' + esc(name) + '</span>' +
+          '<span class="gsec__n">' + (n === 0 ? 'No photos yet' : n + (n === 1 ? ' photo' : ' photos')) + '</span>' +
+        '</span></button>';
+  }
+  function sectionsHtml() {
+    return '<div class="gsecs">' +
+      secCard('all', 'All photos', ' gsec--all') +
+      albums.map(function (a) { return secCard(a.id, a.name); }).join('') +
+      '</div>';
+  }
+
   function gridHtml() {
     var shown = curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
     if (!shown.length) {
@@ -136,7 +189,17 @@
   function renderBody() {
     var body = document.getElementById('galleryBody');
     if (!body) return;
-    body.innerHTML = chipsHtml() + sectionMgrHtml() + gridHtml();
+    body.innerHTML = view === 'sections'
+      ? sectionsHtml() + sectionMgrHtml()
+      : '<button class="back-pill" id="gsecBack">← All sections</button>' + chipsHtml() + gridHtml();
+    var back = body.querySelector('#gsecBack');
+    if (back) back.addEventListener('click', function () { view = 'sections'; renderBody(); });
+    body.querySelectorAll('[data-sec]').forEach(function (c) {
+      c.addEventListener('click', function () {
+        curAlbum = c.dataset.sec; view = 'grid'; renderBody();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
     body.querySelectorAll('[data-album]').forEach(function (c) {
       c.addEventListener('click', function () { curAlbum = c.dataset.album; renderBody(); });
     });
@@ -201,12 +264,27 @@
     var st = document.getElementById('guStatus');
     if (!form) return;
     var prev = document.getElementById('guPrev');
+    var emptyEl = document.getElementById('guEmpty');
+    var chosenEl = document.getElementById('guChosen');
+    var sizeEl = document.getElementById('guSize');
+    function fmtSize(b) {
+      return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+    }
     // Object URLs must be released or every re-pick leaks the previous image.
+    // The plate has two faces — invitation, or the photo you picked — and exactly
+    // one is ever on screen.
     function showPreview(f) {
       if (prev.src) URL.revokeObjectURL(prev.src);
-      if (!f) { prev.hidden = true; prev.removeAttribute('src'); return; }
+      if (!f) {
+        prev.hidden = true; prev.removeAttribute('src');
+        chosenEl.hidden = true; emptyEl.hidden = false;
+        return;
+      }
       prev.src = URL.createObjectURL(f);
       prev.hidden = false;
+      nameEl.textContent = f.name;
+      sizeEl.textContent = fmtSize(f.size);
+      emptyEl.hidden = true; chosenEl.hidden = false;
     }
     /* No click handler here on purpose. #guDrop is a <label> that WRAPS the file
        input, so the browser already forwards a click on it to that input — and
@@ -226,13 +304,13 @@
     var MAX_PICK = 25 * 1024 * 1024;
     fileIn.addEventListener('change', function () {
       var f = fileIn.files[0];
-      if (!f) { showPreview(null); nameEl.textContent = 'Click to choose an image (max 25MB)'; btn.disabled = true; return; }
+      if (!f) { showPreview(null); btn.disabled = true; return; }
       if (f.size > MAX_PICK) {
         showPreview(null); st.className = 'form-status err';
         st.textContent = 'That image is too big to process on a phone (max 25MB). Try a smaller version.';
         btn.disabled = true; return;
       }
-      st.textContent = ''; st.className = 'form-status'; nameEl.textContent = f.name; showPreview(f); btn.disabled = false;
+      st.textContent = ''; st.className = 'form-status'; showPreview(f); btn.disabled = false;
     });
     form.onsubmit = function (e) {
       e.preventDefault();
@@ -249,6 +327,9 @@
         if (r.error) throw r.error;
         btn.textContent = 'Post';
         showPreview(null);   // loadAll() rebuilds the uploader; release the URL first
+        // Land on the section it went into, so the photo you just posted is the
+        // thing you see next — not the sections page you started from.
+        curAlbum = albumId || miscId(); view = 'grid';
         return loadAll();
       }).catch(function (err) {
         st.className = 'form-status err'; st.textContent = err.message || 'Upload failed.';
@@ -267,6 +348,7 @@
     g('caption').textContent = p.caption || '';
     var an = albumName(p);
     g('date').textContent = (an ? an + ' · ' : '') + when(p.created_at);
+    g('barsec').textContent = an;          // mobile bar; follows an inline section change
   }
 
   function closeEdit(p) {
@@ -319,10 +401,39 @@
     };
   }
 
+  /* The sheet starts closed on every open — the point of this screen is the
+     photo. Tapping the grip (or the photo, while it's open) toggles it. */
+  function setSheet(open) {
+    modal.classList.toggle('gmodal--sheet', !!open);
+    var grip = g('grip');
+    if (grip) grip.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  /* iOS Safari refuses requestFullscreen() on anything that is not a <video>,
+     and iOS is the device this was reported from — so the immersive class is a
+     real fallback, not a nicety. */
+  function toggleFull() {
+    var pane = modal.querySelector('.gmodal__img');
+    var immersive = function () { modal.classList.toggle('gmodal--immersive'); };
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (modal.classList.contains('gmodal--immersive')) { immersive(); return; }
+    if (pane.requestFullscreen) {
+      setSheet(false);
+      var r = pane.requestFullscreen();
+      if (r && r['catch']) r['catch'](immersive);
+    } else { setSheet(false); immersive(); }
+  }
+
   function openPost(p) {
     g('img').src = urls[p.image_path] || '';
     g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
+    g('barauthor').innerHTML = chip(p.author_user);
+    setSheet(false);
+    modal.classList.remove('gmodal--immersive');
+    g('grip').onclick = function () { setSheet(!modal.classList.contains('gmodal--sheet')); };
+    g('full').onclick = toggleFull;
+    g('img').onclick = function () { if (modal.classList.contains('gmodal--sheet')) setSheet(false); };
     closeEdit(p);   // paints the caption, and drops a form left open on the last post
     var ed = g('edit');
     ed.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
@@ -337,7 +448,7 @@
       });
     };
     syncLike(p);
-    g('like').onclick = function () {
+    function onLike() {
       var liked = iLike(p.id);
       var op = liked ? Z.unlikePost(p.id, me.id) : Z.likePost(p.id, me.id);
       // optimistic
@@ -345,7 +456,9 @@
       else likes.push({ post_id: p.id, user_id: me.id });
       syncLike(p);
       op.then(function (r) { if (r.error) { Z.galleryLikesAll().then(function (ls) { likes = ls; syncLike(p); }); } });
-    };
+    }
+    g('like').onclick = onLike;
+    g('barlike').onclick = onLike;
     loadComments(p);
     var form = g('composeForm');
     form.onsubmit = function (e) {
@@ -360,15 +473,23 @@
   }
 
   function syncLike(p) {
-    g('like').innerHTML = (iLike(p.id) ? '♥' : '♡') + ' <span>' + likeCount(p.id) + '</span>';
-    g('like').classList.toggle('on', iLike(p.id));
+    var html = (iLike(p.id) ? '♥' : '♡') + ' <span>' + likeCount(p.id) + '</span>';
+    ['like', 'barlike'].forEach(function (k) {          // side panel + mobile bar
+      g(k).innerHTML = html;
+      g(k).classList.toggle('on', iLike(p.id));
+    });
   }
 
   function loadComments(p) {
     var box = g('comments');
     box.innerHTML = '<p class="form-note">…</p>';
     Z.galleryComments(p.id).then(function (cs) {
-      if (!cs.length) { box.innerHTML = '<p class="form-note">No comments yet.</p>'; return; }
+      // The closed sheet shows this line, so you know whether it's worth opening.
+      g('ccount').textContent = cs.length
+        ? cs.length + (cs.length === 1 ? ' comment' : ' comments')
+        : 'No comments yet';
+      // gcomments__empty: hidden on mobile, where the count line says this already.
+      if (!cs.length) { box.innerHTML = '<p class="form-note gcomments__empty">No comments yet.</p>'; return; }
       box.innerHTML = cs.map(function (c) {
         var mine = me && (c.author_user === me.id || canMod);
         return '<div class="gcomment">' + chip(c.author_user) +
@@ -384,7 +505,14 @@
     });
   }
 
-  function closeModal() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); }
+  function closeModal() {
+    // Leave no viewing mode behind, or the next photo opens fullscreen/immersive
+    // with a sheet already up.
+    if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
+    modal.classList.remove('gmodal--immersive');
+    setSheet(false);
+    modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+  }
   modal.addEventListener('click', function (e) {
     if (e.target === modal || e.target.closest('[data-close]')) closeModal();
   });
