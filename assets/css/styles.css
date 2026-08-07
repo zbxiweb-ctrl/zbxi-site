@@ -243,11 +243,18 @@ p { margin: 0 0 1em; }
    the button, which is what makes the panel's links focusable in the first
    place. aria-expanded is deliberately absent rather than hardcoded to a value
    nothing updates; aria-haspopup states what's true. */
-.nav__group { position: relative; }
+/* display:flex, not the default block: as a block the inline-flex button below
+   sat on a TEXT BASELINE inside this wrapper's line box, which pushed "Brothers"
+   ~1.7px below every other item in the row. */
+.nav__group { position: relative; display: flex; align-items: center; }
 .nav__group-btn {
   display: inline-flex; align-items: center; gap: .3rem;
   background: none; border: 0; padding: 0 0 4px; cursor: pointer;
   font-family: inherit; font-size: .92rem; font-weight: 500; letter-spacing: .02em;
+  /* A <button> does not inherit line-height, so this computed to `normal` (21.6px
+     tall) while the sibling links inherit 24.288px. 1.65 IS that 24.288px at
+     .92rem — same line box, same text top, same 28.29px outer height. */
+  line-height: 1.65;
   color: var(--on-navy-2); transition: color .15s;
 }
 .nav__group-btn:hover, .nav__group:focus-within .nav__group-btn { color: var(--gold-bright); }
@@ -769,6 +776,11 @@ p { margin: 0 0 1em; }
   }
   .nav__links.open { transform: translateY(0); }
   .nav__links a { padding: .9rem 8vw; }
+  /* The desktop row aligns .nav__group with `display:flex` so its button stops
+     sitting on a text baseline. Here the submenu is in normal flow, so a flex
+     ROW would stand it beside its own label and push it off the screen —
+     measured, at 390px. Back to block for the drawer. */
+  .nav__group { display: block; }
   .nav__links .nav__cta { margin: .6rem 8vw; text-align: center; }
   .nav__toggle { display: block; }
   .nav__account { margin-left: auto; margin-right: .6rem; }
@@ -1894,27 +1906,33 @@ input, select, textarea { background: var(--surface-2); }
 
 /* ---------- board redesign ---------- */
 
-/* Board shell — nav rail left, feed right. Mirrors .admin-shell's 250px so the
-   two rails line up across the site. */
-.board-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 1.6rem; align-items: start; }
+/* The Board's front door: one card per space, same idea as the gallery's
+   sections page. The rail that used to sit here repeated all nine destinations
+   on every screen; now you pick a space and a back pill is how you leave.
+   (.board-shell / .board-rail were removed with it.) */
 .board-main { min-width: 0; }
+.board-main--spaces { max-width: 980px; margin: 0 auto; }
 
-/* Deliberately simpler than .admin-side: that panel carries flex + max-height +
-   an internal scroller because the console has 15+ tabs and overflows the
-   viewport. This rail has ~10 rows and never will. The BUTTONS are shared
-   (.admin-navbtn / .tab-count) — a fix there fixes the console and the board.
-   --on-dark is defined in BOTH themes for exactly this (navy panel) case. */
-.board-rail {
-  position: sticky; top: 90px;
-  background: var(--navy); border: 1px solid rgba(200,162,75,.32);
-  border-radius: var(--radius); padding: 1rem .75rem;
-  box-shadow: var(--shadow-sm);
-}
-/* The foot holds what isn't a place to post — the suggestion box and help. */
-.board-rail__foot { margin-top: .5rem; padding-top: .6rem; border-top: 1px solid rgba(200,162,75,.22); }
+.bsecs__group { margin: 0 0 1.9rem; }
+.bsecs__label { display: block; margin: 0 0 .7rem; color: var(--muted);
+  font-size: .72rem; font-weight: 700; letter-spacing: .16em; }
+.bsecs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.bsec { position: relative; display: block; padding: 1.4rem 1rem 1.2rem; cursor: pointer; text-align: center;
+  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 14px;
+  box-shadow: var(--shadow-sm); transition: transform .2s, border-color .2s; }
+.bsec:hover, .bsec:focus-visible { border-color: var(--gold-bright); transform: translateY(-2px); }
+.bsec__ic { display: block; font-size: 1.75rem; line-height: 1; margin-bottom: .55rem; }
+.bsec__name { display: block; font-family: var(--display); font-size: 1.05rem; color: var(--heading); line-height: 1.25; }
+/* Same label treatment as the gallery's section counts, so the two front doors
+   read as one system. */
+.bsec__n { display: block; margin-top: .3rem; color: var(--muted); font-size: .72rem;
+  font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
 /* An empty room stays visible but honest — never hidden, so Opportunities keeps its door. */
-.admin-navbtn--empty { opacity: .45; }
-.admin-navbtn--empty.on { opacity: 1; }
+.bsec--empty { opacity: .55; }
+.bsec--new { border-color: var(--gold-bright); }
+.bsec__dot { position: absolute; top: .7rem; right: .7rem; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--gold); }
+.bsecs__foot { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .4rem; }
 /* Unread = solid gold, matching the gold .thr-dot and the help modal's "Gold = new".
    No override for the active row on purpose: the console's existing
    `.admin-navbtn.on .tab-count` (0,3,0) already outranks this (0,1,0) and renders
@@ -1923,28 +1941,13 @@ input, select, textarea { background: var(--surface-2); }
 .tab-count--new { background: var(--gold); color: var(--navy-deep); font-weight: 700; }
 
 .board-controls__right { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
-.board-spaces { display: none; }                     /* desktop: the rail IS the control */
-.board-help--mobile { display: none; width: auto; padding: .5rem .7rem; border: 1px solid rgba(200,162,75,.5); border-radius: 9px; color: var(--heading); }
 
 @media (max-width: 900px) {
-  .board-shell { grid-template-columns: 1fr; }
-  .board-rail { display: none; }
-  /* 40px: the touch-target floor website-qa demands. */
-  .board-spaces { display: block; min-height: 40px; }
-  .board-help--mobile { display: inline-flex; min-height: 40px; }
-  /* A <select> sizes to its LONGEST option ("Chapter Business (0)" -> 205px), so
-     spaces+sort+help wanted 420px in a 359px row and wrapped to three lines.
-     Let the two selects share the row instead; the closed state ellipsises, and
-     the open state is a full-screen native picker anyway. */
+  .bsecs { grid-template-columns: repeat(2, 1fr); }
+  /* The spaces <select> and the mobile help button lived here; the card front
+     door replaced both, so the controls row is just "+ New thread" and sort. */
   .board-controls__right { width: 100%; }
-  .board-controls__right .board-spaces,
   .board-controls__right .page-filter { flex: 1 1 0; min-width: 0; }
-  /* Where you ARE belongs above what you can DO: the spaces select goes directly
-     under the section's hero band, and "+ New thread" drops below it. order:-1
-     rather than reordering the DOM, because on desktop the button and the sort
-     select share one row and that reads correctly already. This also matches
-     renderPolls(), which has always put its controls above its "+ New poll". */
-  .board-controls__right { order: -1; }
 }
 
 /* Introductions composer — the one place on the board that spends boldness.

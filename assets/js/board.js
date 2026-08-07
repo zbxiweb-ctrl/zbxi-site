@@ -66,7 +66,8 @@
   // gate; this flag only decides which buttons get drawn.
   var canModPolls = false;
   var MY_COMMITTEES = [], POLLS = [], VOTES = [];
-  var state = { cat: 'all', thread: null, sort: 'active' };
+  // view: 'spaces' = the card front door, 'space' = inside one.
+  var state = { cat: 'all', thread: null, sort: 'active', view: 'spaces' };
 
   // Paint the skeleton NOW for a likely-signed-in brother: the auth checks below
   // take ~200ms, twice as long as the data fetch, and used to be a blank screen.
@@ -97,8 +98,10 @@
       rows.push({ id: c.id, ic: c.ic, label: c.label, n: inCat.length,
                   unread: inCat.filter(isUnread).length > 0, group: 'SPACES', dim: inCat.length === 0 });
     });
-    rows.push({ id: 'polls', ic: '🗳️', label: 'Polls', n: POLLS.length,
-                unread: false, group: 'CHAPTER', dim: false });
+    // noun: what this space actually contains. Everything holds threads except
+    // Polls, where "No threads yet" would just be wrong.
+    rows.push({ id: 'polls', ic: '🗳️', label: 'Polls', n: POLLS.length, noun: 'poll',
+                unread: false, group: 'CHAPTER', dim: POLLS.length === 0 });
     MY_COMMITTEES.forEach(function (c) {
       rows.push({ id: c.id, ic: '🔒', label: c.name,
                   n: threads.filter(function (t) { return t.committee_id === c.id; }).length,
@@ -110,38 +113,46 @@
     return rows;
   }
 
-  function railBtn(r) {
-    return '<button class="admin-navbtn' + (state.cat === r.id ? ' on' : '') +
-      (r.dim ? ' admin-navbtn--empty' : '') + '" data-cat="' + esc(r.id) + '">' +
-      '<i>' + r.ic + '</i><span>' + esc(r.label) + '</span>' +
-      (r.n === null ? '' :
-        '<span class="tab-count' + (r.unread ? ' tab-count--new' : '') + '">' + r.n + '</span>') +
+  /* ---------- the front door: spaces as cards ----------
+     Was a rail down the left of every screen, repeating all nine destinations
+     whether or not you cared. Same shape as the gallery's sections page: you
+     pick a space, then you are in it, and a back pill is how you leave.
+     Built from spaceRows() unchanged — no new data. */
+  function spaceCard(r) {
+    var noun = r.noun || 'thread';
+    var count = r.n === null ? '' :
+      '<span class="bsec__n">' + (r.n === 0 ? 'No ' + noun + 's yet' : r.n + ' ' + noun + (r.n === 1 ? '' : 's')) + '</span>';
+    return '<button class="bsec' + (r.dim ? ' bsec--empty' : '') + (r.unread ? ' bsec--new' : '') +
+      '" data-cat="' + esc(r.id) + '" aria-label="' + esc('Open ' + r.label) + '">' +
+      '<span class="bsec__ic" aria-hidden="true">' + r.ic + '</span>' +
+      '<span class="bsec__name">' + esc(r.label) + '</span>' + count +
+      (r.unread ? '<span class="bsec__dot" aria-label="New activity"></span>' : '') +
       '</button>';
   }
 
-  function railHtml() {
+  function spacesHtml() {
     var rows = spaceRows();
     var group = function (name) {
       var mine = rows.filter(function (r) { return r.group === name; });
       if (!mine.length) return '';                    // no committees -> no empty heading
-      return '<div class="admin-navgroup"><span class="admin-navgroup__label">' + name + '</span>' +
-        mine.map(railBtn).join('') + '</div>';
+      return '<div class="bsecs__group"><span class="bsecs__label">' + name + '</span>' +
+        '<div class="bsecs">' + mine.map(spaceCard).join('') + '</div></div>';
     };
     // The foot holds the two things that aren't places to post: a line to the
-    // webmaster, and help. No heading — the hairline says enough.
-    var foot = rows.filter(function (r) { return r.group === 'FOOT'; }).map(railBtn).join('') +
-      '<button class="admin-navbtn board-help" title="How the board works">' +
-        '<i>❓</i><span>How the board works</span></button>';
-    return '<aside class="board-rail">' + group('SPACES') + group('CHAPTER') + group('PRIVATE') +
-      '<div class="board-rail__foot">' + foot + '</div></aside>';
+    // webmaster, and help. They stay buttons — a card would imply a destination
+    // full of threads.
+    var foot = '<div class="bsecs__foot">' +
+      rows.filter(function (r) { return r.group === 'FOOT'; }).map(function (r) {
+        return '<button class="back-pill" data-cat="' + esc(r.id) + '">' + r.ic + ' ' + esc(r.label) + '</button>';
+      }).join('') +
+      '<button class="back-pill board-help" title="How the board works">❓ How the board works</button>' +
+      '</div>';
+    return group('SPACES') + group('CHAPTER') + group('PRIVATE') + foot;
   }
 
-  function spacesSelect() {
-    return '<select class="zselect board-spaces" id="spacesSel" aria-label="Filter by space">' +
-      spaceRows().map(function (r) {
-        return '<option value="' + esc(r.id) + '"' + (state.cat === r.id ? ' selected' : '') + '>' +
-          r.ic + ' ' + esc(r.label) + (r.n === null ? '' : ' (' + r.n + ')') + '</option>';
-      }).join('') + '</select>';
+  // Every space view opens with this; it is the only way back to the cards.
+  function backPill() {
+    return '<button class="back-pill" id="bspaceBack">← All spaces</button>';
   }
 
   function avatarOf(uid) {
@@ -250,8 +261,21 @@
     };
   }
 
+  // The front door. The intro composer lives here too: it is the one thing on the
+  // Board that must not end up behind a card.
+  function renderSpaces() {
+    state.thread = null;
+    state.view = 'spaces';
+    var intro = hasIntro() ? '' : introCard();
+    root.innerHTML = '<div class="board-main board-main--spaces">' + intro + spacesHtml() + '</div>';
+    wireTabs();
+    wireIntroCard();
+    wireHelp();
+  }
+
   function renderList() {
     state.thread = null;
+    state.view = 'space';
     if (state.cat === 'polls') return renderPolls();
     if (state.cat === 'suggestions') return renderSuggestions();
     var comm = committeeOf(state.cat);
@@ -270,21 +294,19 @@
     var controls = '<div class="board-controls">' +
       (state.cat === 'introductions' ? '' :
         '<button class="btn btn--gold" id="newThread">+ New ' + (state.cat === 'opportunities' ? 'opportunity' : 'thread') + '</button>') +
-      '<span class="board-controls__right">' + spacesSelect() +
+      '<span class="board-controls__right">' +
       (mine.length > 1 ? '<select class="page-filter" id="threadSort">' +
         [['active', 'Recently active'], ['newest', 'Newest'], ['replies', 'Most replies'], ['oldest', 'Oldest']].map(function (o) {
           return '<option value="' + o[0] + '"' + (state.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
         }).join('') + '</select>' : '') +
-      '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
-      '</span></div>';
+      '</span></div>';   // help lives on the front door now, not in every space
 
     var list = mine.length ? '<div class="thread-list">' + mine.map(threadCard).join('') + '</div>'
       : emptyState(isAll ? null : (comm ? esc(comm.name) : catLabel(state.cat)));
 
     var intro = (!hasIntro() && (isAll || state.cat === 'introductions')) ? introCard() : '';
 
-    root.innerHTML = '<div class="board-shell">' + railHtml() +
-      '<div class="board-main">' + intro + band + controls + list + '</div></div>';
+    root.innerHTML = '<div class="board-main">' + backPill() + intro + band + controls + list + '</div>';
     wireTabs();
     wireIntroCard();
     wireSuggestionCard();
@@ -350,9 +372,16 @@
     root.querySelectorAll('[data-cat]').forEach(function (b) {
       b.onclick = function () { go(b.dataset.cat); };
     });
-    // The mobile select is the same control as the rail — one code path.
-    var sel = document.getElementById('spacesSel');
-    if (sel) sel.onchange = function () { go(sel.value); };
+    // Back to the cards. Same jump-to-top treatment, for the same reason.
+    var back = document.getElementById('bspaceBack');
+    if (back) back.onclick = function () {
+      renderSpaces();
+      var h = document.documentElement, prev = h.style.scrollBehavior;
+      h.style.scrollBehavior = 'auto';
+      void getComputedStyle(h).scrollBehavior;
+      window.scrollTo(0, 0);
+      h.style.scrollBehavior = prev;
+    };
   }
 
   /* ---------- polls ---------- */
@@ -391,13 +420,12 @@
         '</div></div>';
     }).join('') : '<p class="page-empty">No polls yet — post the first one.</p>';
 
-    root.innerHTML = '<div class="board-shell">' + railHtml() +
-      '<div class="board-main">' +
-        '<div class="board-controls"><span class="board-controls__right">' + spacesSelect() +
-          '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
+    root.innerHTML = '<div class="board-main">' + backPill() +
+        '<div class="gsechead"><h3>🗳️ Polls</h3><span>' +
+          (POLLS.length === 0 ? 'None yet' : POLLS.length + (POLLS.length === 1 ? ' poll' : ' polls')) +
         '</span></div>' +
         newBtn + cards +
-      '</div></div>';
+      '</div>';
     wireTabs();
     wireSuggestionCard();
     wireHelp();
@@ -496,13 +524,10 @@
   // same box eight times over — which is noise, not availability.
   function renderSuggestions() {
     state.thread = null;
-    root.innerHTML = '<div class="board-shell">' + railHtml() +
-      '<div class="board-main">' +
-        '<div class="board-controls"><span class="board-controls__right">' + spacesSelect() +
-          '<button class="admin-navbtn board-help board-help--mobile" title="How the board works">❓</button>' +
-        '</span></div>' +
+    root.innerHTML = '<div class="board-main">' + backPill() +
+        '<div class="gsechead"><h3>💡 Suggestion box</h3><span>Straight to the webmaster</span></div>' +
         suggestionCard() +
-      '</div></div>';
+      '</div>';
     wireTabs();
     wireSuggestionCard();
     wireHelp();
@@ -780,7 +805,7 @@
           renderCompose(title);
           return;
         }
-        renderList();
+        renderSpaces();          // the Board opens on its spaces, not on one of them
       }).catch(function () {
         root.innerHTML = '<p class="page-empty">Could not load the board. Try refreshing.</p>';
       });
