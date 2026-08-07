@@ -1258,7 +1258,18 @@ body.modal-open { overflow: hidden; }
 .gsec__cover { aspect-ratio: 4 / 3; background: var(--navy); display: grid; place-items: center; overflow: hidden; }
 .gsec__cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
 .gsec:hover .gsec__cover img { transform: scale(1.04); }
-.gsec__crest { width: 38%; height: auto; opacity: .18; object-fit: contain; }
+/* The empty-section watermark. Selector needs TWO classes: `.gsec__cover img`
+   above is (0,1,1) and was beating a bare `.gsec__crest` (0,1,0), so the crest
+   inherited width:100% + object-fit:cover and rendered 169x254 inside a 127px
+   cover — the bottom half of it simply cut off.
+   Sized by WIDTH only, never a percentage height: the cover's height comes from
+   aspect-ratio, and a percentage height against that is not reliably resolvable.
+   The crest is a fixed 500x750 (2:3), so width:34% always lands at 68% of the
+   cover's height — the whole crest, with room around it. */
+.gsec__cover .gsec__crest {
+  width: 34%; height: auto; max-height: 74%;
+  object-fit: contain; opacity: .18;
+}
 /* display:block is load-bearing, not tidiness. As an inline <span> this element's
    border-top drew ACROSS the text instead of above the block — a line straight
    through "2 photos" on every card, plus stray gold dashes where the inline box
