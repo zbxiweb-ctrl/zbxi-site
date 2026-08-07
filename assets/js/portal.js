@@ -158,6 +158,19 @@
   // that may never come again.
   if (state.recovery) openModal();
 
+  // A reset link that was already used (or is over an hour old) comes back as
+  //   /#error=access_denied&error_code=otp_expired&...
+  // with no tokens at all, so the recovery latch never fires and refresh() has
+  // nothing to report. Without this the brother lands on the top of the home
+  // page and is told absolutely nothing — which reads as "the link did nothing"
+  // and sends him back to the email to click it again. Say so, and put him in
+  // front of the message instead of leaving it below the fold.
+  if (/\berror_code=otp_expired\b/.test(location.hash)) {
+    state.resetExpired = true;
+    var expSec = document.getElementById('brothers-portal');
+    if (expSec) expSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   /* ---------------- main refresh ---------------- */
   function refresh() {
     Z.getUser().then(function (u) {

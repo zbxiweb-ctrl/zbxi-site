@@ -95,10 +95,21 @@
       return client.auth.signOut().then(function (r) { self._userP = null; self.cacheBust(); return r; });
     },
     onAuth: function (cb) { if (configured) client.auth.onAuthStateChange(cb); },
-    // Send a password-reset email (link returns to the portal).
+    // Send a password-reset email.
+    /* redirectTo MUST NOT carry a #fragment. Supabase returns its tokens as a
+       fragment, and when redirectTo already has one it keeps yours and escapes
+       the second '#' — the link came back as
+         /#brothers-portal%23access_token=...&type=recovery
+       which is a SINGLE fragment whose first parameter is named
+       "brothers-portal#access_token". supabase-js looks up "access_token",
+       finds nothing, and never creates the session — so the brother landed on
+       the home page with no reset form, and the login card then told him the
+       link had expired. (The server had created the session; only the browser
+       couldn't see it.) Observed on a real device 2026-08-07; the anchor was
+       cosmetic, the modal opens on its own. */
     resetPassword: function (email, captchaToken) {
       return client.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/index.html#brothers-portal',
+        redirectTo: window.location.origin + '/index.html',
         captchaToken: captchaToken || undefined
       });
     },
