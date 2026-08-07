@@ -1200,23 +1200,16 @@ body.modal-open { overflow: hidden; }
    thread photo, profile photo). --round matches the circular avatar crop. */
 .file-prev { display: block; max-width: 100%; max-height: 180px; margin-top: .6rem; border-radius: 10px; box-shadow: var(--shadow-sm); }
 .file-prev--round { width: 96px; height: 96px; max-height: none; object-fit: cover; border-radius: 50%; }
+/* Where the photo will land, when there is no picker to say it. */
+.gupload__dest { margin: .9rem 0 0; text-align: center; color: var(--muted); font-size: .86rem; }
+.gupload__dest b { color: var(--heading); font-weight: 600; }
 .gupload__row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .8rem; }
 .gupload__row input { flex: 1; min-width: 160px; padding: .7rem .9rem; border-radius: 10px; border: 1.5px solid var(--hairline); font-size: .95rem; }
 .gupload__album { flex: 0 1 auto; min-width: 140px; max-width: 220px; }
 
-/* Album filter chips — one grid, chips filter it (board pattern; that CSS was
-   retired in the rail redesign, so this is fresh). Gold-fill selected state
-   matches the site's .btn--gold convention; empty albums dim, never hide. */
-.gchips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.4rem; }
-.gchip { display: inline-flex; align-items: center; gap: .45rem; padding: .45rem .85rem; border-radius: 999px;
-  border: 1.5px solid var(--hairline); background: var(--surface); color: var(--heading);
-  font-weight: 600; font-size: .9rem; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
-.gchip:hover { border-color: var(--gold-bright); }
-.gchip.on { background: var(--gold-bright); border-color: var(--gold-bright); color: var(--navy); }
-.gchip__n { font-size: .78rem; font-weight: 700; opacity: .65; }
-.gchip.on .gchip__n { opacity: .85; color: var(--navy); }
-.gchip--empty { opacity: .5; }
-.gchip--empty.on { opacity: 1; }
+/* The album filter chips lived here. Sections-first browsing replaced them: you
+   pick a section on the front door, and inside one .gsechead names it. Removed
+   with their markup rather than left as orphan CSS. */
 
 /* Admin console gallery storage meter (navy surface -> flipping tokens only). */
 .stor-meter { margin: .2rem 0 1rem; }
@@ -1253,11 +1246,27 @@ body.modal-open { overflow: hidden; }
 .gsec__cover { aspect-ratio: 4 / 3; background: var(--navy); display: grid; place-items: center; overflow: hidden; }
 .gsec__cover img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
 .gsec:hover .gsec__cover img { transform: scale(1.04); }
-.gsec__crest { width: 42%; height: auto; opacity: .3; object-fit: contain; }
-.gsec__plate { padding: .7rem .9rem .8rem; border-top: 1px solid var(--gold-bright); }
-.gsec__name { display: block; font-family: var(--display); font-size: 1.02rem; color: var(--heading); line-height: 1.25; }
-.gsec__n { display: block; margin-top: .2rem; color: var(--muted); font-size: .8rem; }
+.gsec__crest { width: 38%; height: auto; opacity: .18; object-fit: contain; }
+/* display:block is load-bearing, not tidiness. As an inline <span> this element's
+   border-top drew ACROSS the text instead of above the block — a line straight
+   through "2 photos" on every card, plus stray gold dashes where the inline box
+   fragmented. */
+.gsec__plate { display: block; padding: .72rem .9rem .8rem; border-top: 1px solid var(--gold-bright);
+  /* two lines of the name + the count: every card in a row bottoms out together
+     whether its name wraps ("Pledge Classes" at 390px) or not ("E-board"). */
+  min-height: calc(2 * 1.02rem * 1.25 + .78rem + .78rem + 1.52rem); }
+.gsec__name { display: block; font-family: var(--display); font-size: 1.02rem; color: var(--heading);
+  line-height: 1.25; letter-spacing: .005em; }
+/* A label, not prose — small caps and tracking stop it competing with the Georgia name. */
+.gsec__n { display: block; margin-top: .34rem; color: var(--muted); font-size: .72rem;
+  font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
 .gsec--all .gsec__cover { background: var(--navy); }
+
+/* The section you're standing in — replaces the row of chips that used to say it. */
+.gsechead { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap;
+  margin: 1rem 0 1.1rem; padding-bottom: .55rem; border-bottom: 1px solid var(--hairline); }
+.gsechead h3 { margin: 0; font-family: var(--display); font-size: 1.35rem; color: var(--heading); line-height: 1.2; }
+.gsechead span { color: var(--muted); font-size: .74rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; }
 
 .ggrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem; }
 .ggrid__cell { position: relative; padding: 0; border: 0; background: var(--navy); border-radius: 12px; overflow: hidden; cursor: pointer; aspect-ratio: 1; box-shadow: var(--shadow-sm); }

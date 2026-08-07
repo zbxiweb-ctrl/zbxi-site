@@ -1,4 +1,4 @@
-// zbxi-pending — tells the ADMIN, by email, that brothers are waiting for approval.
+// zbxi-pending — tells whoever can APPROVE, by email, that brothers are waiting.
 // Before this, the only signal was the bell on the site, so a signup could sit unseen.
 //
 // Driven by a 5-minute pg_cron job (job `zbxi-pending-alert`) that POSTs here with the
@@ -12,7 +12,14 @@
 //
 // Auth: the admin's JWT, or the x-zbxi-cron secret (same as the digest).
 //   ?dry=1  -> return the HTML instead of sending (preview; claims nothing)
-//   ?test=1 -> send to the admin's inbox (claims nothing; uses a sample if the queue is empty)
+//   ?test=1 -> send to the ADMIN ONLY (claims nothing; uses a sample if the queue is empty)
+//
+// Recipients come from pending_alert_recipients() (upgrade48): the admin, plus
+// every officer whose seat carries members.approve — being told to clear a queue
+// you cannot act on is noise. Two rules the code enforces rather than remembers:
+//   * ?test=1 goes to the ADMIN ONLY. Officers must never receive our test mail.
+//   * one send PER RECIPIENT, never a shared To:, so nobody learns anyone else's
+//     address from a header.
 const SB = Deno.env.get("SUPABASE_URL")!;
 const SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND = Deno.env.get("RESEND_API_KEY") || "";
@@ -43,6 +50,21 @@ const json = (body: unknown, status = 200) =>
 
 const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+
+// Who should be told. Locked to service_role in the DB — an ordinary brother or
+// the anon key gets 42501, because this returns email addresses.
+async function recipients(): Promise<string[]> {
+  const r = await fetch(`${SB}/rest/v1/rpc/pending_alert_recipients`, {
+    method: "POST",
+    headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!r.ok) throw new Error(`pending_alert_recipients: ${(await r.text()).slice(0, 200)}`);
+  const rows = (await r.json()) as { email: string }[];
+  const list = rows.map((x) => String(x.email || "").toLowerCase()).filter(Boolean);
+  // Never end up sending nothing because a join went wrong — the admin is the floor.
+  return list.length ? [...new Set(list)] : [await adminEmail()];
+}
 
 async function dbGet(path: string) {
   const r = await fetch(`${SB}/rest/v1/${path}`, { headers: { apikey: SRK, Authorization: `Bearer ${SRK}` } });
@@ -124,8 +146,8 @@ function body(rows: Row[]) {
     </p>
   </td></tr>
   <tr><td style="background:#f6f1e3;padding:16px 28px;text-align:center;border-top:1px solid #e8dfc6">
-    <div style="font:400 11px/1.6 Helvetica,Arial;color:#8a8f9c">You're getting this because you're the site
-      administrator for zetabetaxi.com.<br>It's sent only when someone is actually waiting.</div>
+    <div style="font:400 11px/1.6 Helvetica,Arial;color:#8a8f9c">You're getting this because you can approve
+      new brothers on zetabetaxi.com.<br>It's sent only when someone is actually waiting.</div>
   </td></tr>
 </table></td></tr></table></body></html>`;
 }
@@ -159,6 +181,15 @@ Deno.serve(async (req) => {
     const dry = url.searchParams.get("dry") === "1";
     const test = url.searchParams.get("test") === "1";
 
+    // Work out WHO to tell before claiming anything. claim_pending_alerts() is a
+    // one-way door — it marks those brothers as alerted — so a failure after it
+    // loses them silently. Resolving recipients first means a bad lookup fails
+    // while the queue is still intact and the next 5-minute run retries.
+    // A test send goes to the admin and NOWHERE else: officers must never
+    // receive our test mail. Enforced here, not left to whoever types the URL.
+    // (?dry=1 renders the HTML and sends nothing, so it never needs the list.)
+    const to = dry ? [] : test ? [await adminEmail()] : await recipients();
+
     let rows: Row[];
     if (dry || test) {
       rows = await peek();
@@ -182,19 +213,29 @@ Deno.serve(async (req) => {
       : `${rows[0].brother_name || "A brother"} is awaiting approval · ΖΒΞ`;
 
     if (!RESEND) return json({ sent: 0, error: "RESEND_API_KEY not set" }, 500);
-    const to = await adminEmail();
-    const send = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to, subject, html }),
-    });
-    if (!send.ok) return json({ sent: 0, error: (await send.text()).slice(0, 200) }, 502);
+
+    // One request per recipient: a shared To: would show each of them the
+    // others' addresses.
+    let sent = 0;
+    const failed: string[] = [];
+    for (const addr of to) {
+      const send = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${RESEND}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: FROM, to: addr, subject, html }),
+      });
+      if (send.ok) sent++;
+      else failed.push(`${addr}: ${(await send.text()).slice(0, 120)}`);
+    }
+    // The alerts were already CLAIMED by claim_pending_alerts, so a total
+    // failure here would lose them silently. Say so loudly instead.
+    if (!sent) return json({ sent: 0, error: failed.join(" | ").slice(0, 300) }, 502);
 
     await dbPost("digest_log", {
-      kind: "pending", recipients: 1, test,
-      note: `pending alert: ${rows.length} brother${rows.length === 1 ? "" : "s"}`.slice(0, 180),
+      kind: "pending", recipients: sent, test,
+      note: `pending alert: ${rows.length} brother${rows.length === 1 ? "" : "s"} -> ${sent} recipient${sent === 1 ? "" : "s"}`.slice(0, 180),
     });
-    return json({ sent: 1, brothers: rows.length, test });
+    return json({ sent, brothers: rows.length, test, failed: failed.length ? failed : undefined });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

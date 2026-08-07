@@ -34,12 +34,13 @@
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
   // view: 'sections' = the cover-card front door, 'grid' = one section's photos.
   var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false, view = 'sections';
+  // Standing inside ONE named section (not the sections page, not "All photos").
+  function inSection() { return view === 'grid' && curAlbum !== 'all'; }
 
   // Posts with no album_id fall into Miscellaneous (the fallback bucket) so a
   // deleted-album's photos are never orphaned. albumName() reads the same map.
   function miscId() { var m = albums.filter(function (a) { return a.name === 'Miscellaneous'; })[0]; return m ? m.id : null; }
   function albumOf(p) { return p.album_id || miscId(); }
-  function albumCount(id) { return posts.filter(function (p) { return albumOf(p) === id; }).length; }
   function albumName(p) { var a = albums.filter(function (x) { return x.id === albumOf(p); })[0]; return a ? a.name : ''; }
 
   // Paint the skeleton NOW for a likely-signed-in brother — the auth checks below
@@ -94,26 +95,20 @@
               '<span class="gupload__change">Choose a different photo</span>' +
             '</span>' +
             '<input type="file" id="guFile" accept="image/*" hidden></label>' +
+          // Inside a section the destination is already decided, so the picker
+          // asks a question you just answered. State it instead. On "All photos"
+          // (and on the sections page) nothing is implied, so it still has to ask.
+          (inSection()
+            ? '<p class="gupload__dest">Posting to <b>' + esc(curSecName()) + '</b></p>'
+            : '') +
           '<div class="gupload__row">' +
-            (albums.length ? albumPicker('guAlbum', miscId()) : '') +
+            (!inSection() && albums.length ? albumPicker('guAlbum', miscId()) : '') +
             '<input id="guCaption" aria-label="Photo caption" placeholder="Write a caption…" maxlength="300">' +
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
           '<p class="form-status" id="guStatus" role="status"></p>' +
         '</form>' +
       '</div>';
-  }
-
-  // Album filter chips: 'All' + one per album with a count, dimmed when empty
-  // (never hidden), matching the board. Names are user-visible -> esc().
-  function chipsHtml() {
-    if (!albums.length) return '';
-    var chip = function (id, label, n) {
-      return '<button class="gchip' + (curAlbum === id ? ' on' : '') + (n === 0 ? ' gchip--empty' : '') +
-        '" data-album="' + esc(id) + '">' + esc(label) + '<span class="gchip__n">' + n + '</span></button>';
-    };
-    return '<div class="gchips">' + chip('all', 'All', posts.length) +
-      albums.map(function (a) { return chip(a.id, a.name, albumCount(a.id)); }).join('') + '</div>';
   }
 
   // Section manager — shown only to the admin OR a granted alumni president
@@ -169,6 +164,18 @@
       '</div>';
   }
 
+  // The name of the section you're standing in — what the chips used to tell you.
+  function curSecName() {
+    if (curAlbum === 'all') return 'All photos';
+    var a = albums.filter(function (x) { return x.id === curAlbum; })[0];
+    return a ? a.name : 'Photos';
+  }
+  function secHeadHtml() {
+    var n = postsIn(curAlbum).length;
+    return '<div class="gsechead"><h3>' + esc(curSecName()) + '</h3>' +
+      '<span>' + (n === 0 ? 'No photos yet' : n + (n === 1 ? ' photo' : ' photos')) + '</span></div>';
+  }
+
   function gridHtml() {
     var shown = curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
     if (!shown.length) {
@@ -189,19 +196,21 @@
   function renderBody() {
     var body = document.getElementById('galleryBody');
     if (!body) return;
+    // No chips inside a section: you already picked it, and offering all six again
+    // is clutter. The heading says where you are; the back pill is how you leave.
     body.innerHTML = view === 'sections'
       ? sectionsHtml() + sectionMgrHtml()
-      : '<button class="back-pill" id="gsecBack">← All sections</button>' + chipsHtml() + gridHtml();
+      : '<button class="back-pill" id="gsecBack">← All sections</button>' + secHeadHtml() + gridHtml();
     var back = body.querySelector('#gsecBack');
-    if (back) back.addEventListener('click', function () { view = 'sections'; renderBody(); });
+    if (back) back.addEventListener('click', function () { view = 'sections'; renderGrid(); });
     body.querySelectorAll('[data-sec]').forEach(function (c) {
       c.addEventListener('click', function () {
-        curAlbum = c.dataset.sec; view = 'grid'; renderBody();
+        curAlbum = c.dataset.sec; view = 'grid';
+        // renderGrid, not renderBody: the composer changes with the section
+        // (its picker disappears inside one), and only renderGrid rebuilds it.
+        renderGrid();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
-    });
-    body.querySelectorAll('[data-album]').forEach(function (c) {
-      c.addEventListener('click', function () { curAlbum = c.dataset.album; renderBody(); });
     });
     body.querySelectorAll('[data-post]').forEach(function (c) {
       c.addEventListener('click', function () {
@@ -317,8 +326,10 @@
       var f = fileIn.files[0];
       if (!f) return;
       btn.disabled = true; btn.textContent = 'Posting…';
+      // Inside a section there is no picker — the photo goes where you are.
       var albumSel = document.getElementById('guAlbum');
-      var albumId = albumSel && albumSel.value ? albumSel.value : null;   // null -> Miscellaneous
+      var albumId = inSection() ? curAlbum
+                  : (albumSel && albumSel.value ? albumSel.value : null);   // null -> Miscellaneous
       Z.downscale(f, 1600).then(function (blob) {
         return Z.galleryUpload(me.id, blob, 'jpg');
       }).then(function (path) {
