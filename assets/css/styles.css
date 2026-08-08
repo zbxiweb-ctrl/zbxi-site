@@ -2003,6 +2003,51 @@ input, select, textarea { background: var(--surface-2); }
   .intro-card__foot .btn { width: 100%; }
 }
 
+/* ---------- board header row: the way out sits IN the header ----------
+   The back control used to be a pill on its own line above the section header,
+   spending a whole row on navigation and pushing the content down. It is now a
+   round button at the left of the header it belongs to. The headers themselves
+   are untouched — .cat-band, .gsechead, h2 and h3 keep their own looks, and only
+   their outer margin moves onto the row so the two stay optically aligned. */
+.bhead { display: flex; align-items: center; gap: .8rem; margin: 0 0 1rem; }
+.bhead__main { flex: 1 1 auto; min-width: 0; }
+.bhead .cat-band, .bhead .gsechead, .bhead h2, .bhead h3 { margin: 0; }
+
+.bback {
+  flex: none; width: 44px; height: 44px;          /* full tap target on a phone */
+  display: grid; place-items: center;
+  background: var(--navy); color: var(--gold-bright);
+  border: 1px solid rgba(200,162,75,.5); border-radius: 50%;
+  font-size: 1.15rem; line-height: 1; cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.bback:hover { border-color: var(--gold-bright); transform: translateX(-2px); }
+@media (max-width: 480px) {
+  .bhead { gap: .6rem; }
+  .bback { width: 40px; height: 40px; }
+}
+
+/* Introductions, once he's already said hi: the composer's slot becomes the way
+   back to what he wrote. Same left-border idiom as .cat-band so it reads as part
+   of the section rather than a stray notice. */
+.intro-done {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;
+  margin: 0 0 1.1rem; padding: .8rem 1.1rem;
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-left: 5px solid var(--gold); border-radius: 12px;
+  color: var(--muted); font-size: .9rem; box-shadow: var(--shadow-sm);
+}
+.intro-done button {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--gold-deep); text-decoration: underline;
+}
+.intro-done button:hover { color: var(--heading); }
+
+/* Editing your own post, in place under the title. */
+.thr-edit { margin: 1.1rem 0 1.4rem; }
+.thr-edit .field:last-of-type { margin-bottom: .9rem; }
+.thr-edit__foot { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+
 .cat-band { display: flex; gap: .8rem; align-items: center; background: var(--surface); border-radius: 12px; padding: .8rem 1.1rem; font-size: 1.3rem; box-shadow: var(--shadow-sm); border-left: 5px solid var(--navy); margin-bottom: .9rem; }
 .cat-band b { display: block; color: var(--heading); font-family: var(--display); font-size: 1.05rem; }
 .cat-band span { color: var(--muted); font-size: .82rem; }

@@ -543,6 +543,15 @@
         .order('created_at').then(function (r) { return r.data || []; });
     },
     threadCreate: function (row) { return client.from('forum_threads').insert(row).select().single(); },
+    // upgrade49 grants authenticated UPDATE on title + body only, so `row` must
+    // carry nothing else — anything more is refused 42501 by column privilege,
+    // before RLS is even consulted.
+    // .select() is load-bearing: an update RLS refuses is NOT an error, it just
+    // matches zero rows and returns 200. Asking for the rows back is what lets the
+    // caller tell "saved" from "silently declined".
+    threadUpdate: function (id, row) {
+      return client.from('forum_threads').update(row).eq('id', id).select();
+    },
     threadDelete: function (id) { return client.from('forum_threads').delete().eq('id', id); },
     replyCreate: function (row) { return client.from('forum_replies').insert(row); },
     replyDelete: function (id) { return client.from('forum_replies').delete().eq('id', id); },

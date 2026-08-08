@@ -120,7 +120,14 @@ async function activityHtml(): Promise<string> {
     // hid a multi-day event from every brother approved after its first morning.
     // ends_at null means no end was given, so fall back to starts_at.
     db(`events?select=title,starts_at,ends_at,location&or=(ends_at.gte.${encodeURIComponent(now)},and(ends_at.is.null,starts_at.gte.${encodeURIComponent(now)}))&order=starts_at.asc&limit=2`),
-    db(`forum_threads?select=title,created_at&order=created_at.desc&limit=3`),
+    // committee_id=is.null is load-bearing: private committee rooms are rows in
+    // THIS table, and db() carries the service-role key, which bypasses RLS
+    // entirely. Unfiltered, the first post in a private room becomes the newest
+    // thread and gets copied into the welcome email of a brand-new brother who
+    // belongs to no committees and could not open that room on the site — and it
+    // would stay there until three newer public threads buried it. The monthly
+    // digest avoids this only because it happens to filter on category.
+    db(`forum_threads?select=title,created_at&committee_id=is.null&order=created_at.desc&limit=3`),
   ]);
   const rows: string[] = [];
   for (const e of events as { title: string; starts_at: string; ends_at: string | null; location: string | null }[]) {

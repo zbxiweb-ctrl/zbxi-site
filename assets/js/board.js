@@ -150,9 +150,21 @@
     return group('SPACES') + group('CHAPTER') + group('PRIVATE') + foot;
   }
 
-  // Every space view opens with this; it is the only way back to the cards.
-  function backPill() {
-    return '<button class="back-pill" id="bspaceBack">← All spaces</button>';
+  /* ---------- the way out lives INSIDE the header ----------
+     It used to be a pill on a row of its own, above the section header: a whole
+     line of vertical space spent on navigation, pushing the content down and
+     sitting on top of the thing you came to read. Now it is a round button at the
+     left of the header it belongs to, vertically centred with the title — top-left
+     corner, and it costs no row at all.
+     Icon-only by design: the destination rides in aria-label + title, so a screen
+     reader and a hover both get the words while the control stays a square target.
+     `to` is RAW here and esc()'d below — it can be a committee name, which is
+     brother-supplied. Every call site passes raw and lets this do the escaping. */
+  function bhead(id, to, inner) {
+    var label = esc('Back to ' + to);
+    return '<div class="bhead">' +
+      '<button class="bback" id="' + id + '" aria-label="' + label + '" title="' + label + '">←</button>' +
+      '<div class="bhead__main">' + inner + '</div></div>';
   }
 
   function avatarOf(uid) {
@@ -204,11 +216,12 @@
   /* ---------- introductions composer ---------- */
   // Deliberately not the generic composer: one textarea, no title field. The title
   // is generated, because every extra field is a brother who doesn't post.
-  function hasIntro() {
-    return !!(me && threads.some(function (t) {
+  function myIntro() {
+    return (me && threads.filter(function (t) {
       return t.category === 'introductions' && t.author_user === me.id;
-    }));
+    })[0]) || null;
   }
+  function hasIntro() { return !!myIntro(); }
   function introTitle() {
     var p = dir[me.id] || {};
     var name = String(p.full_name || 'A brother').trim();
@@ -230,7 +243,19 @@
         '<p class="form-status" id="introStatus" role="status"></p>' +
       '</form></div>';
   }
+  // Once he's said hi the composer is gone, so its slot carries the way back to
+  // what he wrote. Without this, "edit your intro" means finding your own post in
+  // a list of everyone else's.
+  function introDone() {
+    return '<p class="intro-done">👋 You’ve said hi. ' +
+      '<button type="button" id="introEdit">Edit your intro</button></p>';
+  }
   function wireIntroCard() {
+    var ie = document.getElementById('introEdit');
+    if (ie) ie.onclick = function () {
+      var t = myIntro();
+      if (t) renderThread(t, true);
+    };
     var f = document.getElementById('introForm');
     if (!f) return;
     f.onsubmit = function (e) {
@@ -249,7 +274,8 @@
       })).then(function (r) {
         if (r.error) throw r.error;
         return loadAll().then(function () {
-          state.cat = 'all';           // land him back on a board that now has his post in it
+          // Stay in Introductions: it is now the only place the composer lives, so
+          // bouncing him to All would carry him away from the post he just wrote.
           renderList();
           window.scrollTo(0, 0);
         });
@@ -261,15 +287,14 @@
     };
   }
 
-  // The front door. The intro composer lives here too: it is the one thing on the
-  // Board that must not end up behind a card.
+  // The front door: cards, nothing else. The intro composer used to sit on top of
+  // them and it dominated the page — it now lives only in 👋 Introductions, which
+  // is the space it posts to.
   function renderSpaces() {
     state.thread = null;
     state.view = 'spaces';
-    var intro = hasIntro() ? '' : introCard();
-    root.innerHTML = '<div class="board-main board-main--spaces">' + intro + spacesHtml() + '</div>';
+    root.innerHTML = '<div class="board-main board-main--spaces">' + spacesHtml() + '</div>';
     wireTabs();
-    wireIntroCard();
     wireHelp();
   }
 
@@ -286,9 +311,16 @@
       : (isAll ? feedThreads() : feedThreads().filter(function (t) { return t.category === state.cat; }));
     mine = sortThreads(mine);
 
+    // All never had a band, because the rail told you where you were. The back
+    // control lives in the header now, so All needs one too — and a section that
+    // says what it holds is the point of putting the header first.
     var band = comm
       ? '<div class="cat-band cat-band--comm">🔒 <div><b>' + esc(comm.name) + '</b><span>Private — only committee members and the webmaster can see this space.</span></div></div>'
-      : ((!isAll && meta) ? '<div class="cat-band cat-band--' + meta.id + '">' + meta.ic + ' <div><b>' + meta.label + '</b><span>' + meta.desc + '</span></div></div>' : '');
+      : meta
+        ? '<div class="cat-band cat-band--' + meta.id + '">' + meta.ic + ' <div><b>' + meta.label + '</b><span>' + meta.desc + '</span></div></div>'
+        : isAll
+          ? '<div class="cat-band">✦ <div><b>All</b><span>Every thread from the open spaces — private committee rooms stay in their own.</span></div></div>'
+          : '';
 
     // Introductions is composer-only: no "+ New thread" there, which also stops second intros.
     var controls = '<div class="board-controls">' +
@@ -304,9 +336,14 @@
     var list = mine.length ? '<div class="thread-list">' + mine.map(threadCard).join('') + '</div>'
       : emptyState(isAll ? null : (comm ? esc(comm.name) : catLabel(state.cat)));
 
-    var intro = (!hasIntro() && (isAll || state.cat === 'introductions')) ? introCard() : '';
+    // Introductions only. It posts there, so it belongs there — and on the front
+    // door it was the first thing every brother met, every visit, forever.
+    var intro = state.cat !== 'introductions' ? '' : (hasIntro() ? introDone() : introCard());
 
-    root.innerHTML = '<div class="board-main">' + backPill() + intro + band + controls + list + '</div>';
+    // Header first: the band explains what the space is, so it has to arrive
+    // before the box asking you to write in it.
+    root.innerHTML = '<div class="board-main">' +
+      bhead('bspaceBack', 'All spaces', band) + intro + controls + list + '</div>';
     wireTabs();
     wireIntroCard();
     wireSuggestionCard();
@@ -420,10 +457,11 @@
         '</div></div>';
     }).join('') : '<p class="page-empty">No polls yet — post the first one.</p>';
 
-    root.innerHTML = '<div class="board-main">' + backPill() +
-        '<div class="gsechead"><h3>🗳️ Polls</h3><span>' +
-          (POLLS.length === 0 ? 'None yet' : POLLS.length + (POLLS.length === 1 ? ' poll' : ' polls')) +
-        '</span></div>' +
+    root.innerHTML = '<div class="board-main">' +
+        bhead('bspaceBack', 'All spaces',
+          '<div class="gsechead"><h3>🗳️ Polls</h3><span>' +
+            (POLLS.length === 0 ? 'None yet' : POLLS.length + (POLLS.length === 1 ? ' poll' : ' polls')) +
+          '</span></div>') +
         newBtn + cards +
       '</div>';
     wireTabs();
@@ -475,9 +513,9 @@
       closesLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
     root.innerHTML =
-      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to polls</button>' +
       '<div class="card-form" style="max-width:640px">' +
-        '<h3 style="color:var(--heading);font-family:var(--display)">' + (editing ? 'Edit poll' : 'New poll') + '</h3>' +
+        bhead('backList', 'Polls',
+          '<h3 style="color:var(--heading);font-family:var(--display);margin:0">' + (editing ? 'Edit poll' : 'New poll') + '</h3>') +
         '<form id="pollForm" novalidate>' +
           '<div class="field"><label>Question *</label><input name="question" required maxlength="200" value="' +
             (editing ? esc(poll.question) : '') + '"></div>' +
@@ -524,8 +562,9 @@
   // same box eight times over — which is noise, not availability.
   function renderSuggestions() {
     state.thread = null;
-    root.innerHTML = '<div class="board-main">' + backPill() +
-        '<div class="gsechead"><h3>💡 Suggestion box</h3><span>Straight to the webmaster</span></div>' +
+    root.innerHTML = '<div class="board-main">' +
+        bhead('bspaceBack', 'All spaces',
+          '<div class="gsechead"><h3>💡 Suggestion box</h3><span>Straight to the webmaster</span></div>') +
         suggestionCard() +
       '</div>';
     wireTabs();
@@ -575,7 +614,7 @@
   function renderCompose(prefillTitle) {
     var comm = committeeOf(state.cat);
     var isAll = state.cat === 'all';
-    var where = comm ? esc(comm.name) : catLabel(state.cat);
+    var where = comm ? comm.name : catLabel(state.cat);   // raw; esc()'d at each use
     // From the feed there's no implied category, so ask — 'all' isn't a valid
     // category and would fail the CHECK constraint.
     var catField = isAll
@@ -586,9 +625,10 @@
       : '';
     var oppNow = isAll ? false : state.cat === 'opportunities';   // 'social' is the default pick
     root.innerHTML =
-      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to ' + where + '</button>' +
       '<div class="card-form" style="max-width:680px">' +
-        '<h3 style="color:var(--heading);font-family:var(--display)">New ' + (oppNow ? 'opportunity' : 'thread') + ' · ' + where + '</h3>' +
+        bhead('backList', where,
+          '<h3 style="color:var(--heading);font-family:var(--display);margin:0">New ' +
+            (oppNow ? 'opportunity' : 'thread') + ' · ' + esc(where) + '</h3>') +
         '<form id="thrForm" novalidate>' +
           catField +
           '<div class="field" id="tagField"' + (oppNow ? '' : ' style="display:none"') + '><label>Type</label><select name="tag">' +
@@ -667,22 +707,29 @@
   }
 
   /* ---------- thread view ---------- */
-  function renderThread(t) {
+  // openEdit: land straight in the editor instead of on the post. Used by the
+  // "Edit your intro" line, where reading it again is not what he came to do.
+  function renderThread(t, openEdit) {
     state.thread = t;
     state.cat = t.committee_id || t.category;
     markSeen(t.id);
     var comm = committeeOf(t.committee_id);
-    var backLabel = comm ? esc(comm.name) : catLabel(t.category);
+    var backLabel = comm ? comm.name : catLabel(t.category);   // raw; bhead esc()s it
     var tag = t.tag ? '<span class="thr-tag thr-tag--' + esc(t.tag) + '">' + (t.tag === 'offering' ? 'Offering' : 'Seeking') + '</span>' : '';
     var canDel = me && (t.author_user === me.id || isAdmin);
+    // Edit is drawn for the AUTHOR only. upgrade49's policy also permits the admin,
+    // matching delete, but rewording a brother's own words is not a button the
+    // console should offer casually. RLS stays the real gate either way.
+    var canEdit = me && t.author_user === me.id;
     root.innerHTML =
-      '<button class="back-pill" id="backList" style="margin-bottom:1rem">← Back to ' + backLabel + '</button>' +
       '<article class="thread-view">' +
-        '<h2>' + tag + esc(t.title) + '</h2>' +
+        bhead('backList', backLabel, '<h2>' + tag + esc(t.title) + '</h2>') +
         '<div class="thread-view__meta">' + chip(t.author_user) + ' · ' + when(t.created_at) +
+          (canEdit ? ' · <a href="#" id="editThread">edit</a>' : '') +
           (canDel ? ' · <a href="#" id="delThread">delete thread</a>' : '') + '</div>' +
         (t.image_path ? '<div class="thread-view__photo" id="threadPhoto"></div>' : '') +
-        '<div class="thread-view__body">' + esc(t.body).replace(/\n/g, '<br>') + '</div>' +
+        '<div class="thread-view__body" id="thrBody">' + esc(t.body).replace(/\n/g, '<br>') + '</div>' +
+        '<div id="thrEdit" hidden></div>' +
         '<h3 class="stat-h">Replies</h3>' +
         '<div id="replies"><p class="form-note">…</p></div>' +
         '<form class="gcompose" id="replyForm" style="margin-top:1rem">' +
@@ -691,6 +738,9 @@
         '</form>' +
       '</article>';
     document.getElementById('backList').onclick = renderList;
+    var ed = document.getElementById('editThread');
+    if (ed) ed.onclick = function (e) { e.preventDefault(); showThreadEdit(t); };
+    if (openEdit && canEdit) showThreadEdit(t);
     var del = document.getElementById('delThread');
     if (del) del.onclick = function (e) {
       e.preventDefault();
@@ -717,6 +767,65 @@
         m.count++; m.lastAt = new Date().toISOString();
         markSeen(t.id);
         loadReplies(t);
+      });
+    };
+  }
+
+  /* ---------- edit your own post (upgrade49) ----------
+     Swaps the rendered body for a form in place, rather than navigating away: you
+     can see the replies you're answering while you fix what you wrote.
+     The title field is omitted on an intro because introTitle() generates it from
+     his name and pledge class — it isn't his to edit, and the form must not send a
+     column upgrade49 doesn't grant. */
+  function showThreadEdit(t) {
+    var box = document.getElementById('thrEdit');
+    var body = document.getElementById('thrBody');
+    if (!box || !body) return;
+    var isIntro = t.category === 'introductions';
+    box.innerHTML = '<form class="thr-edit" id="thrEditForm" novalidate>' +
+      (isIntro ? '' :
+        '<div class="field"><label>Title *</label>' +
+          '<input name="title" required maxlength="140" value="' + esc(t.title) + '"></div>') +
+      '<div class="field"><label>' + (isIntro ? 'Your intro *' : 'Post *') + '</label>' +
+        '<textarea name="body" required maxlength="2000">' + esc(t.body) + '</textarea></div>' +
+      '<div class="thr-edit__foot">' +
+        '<button class="btn btn--navy" type="submit">Save changes</button>' +
+        '<button class="back-pill" type="button" id="thrEditCancel">Cancel</button>' +
+      '</div>' +
+      '<p class="form-status" id="thrEditStatus" role="status"></p>' +
+    '</form>';
+    box.hidden = false;
+    body.hidden = true;
+    var ta = box.querySelector('textarea');
+    if (ta) ta.focus();
+
+    document.getElementById('thrEditCancel').onclick = function () {
+      box.hidden = true; box.innerHTML = ''; body.hidden = false;
+    };
+    document.getElementById('thrEditForm').onsubmit = function (e) {
+      e.preventDefault();
+      var f = e.target, st = document.getElementById('thrEditStatus');
+      if (!f.checkValidity()) { f.reportValidity(); return; }
+      var row = { body: f.body.value.trim() };
+      if (!isIntro) row.title = f.title.value.trim();
+      var btn = f.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      Promise.resolve(Z.threadUpdate(t.id, row)).then(function (r) {
+        if (r && r.error) throw r.error;
+        // A PostgREST update that RLS refuses is not an error — it changes zero
+        // rows and returns 200 with an empty array. Without this check a refused
+        // edit would look like it saved until the next refresh put the old text
+        // back. threadUpdate() asks for the rows back so there is something to test.
+        if (!r || !r.data || !r.data.length) {
+          throw new Error('The server would not save that — you can only edit your own posts.');
+        }
+        return loadAll();
+      }).then(function () {
+        renderThread(threads.filter(function (x) { return x.id === t.id; })[0] || t);
+      })['catch'](function (err) {
+        st.className = 'form-status err';
+        st.textContent = (err && err.message) || 'Could not save your changes.';
+        btn.disabled = false; btn.textContent = 'Save changes';   // his text is never cleared
       });
     };
   }

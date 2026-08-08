@@ -2440,6 +2440,7 @@
     profile_created: 'created a profile', profile_updated: 'updated a profile',
     gallery_post: 'posted to the gallery', gallery_comment: 'commented on a photo',
     thread_created: 'started a discussion', reply_posted: 'replied to a discussion',
+    thread_edited: 'edited his own post',   // upgrade49
     // upgrade40 — deletions and privilege changes. An unmapped action falls back
     // to its raw key below, so a missed label degrades gracefully.
     event_created: 'added an event', event_updated: 'edited an event', event_deleted: 'DELETED an event',
