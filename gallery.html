@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report real numbers;
+       without it they are all 0 and the padding that keeps the comment box clear of
+       the home indicator and Safari's toolbar does nothing. Gallery only — it is the
+       one page with a full-bleed viewer that reaches the screen edges. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Brothers Gallery · Zeta Beta Xi</title>
   <meta name="description" content="The private photo gallery of the Zeta Beta Xi brotherhood." />
     <link rel="canonical" href="https://zetabetaxi.com/gallery.html" />

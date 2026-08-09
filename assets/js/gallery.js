@@ -432,9 +432,20 @@
   // measuring it live made the snap points MOVE while you were dragging toward
   // them — a release near the bottom snapped to a resting position 30px from where
   // it started. Caught by asserting the settled offsets, not by looking at it.
+  // How far the composer may rise before it would start covering the header. Past
+  // this the sheet simply isn't tall enough to show both, and the composer must
+  // wait below the header rather than climb over the grab handle.
+  var compMax = 0;
+
   function measurePeek() {
-    var head = g('head');
+    var head = g('head'), pk = g('peek'), side = sideEl();
     peekPx = (head ? head.offsetHeight : 84) + 14;
+    // Header height once OPEN — the peek preview is display:none then.
+    var headOpen = (head ? head.offsetHeight : 84) - (pk ? pk.offsetHeight : 30);
+    var comp = modal.querySelector('.gcompose');
+    var padBottom = side ? parseFloat(getComputedStyle(side).paddingBottom) || 0 : 0;
+    compMax = Math.max(0, (side ? side.offsetHeight : 0) - padBottom -
+                          (comp ? comp.offsetHeight : 55) - headOpen);
     return peekPx;
   }
 
@@ -447,7 +458,7 @@
 
   /* The photo lifts and shrinks so the comments end up BENEATH it, never under it.
      transform only — animating height would relayout the image every frame. */
-  function liftPhoto(visible) {
+  function liftPhoto(visible, barOp) {
     var img = g('img'), pane = img && img.parentNode;
     if (!img || !pane || !img.naturalWidth) return;
     var paneH = pane.clientHeight, paneW = pane.clientWidth;
@@ -460,15 +471,26 @@
     // once the sheet was tall.
     var bar = modal.querySelector('.gbar--top');
     var topInset = (bar && bar.offsetHeight ? bar.offsetHeight : 42) + 6;
+    // The FLOOR is not the top of the sheet — the ♥ / section bar rides at exactly
+    // that line and is ~40px tall, so treating the sheet edge as the floor ran the
+    // photo straight underneath it.
+    // Weighted by the bar's OWN opacity: near full height the bar has already faded
+    // to nothing, and reserving space for an invisible bar squeezed the band so hard
+    // that the 80px floor kicked in and pushed the photo up into the author's name
+    // instead. Reserve it only while it is actually there to be covered.
+    var bbar = modal.querySelector('.gbar--bot');
+    var op = barOp == null ? 1 : barOp;
+    var botInset = ((bbar && bbar.offsetHeight ? bbar.offsetHeight : 40) + 6) * op;
     var sheetTop = paneH - visible;
-    var room = Math.max(80, sheetTop - topInset - 12);
+    var floor = sheetTop - botInset;
+    var room = Math.max(80, floor - topInset - 12);
     // Never above 1: scaling a photo up is just blur. The floor stops a very tall
     // portrait shrinking to a postage stamp at full height — such a photo is the one
     // case that cannot fully clear the sheet, because the band left at full is
     // ~170px and a portrait scaled into that would be unreadable.
     var scale = Math.max(0.30, Math.min(1, room / painted));
     img.style.setProperty('--gph-s', scale.toFixed(4));
-    img.style.setProperty('--gph-y', Math.round((topInset + sheetTop) / 2 - paneH / 2) + 'px');
+    img.style.setProperty('--gph-y', Math.round((topInset + floor) / 2 - paneH / 2) + 'px');
   }
 
   function paintSheet(y) {
@@ -486,7 +508,9 @@
     var op = y >= s.half ? 1 : Math.max(0, y / Math.max(1, s.half));
     modal.style.setProperty('--gbar-op', op.toFixed(3));
     modal.classList.toggle('gmodal--covered', op < 0.06);
-    liftPhoto(visible);
+    // Dock the composer, but never far enough to climb over the header.
+    modal.style.setProperty('--gcy', Math.min(y, compMax) + 'px');
+    liftPhoto(visible, op);
     var grip = g('grip');
     if (grip) grip.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
@@ -565,23 +589,41 @@
     if (e.cancelable) e.preventDefault();
   }
 
+  // A real drag is followed by a click on whatever the finger started on. The grip,
+  // the count and the peek preview are all tap targets AND drag surfaces, so that
+  // click ran cycleSheet() and yanked the sheet to a different snap right after it
+  // had settled — which is what made dragging from anywhere but the bar feel
+  // erratic. Swallow the tap for a moment after a drag ends.
+  var dragEndedAt = 0;
+  function tapCycle() {
+    if (Date.now() - dragEndedAt < 350) return;
+    cycleSheet();
+  }
+
   function endDrag(e) {
     if (!dragging || (e && e.pointerId !== dragging.id)) return;
     var d = dragging; dragging = null;
     if (!d.live) return;                                   // it was a tap; let click run
+    dragEndedAt = Date.now();
     settle(targetFor(sheetY, d.vy, snaps()));
   }
 
+  /* THE WHOLE SHEET IS THE HANDLE. It used to be bound to the header only, so in
+     practice you were aiming at a 42px bar every time — inconsistent and annoying,
+     exactly as reported. One listener on the panel catches the grip, the count, the
+     preview, the caption, the actions row and all the padding between them.
+     Two exceptions, both deliberate:
+       .gcompose  — tapping there means "I want to type", never "drag the sheet".
+       .gcomments — a drag there is a scroll, unless the list is already at its top
+                    and you are pulling DOWN (handled in moveDrag). */
   function wireSheetDrag() {
-    var head = g('head'), list = g('comments');
-    if (head && !head._dragBound) {
-      head._dragBound = true;
-      head.addEventListener('pointerdown', function (e) { beginDrag(e, false); });
-    }
-    if (list && !list._dragBound) {
-      list._dragBound = true;
-      list.addEventListener('pointerdown', function (e) { beginDrag(e, true); });
-    }
+    var side = sideEl();
+    if (!side || side._dragBound) return;
+    side._dragBound = true;
+    side.addEventListener('pointerdown', function (e) {
+      if (e.target.closest && e.target.closest('.gcompose')) return;
+      beginDrag(e, !!(e.target.closest && e.target.closest('.gcomments')));
+    });
   }
   window.addEventListener('pointermove', moveDrag, { passive: false });
   window.addEventListener('pointerup', endDrag);
@@ -620,7 +662,7 @@
     g('author').innerHTML = chip(p.author_user);
     g('barauthor').innerHTML = chip(p.author_user);
     modal.classList.remove('gmodal--immersive');
-    g('grip').onclick = cycleSheet;
+    g('grip').onclick = tapCycle;
     g('full').onclick = toggleFull;
     g('img').onclick = function () { if (modal.classList.contains('gmodal--sheet')) setSheet(false); };
     // The photo can't be positioned against the sheet until its intrinsic size is
@@ -656,8 +698,8 @@
     // now arrives with the comment list and the composer both already in view.
     // It deliberately does NOT focus the input — landing with the keyboard up is
     // the complaint that drove the previous redesign.
-    g('ccount').onclick = cycleSheet;
-    g('peek').onclick = cycleSheet;
+    g('ccount').onclick = tapCycle;
+    g('peek').onclick = tapCycle;
     var form = g('composeForm');
     form.onsubmit = function (e) {
       e.preventDefault();
@@ -685,10 +727,33 @@
     // comments drags the gallery grid behind the photo, and closing the viewer
     // drops you somewhere other than where you tapped. profile-card.js has done
     // this since it shipped; the viewer never did.
-    document.body.classList.add('modal-open');
+    lockPage();
     // Only now does the sheet have a height to measure — before .open it is display:none.
     wireSheetDrag();
     resetSheet();
+  }
+
+  /* Freeze the page behind the viewer. overflow:hidden alone leaves iOS Safari free
+     to keep scrolling the document, which is exactly what was fighting the sheet
+     drag. position:fixed stops it dead; `top` holds the place so releasing it does
+     not jump the gallery back to the top. */
+  var pageScrollY = 0;
+  function lockPage() {
+    pageScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    document.body.style.top = (-pageScrollY) + 'px';
+    document.body.classList.add('modal-open', 'modal-locked');
+  }
+  function unlockPage() {
+    if (!document.body.classList.contains('modal-locked')) return;
+    document.body.classList.remove('modal-open', 'modal-locked');
+    document.body.style.top = '';
+    // Restore instantly: html{scroll-behavior:smooth} would otherwise animate the
+    // page back, which looks like the site lurching after you close a photo.
+    var h = document.documentElement, prev = h.style.scrollBehavior;
+    h.style.scrollBehavior = 'auto';
+    void getComputedStyle(h).scrollBehavior;
+    window.scrollTo(0, pageScrollY);
+    h.style.scrollBehavior = prev;
   }
 
   function resetSheet() {
@@ -817,7 +882,7 @@
     modal.classList.remove('gmodal--immersive');
     setSheet(false);
     modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');   // give the page its scroll back
+    unlockPage();                                   // give the page its scroll back
   }
   modal.addEventListener('click', function (e) {
     if (e.target === modal || e.target.closest('[data-close]')) closeModal();

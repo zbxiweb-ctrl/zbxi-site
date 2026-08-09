@@ -843,6 +843,14 @@ p { margin: 0 0 1em; }
 }
 /* while any full-screen popup is open, don't let the PAGE scroll behind it */
 body.modal-open { overflow: hidden; }
+/* iOS Safari ignores overflow:hidden on <body> for touch scrolling — the page keeps
+   moving underneath, which is what made the sheet drag feel like it was fighting
+   something invisible. position:fixed is the only reliable lock; the inline `top`
+   that gallery.js sets preserves the scroll position so nothing jumps.
+   Deliberately a SEPARATE class from .modal-open: profile-card.js uses that one and
+   does not save a scroll offset, so switching it to fixed would send the page to the
+   top every time a brother card opened. */
+body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; }
 .bmodal__close { position: absolute; top: 14px; right: 14px; background: none; border: 0; font-size: 1.3rem; color: var(--muted); cursor: pointer; }
 .bmodal__head { display: flex; gap: 1.1rem; align-items: center; margin-bottom: 1.2rem; }
 .bmodal__avatar { position: relative; width: 76px; height: 76px; flex: none; border-radius: 50%; background: var(--navy); color: var(--gold-bright); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 1.5rem; overflow: hidden; }
@@ -1616,7 +1624,12 @@ a.ntf__txt:hover { color: var(--gold-deep); }
     /* 80%, not 86%: at full the remaining strip has to be tall enough for the photo
        to still be a photo. At 86% it was 118px, which forced the scale clamp and
        left the image poking 7px under the sheet — measured, not guessed. */
-    height: min(80%, 80dvh); padding: 0 1.1rem 1.1rem; background: var(--surface);
+    /* The bottom padding carries the safe-area inset, so the composer clears the
+       home indicator and Safari's toolbar instead of hiding behind them. Because
+       the composer cancels --gy, this padding is exactly its gap from the screen
+       bottom at every snap. */
+    height: min(80%, 80dvh); background: var(--surface);
+    padding: 0 1.1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
     border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35);
     transform: translateY(var(--gy, calc(100% - var(--gpeek)))); overflow: hidden;
     transition: transform .34s cubic-bezier(.32,.72,0,1);
@@ -1626,7 +1639,24 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   .gmodal--dragging .gmodal__side,
   .gmodal--dragging .gmodal__img img,
   .gmodal--dragging .gbar--bot,
+  .gmodal--dragging .gmodal__side .gcompose,
   .gmodal--dragging .gfull { transition: none !important; }
+
+  /* THE COMPOSER DOCKS TO THE SCREEN, not to the sheet. The sheet is a fixed-height
+     box translated DOWN by --gy, so its last child sat --gy pixels BELOW the
+     viewport: the comment box only swung into view once you had dragged almost the
+     whole way, which reads as "you can't comment from here". Cancelling --gy pins it
+     to the bottom of the screen from the first pixel of the drag. A transform, so
+     still no layout per frame. Opaque and above the list, because the list runs on
+     behind it.
+     --gcy is --gy CLAMPED: cancelling --gy outright pinned the composer's top to a
+     constant, and early in the drag the visible band is only ~90px, so an opaque
+     box sat on top of the grab handle your thumb was still holding. The ceiling is
+     the point past which it would start covering the header, so it now waits just
+     below the header until there is room, then docks. */
+  .gmodal__side .gcompose { transform: translateY(calc(-1 * var(--gcy, 0px)));
+    position: relative; z-index: 2; background: var(--surface);
+    transition: transform .34s cubic-bezier(.32,.72,0,1); }
 
   /* The photo rides the same number: it lifts and shrinks so the comments end up
      BENEATH it rather than on top of it. transform only — animating height would
@@ -1645,9 +1675,11 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   .gsheet__grip:hover::before, .gmodal--dragging .gsheet__grip::before {
     background: var(--muted); width: 54px; }
 
-  /* The whole header is draggable, not just the 42px bar — a thumb should not have
-     to find a hairline. */
-  .gsheet__head { touch-action: none; }
+  /* The whole sheet is draggable, not just the 42px bar — a thumb should not have to
+     find a hairline. touch-action is set on each non-scrolling child rather than on
+     .gmodal__side, because an ancestor set to `none` also kills panning inside its
+     descendants, which would stop .gcomments scrolling. */
+  .gsheet__head, .gmodal__caption, .gmodal__actions { touch-action: none; }
   /* Still a button — tapping is a valid way in, dragging is just the better one. */
   .gsheet__count { display: block; width: 100%; text-align: left; border: 0; background: none;
     padding: 0 0 .3rem; margin: 0; cursor: pointer; touch-action: none;
