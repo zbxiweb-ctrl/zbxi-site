@@ -412,13 +412,192 @@
     };
   }
 
-  /* The sheet starts closed on every open — the point of this screen is the
-     photo. Tapping the grip (or the photo, while it's open) toggles it. */
-  function setSheet(open) {
-    modal.classList.toggle('gmodal--sheet', !!open);
+  /* ---------- the comment sheet: one number, three snaps, one gesture ----------
+     This used to be a class toggle, which is why there was no way to drag it and no
+     position between "shut" and "wide open". Now a single number — the sheet's
+     offset in px — is written to --gy, and everything else (the photo's lift, the
+     ♥ bar's position, which classes are on) is derived from it in the same frame.
+
+     Mobile only: above 900px the panel is a static column beside the photo and none
+     of this binds, matching the media query that creates the sheet at all. */
+  var MOBILE = window.matchMedia('(max-width: 900px)');
+  var sheetY = null;                 // px offset; 0 = full, snaps().peek = resting
+  var dragging = null;
+  var peekPx = null;                 // measured once per open, while at rest
+
+  function sideEl() { return modal.querySelector('.gmodal__side'); }
+
+  // MEASURED ONCE, at rest, and cached. The header is shorter once the sheet is up
+  // (the peek preview is hidden then, because the real list is showing), so
+  // measuring it live made the snap points MOVE while you were dragging toward
+  // them — a release near the bottom snapped to a resting position 30px from where
+  // it started. Caught by asserting the settled offsets, not by looking at it.
+  function measurePeek() {
+    var head = g('head');
+    peekPx = (head ? head.offsetHeight : 84) + 14;
+    return peekPx;
+  }
+
+  function snaps() {
+    var el = sideEl();
+    var H = el ? el.offsetHeight : 0;
+    var pk = peekPx || measurePeek();
+    return { H: H, full: 0, half: Math.round(H * 0.46), peek: Math.max(0, H - pk) };
+  }
+
+  /* The photo lifts and shrinks so the comments end up BENEATH it, never under it.
+     transform only — animating height would relayout the image every frame. */
+  function liftPhoto(visible) {
+    var img = g('img'), pane = img && img.parentNode;
+    if (!img || !pane || !img.naturalWidth) return;
+    var paneH = pane.clientHeight, paneW = pane.clientWidth;
+    if (!paneH) return;
+    // object-fit: contain means the ELEMENT box is not the PAINTED box. Using the
+    // element box here would shrink the photo far more than the sheet needs.
+    var painted = Math.min(paneH, paneW * img.naturalHeight / img.naturalWidth);
+    // The usable band is between the author bar and the top of the sheet — NOT the
+    // whole pane. Centring in the pane pushed the photo up under the author's name
+    // once the sheet was tall.
+    var bar = modal.querySelector('.gbar--top');
+    var topInset = (bar && bar.offsetHeight ? bar.offsetHeight : 42) + 6;
+    var sheetTop = paneH - visible;
+    var room = Math.max(80, sheetTop - topInset - 12);
+    // Never above 1: scaling a photo up is just blur. The floor stops a very tall
+    // portrait shrinking to a postage stamp at full height — such a photo is the one
+    // case that cannot fully clear the sheet, because the band left at full is
+    // ~170px and a portrait scaled into that would be unreadable.
+    var scale = Math.max(0.30, Math.min(1, room / painted));
+    img.style.setProperty('--gph-s', scale.toFixed(4));
+    img.style.setProperty('--gph-y', Math.round((topInset + sheetTop) / 2 - paneH / 2) + 'px');
+  }
+
+  function paintSheet(y) {
+    var s = snaps();
+    if (!s.H) return;
+    y = Math.max(0, Math.min(y, s.peek));
+    sheetY = y;
+    var visible = s.H - y;
+    modal.style.setProperty('--gy', y + 'px');
+    modal.style.setProperty('--gvis', visible + 'px');
+    var open = y < s.peek - 2;
+    modal.classList.toggle('gmodal--sheet', open);
+    // The ♥/section bar rides the sheet up and only fades over the last stretch,
+    // where it would otherwise be buried behind it.
+    var op = y >= s.half ? 1 : Math.max(0, y / Math.max(1, s.half));
+    modal.style.setProperty('--gbar-op', op.toFixed(3));
+    modal.classList.toggle('gmodal--covered', op < 0.06);
+    liftPhoto(visible);
     var grip = g('grip');
     if (grip) grip.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
+
+  function settle(y) {
+    modal.classList.remove('gmodal--dragging');
+    paintSheet(y);
+  }
+
+  // A flick beats position: a short fast pull upward should fling open rather than
+  // fall back because the finger didn't travel far enough.
+  function targetFor(y, vy, s) {
+    var pts = [s.full, s.half, s.peek];
+    if (Math.abs(vy) > 0.5) {
+      var up = vy < 0;
+      var ahead = pts.filter(function (p) { return up ? p < y - 1 : p > y + 1; });
+      if (ahead.length) return up ? Math.max.apply(null, ahead) : Math.min.apply(null, ahead);
+    }
+    return pts.reduce(function (a, b) { return Math.abs(b - y) < Math.abs(a - y) ? b : a; });
+  }
+
+  function setSheet(open) {
+    if (!MOBILE.matches) return;
+    var s = snaps();
+    settle(open ? s.half : s.peek);
+  }
+
+  // Tap cycles forward: resting -> half -> full -> resting. One rule for the grip,
+  // the count and the peek preview, so a tap is never a dead end and the sheet is
+  // fully reachable without a gesture (keyboard included).
+  function cycleSheet() {
+    var s = snaps();
+    var y = sheetY == null ? s.peek : sheetY;
+    settle(y > s.half + 2 ? s.half : (y > s.full + 2 ? s.full : s.peek));
+  }
+
+  function beginDrag(e, fromList) {
+    if (!MOBILE.matches) return;
+    // Fullscreen and immersive both drive this same transform; the drag must stand
+    // down while they own it.
+    if (modal.classList.contains('gmodal--immersive') || document.fullscreenElement) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    var s = snaps();
+    if (!s.H) return;
+    dragging = {
+      id: e.pointerId, y0: e.clientY, start: sheetY == null ? s.peek : sheetY,
+      lastY: e.clientY, lastT: e.timeStamp, vy: 0, live: false, fromList: !!fromList, s: s
+    };
+  }
+
+  function moveDrag(e) {
+    if (!dragging || e.pointerId !== dragging.id) return;
+    var dy = e.clientY - dragging.y0;
+    if (!dragging.live) {
+      if (Math.abs(dy) < 4) return;                       // not a drag yet
+      // Started inside the comment list: it only becomes a sheet drag when the list
+      // is already at its top AND the pull is downward. Otherwise it is a scroll and
+      // we get out of the way entirely.
+      if (dragging.fromList) {
+        var list = g('comments');
+        if (dy < 0 || (list && list.scrollTop > 0)) { dragging = null; return; }
+      }
+      dragging.live = true;
+      modal.classList.add('gmodal--dragging');
+      try { e.target.setPointerCapture(dragging.id); } catch (err) {}
+    }
+    var dt = e.timeStamp - dragging.lastT;
+    if (dt > 0) dragging.vy = (e.clientY - dragging.lastY) / dt;   // px per ms, last sample
+    dragging.lastY = e.clientY; dragging.lastT = e.timeStamp;
+
+    var y = dragging.start + dy;
+    // Rubber band past fully-open, so hitting the top feels like a limit rather
+    // than a wall the sheet is stuck against.
+    if (y < 0) y = y / 3;
+    paintSheet(y);
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function endDrag(e) {
+    if (!dragging || (e && e.pointerId !== dragging.id)) return;
+    var d = dragging; dragging = null;
+    if (!d.live) return;                                   // it was a tap; let click run
+    settle(targetFor(sheetY, d.vy, snaps()));
+  }
+
+  function wireSheetDrag() {
+    var head = g('head'), list = g('comments');
+    if (head && !head._dragBound) {
+      head._dragBound = true;
+      head.addEventListener('pointerdown', function (e) { beginDrag(e, false); });
+    }
+    if (list && !list._dragBound) {
+      list._dragBound = true;
+      list.addEventListener('pointerdown', function (e) { beginDrag(e, true); });
+    }
+  }
+  window.addEventListener('pointermove', moveDrag, { passive: false });
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+  // The sheet's height is a percentage of the viewport, so every snap moves when the
+  // viewport does. Re-measure rather than leave the sheet at a stale offset.
+  window.addEventListener('resize', function () {
+    if (!modal.classList.contains('open') || sheetY == null) return;
+    var was = snaps();
+    // Which snap were we resting on? Decide BEFORE re-measuring, then re-measure and
+    // land on the same one at its new position.
+    var at = sheetY < was.half / 2 ? 'full' : (sheetY < was.peek - 2 ? 'half' : 'peek');
+    peekPx = null;
+    var s = snaps();
+    paintSheet(s[at]);
+  });
 
   /* iOS Safari refuses requestFullscreen() on anything that is not a <video>,
      and iOS is the device this was reported from — so the immersive class is a
@@ -440,11 +619,13 @@
     g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
     g('barauthor').innerHTML = chip(p.author_user);
-    setSheet(false);
     modal.classList.remove('gmodal--immersive');
-    g('grip').onclick = function () { setSheet(!modal.classList.contains('gmodal--sheet')); };
+    g('grip').onclick = cycleSheet;
     g('full').onclick = toggleFull;
     g('img').onclick = function () { if (modal.classList.contains('gmodal--sheet')) setSheet(false); };
+    // The photo can't be positioned against the sheet until its intrinsic size is
+    // known — object-fit: contain makes the painted box depend on naturalWidth.
+    g('img').onload = function () { if (sheetY != null) paintSheet(sheetY); };
     closeEdit(p);   // paints the caption, and drops a form left open on the last post
     var ed = g('edit');
     ed.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
@@ -475,7 +656,8 @@
     // now arrives with the comment list and the composer both already in view.
     // It deliberately does NOT focus the input — landing with the keyboard up is
     // the complaint that drove the previous redesign.
-    g('ccount').onclick = function () { setSheet(true); };
+    g('ccount').onclick = cycleSheet;
+    g('peek').onclick = cycleSheet;
     var form = g('composeForm');
     form.onsubmit = function (e) {
       e.preventDefault();
@@ -504,6 +686,18 @@
     // drops you somewhere other than where you tapped. profile-card.js has done
     // this since it shipped; the viewer never did.
     document.body.classList.add('modal-open');
+    // Only now does the sheet have a height to measure — before .open it is display:none.
+    wireSheetDrag();
+    resetSheet();
+  }
+
+  function resetSheet() {
+    if (!MOBILE.matches) return;
+    sheetY = null; peekPx = null;
+    modal.classList.remove('gmodal--sheet', 'gmodal--covered', 'gmodal--dragging');
+    // Measure the peek in the resting state — sheet closed, preview visible — then
+    // hold that number for the life of this photo.
+    requestAnimationFrame(function () { measurePeek(); paintSheet(snaps().peek); });
   }
 
   function syncLike(p) {
@@ -553,13 +747,34 @@
       '</li>';
   }
 
+  /* What the closed sheet shows: the newest comment, one line. The resting peek
+     used to be a grip and the bare words "1 comment" in an empty block — nothing
+     to read, and no hint there was anything behind it. */
+  function renderPeek(cs) {
+    var box = g('peek');
+    if (!box) return;
+    if (!cs || !cs.length) {
+      box.className = 'gpeek gpeek--empty';
+      box.textContent = 'Be the first to say something.';
+      return;
+    }
+    var c = cs[cs.length - 1];            // newest; the list arrives oldest first
+    var name = String(author(c.author_user).full_name || 'A brother').trim().split(' ')[0];
+    box.className = 'gpeek';
+    box.innerHTML = '<i class="gpeek__av">' + avatarOf(c.author_user) + '</i>' +
+      '<b class="gpeek__who">' + esc(name) + '</b>' +
+      '<span class="gpeek__text">' + esc(String(c.body).replace(/\s+/g, ' ')) + '</span>';
+  }
+
   function loadComments(p) {
     var box = g('comments'), gen = ++cgen;
     box.innerHTML = '<p class="gcomments__note">Loading…</p>';
     g('ccount').textContent = '…';        // never let the previous photo's count stand
+    renderPeek(null);
     Z.galleryComments(p.id).then(function (cs) {
       if (gen !== cgen) return;           // a newer photo won the race
       g('ccount').textContent = countLabel(cs.length);
+      renderPeek(cs);
       if (!cs.length) {
         box.innerHTML = '<p class="gcomments__empty">Nothing said yet — be the first.</p>';
         return;
@@ -573,6 +788,8 @@
       // A failure must NEVER read as "No comments yet" — that states as fact that
       // nobody wrote anything. galleryComments now throws instead of returning [].
       g('ccount').textContent = 'Comments unavailable';
+      var pk = g('peek');
+      if (pk) { pk.className = 'gpeek gpeek--empty'; pk.textContent = 'Couldn’t load comments.'; }
       box.innerHTML = '<p class="gcomments__err">Couldn’t load the comments. ' +
         '<button type="button" class="gcomments__retry">Retry</button></p>';
       box.querySelector('.gcomments__retry').onclick = function () { loadComments(p); };

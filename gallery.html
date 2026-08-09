@@ -101,10 +101,13 @@
         <button class="gfull" data-g="full" aria-label="View fullscreen" title="View fullscreen">⛶</button>
       </div>
       <div class="gmodal__side">
-        <button class="gsheet__grip" data-g="grip" aria-expanded="false" aria-label="Show caption and comments"></button>
+        <div class="gsheet__head" data-g="head">
+          <button class="gsheet__grip" data-g="grip" aria-expanded="false" aria-label="Drag to show comments"></button>
+          <button type="button" class="gsheet__count" data-g="ccount" aria-label="Show comments"></button>
+          <div class="gpeek" data-g="peek"></div>
+        </div>
         <div class="gmodal__author" data-g="author"></div>
         <p class="gmodal__caption" data-g="caption"></p>
-        <button type="button" class="gsheet__count" data-g="ccount" aria-label="Show comments"></button>
         <div class="gedit-form" data-g="editform" hidden></div>
         <div class="gmodal__actions">
           <button class="glike" data-g="like">♡ <span data-g="likecount">0</span></button>

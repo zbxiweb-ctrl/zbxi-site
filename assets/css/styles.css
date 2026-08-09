@@ -1334,9 +1334,11 @@ body.modal-open { overflow: hidden; }
 /* The author chip is painted into the bar on mobile and into the side panel on
    desktop; only one is ever displayed. */
 .gbar .author-chip b { color: #fff; text-shadow: inherit; }
-/* Grip and comment count belong to the mobile sheet; the desktop side panel
-   shows the comments themselves, so both stay off until the sheet exists. */
-.gsheet__grip, .gsheet__count { display: none; }
+/* Grip, comment count and the peek preview all belong to the mobile sheet; the
+   desktop side panel shows the comments themselves, so they stay off until the
+   sheet exists. The preview especially: unstyled on desktop it is a bare block
+   that grew to 406px and shoved the real list off the panel. */
+.gsheet__grip, .gsheet__count, .gpeek { display: none; }
 
 .gfull { position: absolute; right: 10px; bottom: 10px; z-index: 3; width: 38px; height: 38px;
   display: grid; place-items: center; border: 0; border-radius: 10px; cursor: pointer;
@@ -1577,15 +1579,22 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   .gcomments__empty { display: none; }
   /* The ♥/section bar and ⛶ ride just above the closed sheet, so nothing the
      brother can act on is buried behind it. */
-  .gbar--bot { bottom: var(--gpeek); }
-  .gfull { bottom: calc(var(--gpeek) + 2px); right: 8px; }
+  /* --gvis is the sheet's currently VISIBLE height, updated on every drag frame, so
+     these ride the sheet edge the whole way up instead of being pinned to the
+     resting peek. --gbar-op fades them out only as the sheet approaches full, where
+     they would otherwise be buried. Both fall back to the static values, so if the
+     script never runs the layout is still correct. */
+  .gbar--bot { bottom: var(--gvis, var(--gpeek)); opacity: var(--gbar-op, 1); }
+  .gfull { bottom: calc(var(--gvis, var(--gpeek)) + 2px); right: 8px; opacity: var(--gbar-op, 1); }
   .gmodal--immersive .gbar--bot { bottom: 0; }
   .gmodal--immersive .gfull { bottom: 2px; }
   /* With the sheet up, both of these sit behind it — present but unclickable,
      which is how a control earns a bug report. Take them out of the page while
      the sheet is open; closing it brings them back. */
-  .gmodal--sheet .gbar--bot, .gmodal--sheet .gfull { opacity: 0; pointer-events: none; }
-  .gbar--bot, .gfull { transition: opacity .18s; }
+  /* Unclickable is worse than absent: once --gbar-op has faded them out, take them
+     out of the page too. The threshold class is set by the drag controller. */
+  .gmodal--covered .gbar--bot, .gmodal--covered .gfull { pointer-events: none; }
+  .gbar--bot, .gfull { transition: opacity .18s, bottom .34s cubic-bezier(.32,.72,0,1); }
 
   /* The sheet. --gpeek is what stays on screen when it's closed: the grip, the
      caption line and the comment count. */
@@ -1598,28 +1607,77 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   .gmodal:not(.gmodal--sheet) .gmodal__actions,
   .gmodal:not(.gmodal--sheet) .gcomments,
   .gmodal:not(.gmodal--sheet) .gcompose { visibility: hidden; }
+  /* ONE NUMBER drives the whole thing. --gy is the sheet's live offset in px, owned
+     by the drag controller in gallery.js: 0 = fully open, (height - peek) = resting.
+     It was a binary class toggle, which is why there was no way to drag it.
+     .gmodal--sheet is still set (whenever the sheet is above its resting point) so
+     every existing rule that depends on it keeps working unchanged. */
   .gmodal__side { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
-    height: min(86%, 86dvh); padding: 0 1.1rem 1.1rem; background: var(--surface);
+    /* 80%, not 86%: at full the remaining strip has to be tall enough for the photo
+       to still be a photo. At 86% it was 118px, which forced the scale clamp and
+       left the image poking 7px under the sheet — measured, not guessed. */
+    height: min(80%, 80dvh); padding: 0 1.1rem 1.1rem; background: var(--surface);
     border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35);
-    transform: translateY(calc(100% - var(--gpeek))); overflow: hidden;
-    transition: transform .28s cubic-bezier(.32,.72,0,1); }
-  /* The sheet slides open but does NOT become a scroller — .gcomments inside it is
-     the only one. Two nested scrollers is what made a thumb-drag feel like it was
-     fighting back, and it let the composer slide out of reach. */
-  .gmodal--sheet .gmodal__side { transform: translateY(0); }
-  .gsheet__grip { position: sticky; top: 0; z-index: 1; display: block; width: 100%; padding: .7rem 0 .5rem;
-    border: 0; background: var(--surface); cursor: pointer; }
-  .gsheet__grip::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto;
-    border-radius: 999px; background: var(--hairline); }
-  /* A button now, not a span: it is the one-tap way into the comments from a photo.
-     Full-width and left-aligned so the whole line is the target, not just the words. */
+    transform: translateY(var(--gy, calc(100% - var(--gpeek)))); overflow: hidden;
+    transition: transform .34s cubic-bezier(.32,.72,0,1);
+    will-change: transform; }
+  /* While a finger is down there must be NO transition — the sheet has to track the
+     thumb 1:1. Anything else reads as lag. */
+  .gmodal--dragging .gmodal__side,
+  .gmodal--dragging .gmodal__img img,
+  .gmodal--dragging .gbar--bot,
+  .gmodal--dragging .gfull { transition: none !important; }
+
+  /* The photo rides the same number: it lifts and shrinks so the comments end up
+     BENEATH it rather than on top of it. transform only — animating height would
+     relayout the image every frame. */
+  .gmodal__img img { transform: translateY(var(--gph-y, 0px)) scale(var(--gph-s, 1));
+    transition: transform .34s cubic-bezier(.32,.72,0,1); will-change: transform; }
+
+  /* The grab handle. touch-action: none stops the browser claiming the gesture as a
+     page scroll before the pointer handler ever sees it. */
+  .gsheet__grip { position: relative; z-index: 1; display: block; width: 100%;
+    padding: .85rem 0 .55rem; border: 0; background: none; cursor: grab;
+    touch-action: none; -webkit-tap-highlight-color: transparent; }
+  .gmodal--dragging .gsheet__grip { cursor: grabbing; }
+  .gsheet__grip::before { content: ''; display: block; width: 42px; height: 5px; margin: 0 auto;
+    border-radius: 999px; background: var(--hairline); transition: background .15s, width .15s; }
+  .gsheet__grip:hover::before, .gmodal--dragging .gsheet__grip::before {
+    background: var(--muted); width: 54px; }
+
+  /* The whole header is draggable, not just the 42px bar — a thumb should not have
+     to find a hairline. */
+  .gsheet__head { touch-action: none; }
+  /* Still a button — tapping is a valid way in, dragging is just the better one. */
   .gsheet__count { display: block; width: 100%; text-align: left; border: 0; background: none;
-    padding: .1rem 0 .5rem; margin: 0; cursor: pointer;
-    font-family: var(--sans); font-size: .82rem; color: var(--muted); }
+    padding: 0 0 .3rem; margin: 0; cursor: pointer; touch-action: none;
+    font-family: var(--sans); font-size: .7rem; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); }
   .gsheet__count:hover, .gsheet__count:focus-visible { color: var(--heading); }
-  .gmodal__caption { margin: .1rem 0 .35rem; }
-  /* Closed, the caption is one line — the sheet is a preview, not a paragraph. */
-  .gmodal:not(.gmodal--sheet) .gmodal__caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* THE PEEK. It used to be a grip and the words "1 comment" in an empty cream
+     block — nothing to read, and no hint it could be pulled. Now it carries the
+     newest comment, so the resting state is worth looking at and obviously has
+     more behind it. Height is FIXED (one line, ellipsised) because --gpeek feeds
+     the snap maths; a peek that changed height with the content would move the
+     resting position from photo to photo. */
+  .gpeek { display: flex; align-items: center; gap: .55rem; height: 30px; overflow: hidden;
+    touch-action: none; cursor: pointer; }
+  .gpeek__av { flex: none; width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+    display: grid; place-items: center; font-style: normal; font-size: .62rem; font-weight: 700;
+    background: var(--navy); color: var(--gold-bright); }
+  .gpeek__av img { width: 100%; height: 100%; object-fit: cover; }
+  .gpeek__who { flex: none; font-family: var(--display); font-size: .9rem; font-weight: 600;
+    color: var(--heading); }
+  .gpeek__text { flex: 1 1 auto; min-width: 0; font-size: .88rem; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gpeek--empty { color: var(--muted); font-size: .88rem; }
+  /* Once the sheet is up the real list is showing; the preview would be a duplicate. */
+  .gmodal--sheet .gpeek { display: none; }
+  /* The caption only appears once the sheet is open, so the closed peek is the same
+     height whether or not a photo has one. */
+  .gmodal:not(.gmodal--sheet) .gmodal__caption { display: none; }
+  .gmodal__caption { margin: .35rem 0; }
   @media (prefers-reduced-motion: reduce) { .gmodal__side { transition: none; } }
 }
 @media (max-width: 560px) {
