@@ -1301,11 +1301,19 @@ body.modal-open { overflow: hidden; }
 
 .gmodal { position: fixed; inset: 0; z-index: 210; background: rgba(var(--chrome),.9); display: none; align-items: center; justify-content: center; padding: 3vw; }
 .gmodal.open { display: flex; }
-.gmodal__card { background: var(--surface); border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); width: min(1020px, 94vw); max-height: 88vh; position: relative; }
+/* grid-template-rows: minmax(0, 1fr) is load-bearing. An `auto` row sizes to its
+   content, so the side panel grew to its natural 760px inside a card capped at
+   493px and the composer was clipped clean off the bottom. minmax(0, …) lets the
+   row shrink below content, which finally gives .gmodal__side a definite height —
+   without that, .gcomments cannot flex-shrink and therefore never scrolls. */
+.gmodal__card { background: var(--surface); border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); grid-template-rows: minmax(0, 1fr); width: min(1020px, 94vw); max-height: 88vh; position: relative; }
 .gmodal__close { position: absolute; top: 10px; right: 12px; z-index: 2; border: 0; background: rgba(var(--chrome),.5); color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; }
 .gmodal__img { background: #0b1830; display: grid; place-items: center; }
 .gmodal__img img { width: 100%; height: 100%; max-height: 88vh; object-fit: contain; }
-.gmodal__side { display: flex; flex-direction: column; padding: 1.1rem 1.2rem; overflow-y: auto; }
+/* overflow: hidden, not auto — the panel itself must NOT scroll. Only .gcomments
+   inside it does. That keeps the composer pinned to the bottom instead of letting
+   it scroll out of reach the moment a photo has a few comments. */
+.gmodal__side { display: flex; flex-direction: column; padding: 1.1rem 1.2rem; overflow: hidden; }
 .gmodal__author { padding-bottom: .7rem; border-bottom: 1px solid var(--hairline); }
 .gmodal__caption { color: var(--text); font-size: .95rem; margin: .8rem 0; }
 .gmodal__actions { display: flex; align-items: center; gap: .9rem; padding: .5rem 0 .8rem; border-bottom: 1px solid var(--hairline); }
@@ -1365,14 +1373,66 @@ body.modal-open { overflow: hidden; }
 .gedit-form__row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .gedit-form__row .btn { padding: .45rem .95rem; font-size: .82rem; }
 .gedit-form .form-status { margin: 0; }
-.gcomments { flex: 1; overflow-y: auto; padding: .8rem 0; min-height: 120px; }
-.gcomment { margin-bottom: .9rem; }
-.gcomment p { margin: .25rem 0 .1rem; font-size: .92rem; color: var(--text); }
-.gcomment small { color: var(--muted); font-size: .78rem; }
-.gcomment small a { color: #b54848; }
+/* ONE scroller, not two. This was `flex: 1` with the default `min-height: auto`
+   forced up to 120px, nested inside a side panel that ALSO scrolled — so a drag
+   moved whichever of the two the browser felt like, and the composer scrolled off
+   the bottom exactly when you wanted it. `min-height: 0` is the load-bearing
+   declaration: without it a flex child refuses to shrink below its content, so it
+   never scrolls and pushes the panel instead. The panel is now `overflow: hidden`
+   (see .gmodal__side), which pins the composer to the bottom for free.
+   overscroll-behavior stops a flick that reaches the end of the list from handing
+   the scroll to the gallery grid behind the photo. */
+.gcomments { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: .2rem 0 .6rem; }
+
+/* ---------- the chapter ledger ----------
+   Shared by the gallery viewer, the Board's thread replies and the suggestion box.
+   Name in the display face, time right-aligned in small caps, body in the reading
+   face, a hairline between entries. A record book, not a chat app. */
+.gcomment-list { list-style: none; margin: 0; padding: 0; }
+.gcomment { display: flex; gap: .7rem; padding: .75rem 0; border-bottom: 1px solid var(--hairline); }
+.gcomment:last-child { border-bottom: 0; }
+.gcomment__av { flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; font-style: normal; font-size: .78rem; font-weight: 700;
+  background: var(--navy); color: var(--gold-bright); }
+.gcomment__av img { width: 100%; height: 100%; object-fit: cover; }
+.gcomment__main { flex: 1 1 auto; min-width: 0; }
+.gcomment__head { display: flex; align-items: baseline; gap: .5rem; }
+.gcomment__who { font-family: var(--display); font-size: .98rem; font-weight: 600;
+  color: var(--heading); line-height: 1.25; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* NOT uppercased, deliberately. when() returns "2m"/"3h"/"4d"; small caps turned
+   that into "2M", which reads as two MONTHS. A timestamp is data — the styling
+   does not get to make it ambiguous. */
+.gcomment__when { flex: none; margin-left: auto; color: var(--muted);
+  font-size: .72rem; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+/* overflow-wrap: a pasted URL with no spaces used to widen the whole panel. */
+.gcomment__text { margin: .18rem 0 0; font-size: .93rem; line-height: 1.55;
+  color: var(--text); overflow-wrap: anywhere; }
+/* Delete stops being the word "delete" in red beside every timestamp — a fat-finger
+   target an inch from the thing you actually want. It is a quiet mark that earns
+   attention on hover or keyboard focus. */
+.gcomment__x { flex: none; border: 0; background: none; cursor: pointer;
+  padding: 0 .1rem; line-height: 1; font-size: .8rem; color: var(--muted);
+  opacity: .35; transition: opacity .15s, color .15s; }
+.gcomment:hover .gcomment__x, .gcomment__x:focus-visible { opacity: 1; color: #b54848; }
+/* A touch screen has no hover to reveal it, so there it simply stays visible. */
+@media (hover: none) { .gcomment__x { opacity: .7; } }
+
+.gcomments__note, .gcomments__empty, .gcomments__err {
+  color: var(--muted); font-size: .88rem; margin: .8rem 0; }
+.gcomments__err { color: #b4342b; }
+.gcomments__retry { border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--gold-deep); text-decoration: underline; }
+
 .gcompose { display: flex; gap: .6rem; padding-top: .8rem; border-top: 1px solid var(--hairline); }
-.gcompose input { flex: 1; padding: .65rem .85rem; border-radius: 10px; border: 1.5px solid var(--hairline); font-size: .92rem; }
-.gcompose .btn { padding: .6rem 1.1rem; font-size: .88rem; }
+/* 16px is NOT a style choice. iOS Safari force-zooms the page on focus for any
+   input below 16px and never zooms back out — that is the "I have to zoom out to
+   see everything" report. This one rule covers the gallery, board replies and the
+   suggestion box, which all share this form. */
+.gcompose input { flex: 1; min-width: 0; padding: .6rem .85rem; border-radius: 10px;
+  border: 1.5px solid var(--hairline); font-size: 16px; }
+.gcompose .btn { flex: none; padding: .6rem 1.1rem; font-size: .88rem; }
 
 /* ---------- Events ---------- */
 .ev-list { display: grid; gap: 1.1rem; margin-top: 2.4rem; max-width: 860px; margin-inline: auto; }
@@ -1543,12 +1603,20 @@ a.ntf__txt:hover { color: var(--gold-deep); }
     border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,.35);
     transform: translateY(calc(100% - var(--gpeek))); overflow: hidden;
     transition: transform .28s cubic-bezier(.32,.72,0,1); }
-  .gmodal--sheet .gmodal__side { transform: translateY(0); overflow-y: auto; }
+  /* The sheet slides open but does NOT become a scroller — .gcomments inside it is
+     the only one. Two nested scrollers is what made a thumb-drag feel like it was
+     fighting back, and it let the composer slide out of reach. */
+  .gmodal--sheet .gmodal__side { transform: translateY(0); }
   .gsheet__grip { position: sticky; top: 0; z-index: 1; display: block; width: 100%; padding: .7rem 0 .5rem;
     border: 0; background: var(--surface); cursor: pointer; }
   .gsheet__grip::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto;
     border-radius: 999px; background: var(--hairline); }
-  .gsheet__count { display: block; color: var(--muted); font-size: .82rem; margin: 0 0 .6rem; }
+  /* A button now, not a span: it is the one-tap way into the comments from a photo.
+     Full-width and left-aligned so the whole line is the target, not just the words. */
+  .gsheet__count { display: block; width: 100%; text-align: left; border: 0; background: none;
+    padding: .1rem 0 .5rem; margin: 0; cursor: pointer;
+    font-family: var(--sans); font-size: .82rem; color: var(--muted); }
+  .gsheet__count:hover, .gsheet__count:focus-visible { color: var(--heading); }
   .gmodal__caption { margin: .1rem 0 .35rem; }
   /* Closed, the caption is one line — the sheet is a preview, not a paragraph. */
   .gmodal:not(.gmodal--sheet) .gmodal__caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

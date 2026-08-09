@@ -844,16 +844,26 @@
               k[1] + (these.length ? ' ' + these.length : '') + '</button>';
           }).join('') + '</span>';
         }
-        box.innerHTML = rs.map(function (r) {
+        // Same ledger shape as the gallery's comments — one .gcomment structure,
+        // one stylesheet. Name in the display face, time right-aligned, delete a
+        // quiet ✕ rather than a red word beside every timestamp.
+        box.innerHTML = '<ul class="gcomment-list">' + rs.map(function (r) {
           var mine = me && (r.author_user === me.id || isAdmin);
-          return '<div class="gcomment">' + chip(r.author_user) +
-            '<p>' + esc(r.body).replace(/\n/g, '<br>') + '</p>' +
-            '<small>' + when(r.created_at) + (mine ? ' · <a href="#" data-delr="' + r.id + '">delete</a>' : '') + '</small>' +
-            reactBar(r) + '</div>';
-        }).join('');
+          return '<li class="gcomment">' +
+            '<i class="gcomment__av">' + avatarOf(r.author_user) + '</i>' +
+            '<div class="gcomment__main">' +
+              '<div class="gcomment__head">' +
+                '<b class="gcomment__who">' + esc(author(r.author_user).full_name) + '</b>' +
+                '<time class="gcomment__when">' + esc(when(r.created_at).replace(' ago', '')) + '</time>' +
+                (mine ? '<button type="button" class="gcomment__x" data-delr="' + esc(r.id) +
+                        '" aria-label="Delete your reply" title="Delete this reply">✕</button>' : '') +
+              '</div>' +
+              '<p class="gcomment__text">' + esc(r.body).replace(/\n/g, '<br>') + '</p>' +
+              reactBar(r) +
+            '</div></li>';
+        }).join('') + '</ul>';
         box.querySelectorAll('[data-delr]').forEach(function (a) {
-          a.onclick = function (e) {
-            e.preventDefault();
+          a.onclick = function () {
             Z.replyDelete(a.dataset.delr).then(function () { loadReplies(t); });
           };
         });

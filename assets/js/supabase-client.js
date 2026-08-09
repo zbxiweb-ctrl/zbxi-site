@@ -436,9 +436,17 @@
       return client.from('gallery_likes').select('post_id, user_id')
         .then(function (r) { return r.data || []; });
     },
+    // THROWS on failure, deliberately. supabase-js v2 does NOT reject on a query
+    // error — it resolves with {data: null, error}. The old `return r.data || []`
+    // therefore turned an expired token, a 500 or a dropped connection into an
+    // empty array, and the viewer stated "No comments yet" as fact on a photo that
+    // had comments. A caller cannot tell silence from failure unless this throws.
     galleryComments: function (postId) {
       return client.from('gallery_comments').select('*').eq('post_id', postId)
-        .order('created_at').then(function (r) { return r.data || []; });
+        .order('created_at').then(function (r) {
+          if (r.error) throw r.error;
+          return r.data || [];
+        });
     },
     // userId/imagePath are kept for the callers' sake but IGNORED — the edge fn
     // derives the key from the verified caller uid (upload) and from the row (delete).
@@ -503,10 +511,17 @@
     unlikePost: function (postId, userId) {
       return client.from('gallery_likes').delete().eq('post_id', postId).eq('user_id', userId);
     },
+    // .select() on both: an insert/delete that RLS refuses is NOT an error — it
+    // touches zero rows and resolves 200. Asking for the rows back is the only way
+    // the caller can tell "saved" from "silently declined", which is what let a
+    // refused comment disappear with the brother's text.
     addComment: function (postId, userId, body) {
-      return client.from('gallery_comments').insert({ post_id: postId, author_user: userId, body: body });
+      return client.from('gallery_comments')
+        .insert({ post_id: postId, author_user: userId, body: body }).select();
     },
-    deleteComment: function (id) { return client.from('gallery_comments').delete().eq('id', id); },
+    deleteComment: function (id) {
+      return client.from('gallery_comments').delete().eq('id', id).select();
+    },
 
     /* ---- discussion board (members only; RLS-gated) ---- */
     threadsList: function () {

@@ -471,16 +471,39 @@
     g('like').onclick = onLike;
     g('barlike').onclick = onLike;
     loadComments(p);
+    // The count line is the one-tap way in on a phone: it opens the sheet, which
+    // now arrives with the comment list and the composer both already in view.
+    // It deliberately does NOT focus the input — landing with the keyboard up is
+    // the complaint that drove the previous redesign.
+    g('ccount').onclick = function () { setSheet(true); };
     var form = g('composeForm');
     form.onsubmit = function (e) {
       e.preventDefault();
       var input = g('composeInput');
       var body = input.value.trim();
-      if (!body) return;
-      input.value = '';
-      Z.addComment(p.id, me.id, body).then(function () { loadComments(p); });
+      if (!body) { input.focus(); return; }
+      var btn = form.querySelector('button[type=submit]');
+      btn.disabled = true;
+      // His text is NOT cleared until the row is actually in the database. It used
+      // to be cleared first, with no error branch at all, so a refused or dropped
+      // comment took his words with it and said nothing.
+      Z.addComment(p.id, me.id, body).then(function (r) {
+        if (r && r.error) throw r.error;
+        if (!r || !r.data || !r.data.length) throw new Error('The server would not accept that comment.');
+        input.value = '';
+        btn.disabled = false;
+        loadComments(p);
+      })['catch'](function (err) {
+        btn.disabled = false;
+        ZBXIAsk.alert({ title: 'Comment not posted', body: (err && err.message) || 'Try again.' });
+      });
     };
     modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+    // Freeze the page underneath. Without this, scrolling past the end of the
+    // comments drags the gallery grid behind the photo, and closing the viewer
+    // drops you somewhere other than where you tapped. profile-card.js has done
+    // this since it shipped; the viewer never did.
+    document.body.classList.add('modal-open');
   }
 
   function syncLike(p) {
@@ -491,28 +514,82 @@
     });
   }
 
+  /* ---------- comments ----------
+     cgen guards every paint. Opening photo B while A's request is still in flight
+     must not let A's comments — or A's count — land on B. The count was the worse
+     half: it was written in exactly one place, inside the success callback, and
+     nothing ever reset it, so a photo with no comments displayed the previous
+     photo's "3 comments" for the whole round trip. On a phone that line is the
+     ONLY comment signal while the sheet is closed. */
+  var cgen = 0;
+
+  function shortWhen(ts) { return when(ts).replace(' ago', ''); }
+
+  function avatarOf(uid) {
+    var a = author(uid);
+    return a.photo_url ? '<img src="' + esc(a.photo_url) + '" alt="">' :
+      '<span>' + esc(String(a.full_name || 'Ζ').trim()[0] || 'Ζ') + '</span>';
+  }
+
+  function countLabel(n) {
+    return n === 0 ? 'No comments yet' : n + (n === 1 ? ' comment' : ' comments');
+  }
+
+  function commentRow(c) {
+    var mine = me && (c.author_user === me.id || canMod);
+    return '<li class="gcomment">' +
+        '<i class="gcomment__av">' + avatarOf(c.author_user) + '</i>' +
+        '<div class="gcomment__main">' +
+          '<div class="gcomment__head">' +
+            '<b class="gcomment__who">' + esc(author(c.author_user).full_name) + '</b>' +
+            '<time class="gcomment__when">' + esc(shortWhen(c.created_at)) + '</time>' +
+            (mine ? '<button type="button" class="gcomment__x" data-delc="' + esc(c.id) +
+                    '" aria-label="Delete your comment" title="Delete this comment">✕</button>' : '') +
+          '</div>' +
+          // Newlines survive, matching board replies. A multi-line comment used to
+          // collapse into one run-on line. After esc(), never before.
+          '<p class="gcomment__text">' + esc(c.body).replace(/\n/g, '<br>') + '</p>' +
+        '</div>' +
+      '</li>';
+  }
+
   function loadComments(p) {
-    var box = g('comments');
-    box.innerHTML = '<p class="form-note">…</p>';
+    var box = g('comments'), gen = ++cgen;
+    box.innerHTML = '<p class="gcomments__note">Loading…</p>';
+    g('ccount').textContent = '…';        // never let the previous photo's count stand
     Z.galleryComments(p.id).then(function (cs) {
-      // The closed sheet shows this line, so you know whether it's worth opening.
-      g('ccount').textContent = cs.length
-        ? cs.length + (cs.length === 1 ? ' comment' : ' comments')
-        : 'No comments yet';
-      // gcomments__empty: hidden on mobile, where the count line says this already.
-      if (!cs.length) { box.innerHTML = '<p class="form-note gcomments__empty">No comments yet.</p>'; return; }
-      box.innerHTML = cs.map(function (c) {
-        var mine = me && (c.author_user === me.id || canMod);
-        return '<div class="gcomment">' + chip(c.author_user) +
-          '<p>' + esc(c.body) + '</p>' +
-          '<small>' + when(c.created_at) + (mine ? ' · <a href="#" data-delc="' + esc(c.id) + '">delete</a>' : '') + '</small></div>';
-      }).join('');
-      box.querySelectorAll('[data-delc]').forEach(function (a) {
-        a.onclick = function (e) {
-          e.preventDefault();
-          Z.deleteComment(a.dataset.delc).then(function () { loadComments(p); });
-        };
+      if (gen !== cgen) return;           // a newer photo won the race
+      g('ccount').textContent = countLabel(cs.length);
+      if (!cs.length) {
+        box.innerHTML = '<p class="gcomments__empty">Nothing said yet — be the first.</p>';
+        return;
+      }
+      box.innerHTML = '<ul class="gcomment-list">' + cs.map(commentRow).join('') + '</ul>';
+      box.querySelectorAll('[data-delc]').forEach(function (b) {
+        b.onclick = function () { removeComment(p, b.dataset.delc, b); };
       });
+    })['catch'](function () {
+      if (gen !== cgen) return;
+      // A failure must NEVER read as "No comments yet" — that states as fact that
+      // nobody wrote anything. galleryComments now throws instead of returning [].
+      g('ccount').textContent = 'Comments unavailable';
+      box.innerHTML = '<p class="gcomments__err">Couldn’t load the comments. ' +
+        '<button type="button" class="gcomments__retry">Retry</button></p>';
+      box.querySelector('.gcomments__retry').onclick = function () { loadComments(p); };
+    });
+  }
+
+  function removeComment(p, id, btn) {
+    btn.disabled = true;
+    Z.deleteComment(id).then(function (r) {
+      if (r && r.error) throw r.error;
+      // Zero rows back = RLS declined without raising. Silently doing nothing is
+      // how a control earns a bug report.
+      if (!r || !r.data || !r.data.length) throw new Error('You can only delete your own comments.');
+      loadComments(p);
+    })['catch'](function (err) {
+      btn.disabled = false;
+      ZBXIAsk.alert({ title: 'Could not delete', body: (err && err.message) || 'Try again.' });
     });
   }
 
@@ -523,6 +600,7 @@
     modal.classList.remove('gmodal--immersive');
     setSheet(false);
     modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');   // give the page its scroll back
   }
   modal.addEventListener('click', function (e) {
     if (e.target === modal || e.target.closest('[data-close]')) closeModal();

@@ -104,7 +104,7 @@
         <button class="gsheet__grip" data-g="grip" aria-expanded="false" aria-label="Show caption and comments"></button>
         <div class="gmodal__author" data-g="author"></div>
         <p class="gmodal__caption" data-g="caption"></p>
-        <span class="gsheet__count" data-g="ccount"></span>
+        <button type="button" class="gsheet__count" data-g="ccount" aria-label="Show comments"></button>
         <div class="gedit-form" data-g="editform" hidden></div>
         <div class="gmodal__actions">
           <button class="glike" data-g="like">♡ <span data-g="likecount">0</span></button>
@@ -112,7 +112,7 @@
           <button class="gedit" data-g="edit" style="display:none">Edit</button>
           <button class="gdelete" data-g="delete" style="display:none">Delete post</button>
         </div>
-        <div class="gcomments" data-g="comments"></div>
+        <div class="gcomments" data-g="comments" aria-live="polite"></div>
         <form class="gcompose" data-g="composeForm">
           <input data-g="composeInput" aria-label="Add a comment" placeholder="Add a comment…" maxlength="500" />
           <button type="submit" class="btn btn--navy">Post</button>
