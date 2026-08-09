@@ -1316,7 +1316,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    without that, .gcomments cannot flex-shrink and therefore never scrolls. */
 .gmodal__card { background: var(--surface); border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); grid-template-rows: minmax(0, 1fr); width: min(1020px, 94vw); max-height: 88vh; position: relative; }
 .gmodal__close { position: absolute; top: 10px; right: 12px; z-index: 2; border: 0; background: rgba(var(--chrome),.5); color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; }
-.gmodal__img { background: #0b1830; display: grid; place-items: center; }
+.gmodal__img { background: var(--navy-deep); display: grid; place-items: center; }
 .gmodal__img img { width: 100%; height: 100%; max-height: 88vh; object-fit: contain; }
 /* overflow: hidden, not auto — the panel itself must NOT scroll. Only .gcomments
    inside it does. That keeps the composer pinned to the bottom instead of letting
@@ -1333,10 +1333,33 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    than sitting on a gradient scrim over the image. */
 .gbar { position: absolute; left: 0; right: 0; z-index: 2; display: none; align-items: center; gap: .7rem;
   padding: .55rem .7rem; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
-.gbar--top { top: 0; }
+/* The top bar stacks: author on the first line, section pill under it. */
+.gbar--top { top: 0; flex-direction: column; align-items: flex-start; gap: .4rem; }
 .gbar--bot { bottom: 0; }
-.gbar .gbar__sec { color: #fff; font-size: .82rem; text-shadow: inherit; opacity: .9; }
 .gbar .glike { color: #fff; text-shadow: inherit; }
+
+/* ---- the section pill ----
+   A chapter badge rather than a grey caption: gold letterforms, gold hairline,
+   a smoked bed so it holds on a bright photo, and the crest diamond as its mark.
+   Its own line under the author so a long committee name and a long brother name
+   never fight for the same row. */
+.gpill { display: inline-flex; align-items: center; gap: .38rem; max-width: 78%;
+  padding: .22rem .62rem .24rem; border-radius: 999px;
+  border: 1px solid rgba(200,162,75,.55); background: rgba(7,22,52,.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--gold-bright); font-family: var(--sans); font-size: .66rem; font-weight: 700;
+  letter-spacing: .13em; text-transform: uppercase; text-shadow: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gpill::before { content: '✦'; flex: none; font-size: .72rem; letter-spacing: 0; opacity: .9; }
+.gpill[hidden] { display: none; }          /* a class rule beats the attribute otherwise */
+/* Desktop copy: it sits on the panel, not on a photo, so it drops the smoked bed
+   and picks up the page's own tint. */
+/* align-self: it is a flex ITEM in the side panel's column, so the default
+   `stretch` blew it out to the full panel width and it stopped reading as a pill. */
+.gpill--side { align-self: flex-start; margin: .55rem 0 0; background: var(--tint);
+  border-color: var(--gold); color: var(--gold-deep);
+  backdrop-filter: none; -webkit-backdrop-filter: none; max-width: 100%; }
+:root[data-theme="dark"] .gpill--side { color: var(--gold-bright); }
 .gbar .glike.on { color: #ff8a7a; }
 .gbar__spacer { margin-left: auto; }
 /* The author chip is painted into the bar on mobile and into the side panel on
@@ -1347,6 +1370,8 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    sheet exists. The preview especially: unstyled on desktop it is a bare block
    that grew to 406px and shoved the real list off the panel. */
 .gsheet__grip, .gsheet__count, .gpeek { display: none; }
+/* One pill shows at a time: the bars are mobile-only, the side panel is desktop. */
+.gbar .gpill { display: none; }
 
 .gfull { position: absolute; right: 10px; bottom: 10px; z-index: 3; width: 38px; height: 38px;
   display: grid; place-items: center; border: 0; border-radius: 10px; cursor: pointer;
@@ -1359,10 +1384,10 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    anything that isn't a <video>. The sheet drops away and the photo takes the
    whole card; the bars stay so there is always a visible way back out. */
 .gmodal--immersive .gmodal__side { transform: translateY(100%) !important; }
-.gmodal--immersive .gmodal__card { grid-template-columns: 1fr; background: #05070d; }
+.gmodal--immersive .gmodal__card { grid-template-columns: 1fr; background: var(--navy-deep); }
 .gmodal--immersive .gmodal__img img { max-height: none; height: 100%; }
 /* Native fullscreen paints the pane on a black backdrop, not the cream surface. */
-.gmodal__img:fullscreen { background: #05070d; }
+.gmodal__img:fullscreen { background: var(--navy-deep); }
 .gmodal__img:fullscreen img { max-height: 100vh; }
 .glike { border: 0; background: none; cursor: pointer; font-size: 1.05rem; color: var(--heading); font-weight: 600; }
 .glike.on { color: #c0392b; }
@@ -1571,7 +1596,7 @@ a.ntf__txt:hover { color: var(--gold-deep); }
      sheet that starts closed. */
   .gmodal { padding: 0; }
   .gmodal__card { grid-template-columns: 1fr; grid-template-rows: 1fr; width: 100%; max-height: none;
-    height: 100%; border-radius: 0; overflow: hidden; background: #05070d; }
+    height: 100%; border-radius: 0; overflow: hidden; background: var(--navy-deep); }
   .gmodal__img { height: 100%; }
   .gmodal__img img { max-height: none; height: 100%; }
   /* The close button keeps its own absolute corner (that is what desktop uses),
@@ -1592,8 +1617,15 @@ a.ntf__txt:hover { color: var(--gold-deep); }
      resting peek. --gbar-op fades them out only as the sheet approaches full, where
      they would otherwise be buried. Both fall back to the static values, so if the
      script never runs the layout is still correct. */
-  .gbar--bot { bottom: var(--gvis, var(--gpeek)); opacity: var(--gbar-op, 1); }
-  .gfull { bottom: calc(var(--gvis, var(--gpeek)) + 2px); right: 8px; opacity: var(--gbar-op, 1); }
+  /* --gsafe is the gap between these controls and the sheet's top edge. The sheet
+     casts `box-shadow: 0 -10px 30px` UPWARD, so sitting flush (which is what a bare
+     var(--gvis) did) put the ♥ and the section label inside a 30px black shadow —
+     on a dark theme they looked like they were sliding under the comments. */
+  .gmodal { --gsafe: 12px; }
+  .gbar--bot { bottom: calc(var(--gvis, var(--gpeek)) + var(--gsafe)); opacity: var(--gbar-op, 1); }
+  .gfull { bottom: calc(var(--gvis, var(--gpeek)) + var(--gsafe) + 2px); right: 8px; opacity: var(--gbar-op, 1); }
+  .gbar .gpill { display: inline-flex; }   /* mobile carries it in the top bar */
+  .gpill--side { display: none; }
   .gmodal--immersive .gbar--bot { bottom: 0; }
   .gmodal--immersive .gfull { bottom: 2px; }
   /* With the sheet up, both of these sit behind it — present but unclickable,

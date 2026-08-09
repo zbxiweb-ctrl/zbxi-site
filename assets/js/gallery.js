@@ -358,8 +358,16 @@
   function paintCaption(p) {
     g('caption').textContent = p.caption || '';
     var an = albumName(p);
-    g('date').textContent = (an ? an + ' · ' : '') + when(p.created_at);
-    g('barsec').textContent = an;          // mobile bar; follows an inline section change
+    // The pill already says the section, so the date line stops repeating it.
+    g('date').textContent = when(p.created_at);
+    // Both pills are painted; CSS shows exactly one (bars are mobile, side is
+    // desktop). hidden when a post has no section, so an empty pill never draws.
+    ['barsec', 'sidesec'].forEach(function (k) {
+      var el = g(k);
+      if (!el) return;
+      el.textContent = an;
+      el.hidden = !an;
+    });
   }
 
   function closeEdit(p) {
@@ -436,9 +444,11 @@
   // this the sheet simply isn't tall enough to show both, and the composer must
   // wait below the header rather than climb over the grab handle.
   var compMax = 0;
+  var gsafePx = 12;                  // mirrors --gsafe; re-read per open, not per frame
 
   function measurePeek() {
     var head = g('head'), pk = g('peek'), side = sideEl();
+    gsafePx = parseFloat(getComputedStyle(modal).getPropertyValue('--gsafe')) || 12;
     peekPx = (head ? head.offsetHeight : 84) + 14;
     // Header height once OPEN — the peek preview is display:none then.
     var headOpen = (head ? head.offsetHeight : 84) - (pk ? pk.offsetHeight : 30);
@@ -480,15 +490,22 @@
     // instead. Reserve it only while it is actually there to be covered.
     var bbar = modal.querySelector('.gbar--bot');
     var op = barOp == null ? 1 : barOp;
-    var botInset = ((bbar && bbar.offsetHeight ? bbar.offsetHeight : 40) + 6) * op;
+    // The bar's height PLUS the gap it keeps from the sheet PLUS a little air. The
+    // gap is read from CSS so the two can't drift apart, and it is what guarantees
+    // this holds for a 9:16 portrait as surely as for a panorama — the reserve is
+    // computed from the controls, never assumed from the picture.
+    var botInset = ((bbar && bbar.offsetHeight ? bbar.offsetHeight : 40) + gsafePx + 8) * op;
     var sheetTop = paneH - visible;
     var floor = sheetTop - botInset;
-    var room = Math.max(80, floor - topInset - 12);
-    // Never above 1: scaling a photo up is just blur. The floor stops a very tall
-    // portrait shrinking to a postage stamp at full height — such a photo is the one
-    // case that cannot fully clear the sheet, because the band left at full is
-    // ~170px and a portrait scaled into that would be unreadable.
-    var scale = Math.max(0.30, Math.min(1, room / painted));
+    // NO minimum on the room and NO floor on the scale. Both used to exist to stop a
+    // tall portrait becoming a stamp — but a minimum room is a promise the band
+    // cannot keep, and it forced a 9:16 photo 61px up into the author bar and 65px
+    // down behind the sheet at full height. The band is whatever is actually left;
+    // the photo fits inside it or it is not drawn. That is what makes this hold for
+    // EVERY aspect ratio rather than the ones that happened to be tested.
+    var room = Math.max(0, floor - topInset - 12);
+    // Never above 1 either way: scaling a photo up is just blur.
+    var scale = Math.min(1, painted > 0 ? room / painted : 1);
     img.style.setProperty('--gph-s', scale.toFixed(4));
     img.style.setProperty('--gph-y', Math.round((topInset + floor) / 2 - paneH / 2) + 'px');
   }

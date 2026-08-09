@@ -97,10 +97,15 @@
         <img data-g="img" alt="" />
         <!-- Overlay bars: mobile only (hidden above 900px, where the side panel
              carries the same information). -->
-        <div class="gbar gbar--top"><span class="gauthor" data-g="barauthor"></span></div>
+        <!-- The section moved OFF the bottom bar: down there it sat flush against
+             the sheet's top edge, inside its upward shadow, and read as though it
+             were sliding underneath the comments. Up here it is a proper label. -->
+        <div class="gbar gbar--top">
+          <span class="gauthor" data-g="barauthor"></span>
+          <span class="gpill" data-g="barsec" hidden></span>
+        </div>
         <div class="gbar gbar--bot">
           <button class="glike" data-g="barlike" aria-label="Like this photo">♡ <span>0</span></button>
-          <span class="gbar__sec" data-g="barsec"></span>
         </div>
         <button class="gfull" data-g="full" aria-label="View fullscreen" title="View fullscreen">⛶</button>
       </div>
@@ -111,6 +116,9 @@
           <div class="gpeek" data-g="peek"></div>
         </div>
         <div class="gmodal__author" data-g="author"></div>
+        <!-- Desktop's copy of the same pill: the bars above are mobile-only, so the
+             side panel carries it here and the two never show at once. -->
+        <span class="gpill gpill--side" data-g="sidesec" hidden></span>
         <p class="gmodal__caption" data-g="caption"></p>
         <div class="gedit-form" data-g="editform" hidden></div>
         <div class="gmodal__actions">
