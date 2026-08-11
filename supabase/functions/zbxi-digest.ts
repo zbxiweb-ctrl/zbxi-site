@@ -81,7 +81,7 @@ async function build(adminUserId: string | null) {
   // encodeURIComponent is not optional on `since`: it comes from Postgres as
   // ...+00:00, and a bare + in a query string decodes to a SPACE, which Postgres
   // then rejects (22007). nowISO is toISOString() ...Z form, so it has no +.
-  const [newMembersRaw, events, jobs, photos, classes] = await Promise.all([
+  const [newMembersRaw, events, jobs, photos, classes, notes] = await Promise.all([
     db(`brothers?status=eq.verified&user_id=not.is.null&created_at=gt.${encodeURIComponent(since)}&select=full_name,pledge_class,user_id&limit=12`),
     // "Coming up" must include an event that is HAPPENING RIGHT NOW. Filtering on
     // starts_at alone dropped a multi-day event the morning after it began — the
@@ -92,6 +92,10 @@ async function build(adminUserId: string | null) {
     db(`forum_threads?category=eq.opportunities&created_at=gt.${encodeURIComponent(since)}&order=created_at.desc&limit=5&select=id,title`),
     db(`gallery_posts?created_at=gt.${encodeURIComponent(since)}&select=id`),
     db(`brothers?pledge_class=not.is.null&select=pledge_class`),
+    // What's new on the site. Unsent only, oldest first, so the section reads in the
+    // order things actually shipped. These are STAMPED as sent by the caller — and only
+    // on the real send; see the note where the enqueue happens.
+    db(`digest_notes?sent_at=is.null&order=created_at.asc&limit=12&select=id,title,body,link`),
   ]);
 
   // The webmaster's own admin row isn't a "new brother".
@@ -142,6 +146,15 @@ async function build(adminUserId: string | null) {
       : "";
 
   const blocks = [
+    // FIRST, deliberately. Everything below is a report of what the chapter did; this is
+    // the only section that says what the SITE now does, and it is the reason a brother
+    // who skims has to open the email at all.
+    sec("✨ New on the site", (notes as any[]).map((n) => {
+      const head = n.link
+        ? `<a href="${esc(n.link)}" style="color:#A07E2D">${esc(n.title)}</a>`
+        : `<b>${esc(n.title)}</b>`;
+      return head + (n.body ? ` — ${esc(n.body)}` : "");
+    })),
     sec("🗓️ Coming up", (events as any[]).map((e) => `<b>${esc(e.title)}</b> — ${fmtWhen(e)}${e.location ? ` · ${esc(e.location)}` : ""}`)),
     sec("💼 New on the Opportunities board", (jobs as any[]).map((t) => `<a href="${SITE}/board.html#thread=${t.id}" style="color:#A07E2D">${esc(t.title)}</a>`)),
     sec("🎉 New brothers on the site", newMembers.map((b) => {
@@ -180,7 +193,19 @@ async function build(adminUserId: string | null) {
     </td></tr>
   </table></td></tr></table></body></html>`;
 
-  return { html, since, counts: { events: (events as any[]).length, jobs: (jobs as any[]).length, newMembers: newMembers.length, photos: (photos as any[]).length, milestones: annis.length }, empty };
+  // noteIds rides out with the html so the caller can stamp them — but ONLY the caller,
+  // and only on the branch that actually sends. build() runs for ?dry=1 and ?test=1 too,
+  // so stamping here would let a rehearsal silently consume the month's announcements
+  // with no way to get them back short of hand-editing timestamps.
+  return {
+    html, since, empty,
+    noteIds: (notes as any[]).map((n) => n.id),
+    counts: {
+      events: (events as any[]).length, jobs: (jobs as any[]).length,
+      newMembers: newMembers.length, photos: (photos as any[]).length,
+      milestones: annis.length, notes: (notes as any[]).length,
+    },
+  };
 }
 
 async function send(to: string, subject: string, html: string, unsubUrl: string) {
@@ -312,7 +337,7 @@ Deno.serve(async (req) => {
 
     const authMap = await authEmails();
     const adminUserId = Object.keys(authMap).find((id) => authMap[id].toLowerCase() === ADM) || null;
-    const { html, counts, empty } = await build(adminUserId);
+    const { html, counts, empty, noteIds } = await build(adminUserId);
     const unsubBase = `${SB}/functions/v1/zbxi-unsubscribe?t=`;
 
     if (dry) {
@@ -357,7 +382,18 @@ Deno.serve(async (req) => {
       ADM,
     );
 
-    await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: list.length, test: false, note: ((empty ? "quiet month; " : "") + `queued batch ${batchId}`).slice(0, 180) }) });
+    // Mark the notes used — HERE, and nowhere else. This is the only branch that has
+    // actually queued mail; ?dry=1 returned above and ?test=1 returns before reaching it.
+    // Stamped AFTER the enqueue succeeds, so a failed enqueue leaves them waiting for the
+    // next run rather than announcing features nobody was told about.
+    if (noteIds.length) {
+      await db(`digest_notes?id=in.(${noteIds.join(",")})`, {
+        method: "PATCH",
+        body: JSON.stringify({ sent_at: new Date().toISOString() }),
+      });
+    }
+
+    await db(`digest_log`, { method: "POST", body: JSON.stringify({ kind: "digest", recipients: list.length, test: false, note: ((empty ? "quiet month; " : "") + `queued batch ${batchId}` + (noteIds.length ? `; ${noteIds.length} note(s)` : "")).slice(0, 180) }) });
 
     // Storage nudge rides the real send only (never the dry preview). One bucket
     // list, reused for both the alert decision and the summary. It stays on the

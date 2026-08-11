@@ -2163,6 +2163,65 @@ input, select, textarea { background: var(--surface-2); }
   letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
 .ebsec--now .ebsig { margin-top: .35rem; }   /* clears the ● CURRENT badge above it */
 
+/* ---- The Alumni Fund (donations.html) ----
+   Case beside action: the left column says why, the right column is the tap. A
+   payment link with no case attached asks for money without earning it, so the
+   two are peers on desktop — and on a phone they stack purpose-first, because a
+   brother scrolling should meet the reason before the button. */
+.give { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; align-items: start; }
+.give-blurb { max-width: 62ch; margin: 0 auto 2rem; text-align: center; }
+.give-h { font-family: var(--display); font-size: 1.15rem; color: var(--heading);
+  margin: 0 0 1rem; letter-spacing: .01em; }
+
+.give-case { background: var(--surface); border: 1.5px solid var(--hairline);
+  border-radius: 14px; padding: 1.7rem 1.6rem; box-shadow: var(--shadow-sm); }
+.give-list { list-style: none; margin: 0; padding: 0; }
+.give-list li { position: relative; padding: .55rem 0 .55rem 1.6rem; color: var(--text);
+  font-size: .96rem; line-height: 1.5; }
+.give-list li + li { border-top: 1px solid var(--hairline); }
+.give-list li::before { content: '✦'; position: absolute; left: 0; top: .55rem;
+  color: var(--gold); font-size: .82rem; }
+
+/* The card carries the gold top rule the E-Board cards use, so "this is the
+   chapter asking" reads before a word is parsed. */
+.give-card { background: var(--surface); border: 1.5px solid var(--hairline);
+  border-top: 4px solid var(--gold); border-radius: 14px; padding: 1.7rem 1.6rem 1.5rem;
+  box-shadow: var(--shadow-sm); text-align: center; }
+.give-card--solo { grid-column: 1 / -1; max-width: 420px; margin: 0 auto; }
+
+/* The button IS the page. Big enough to hit with a thumb without looking. */
+.give-btn { display: block; margin: 0 auto; padding: 1rem 1.4rem; border-radius: 999px;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: var(--navy-deep); text-decoration: none;
+  font-family: var(--display); font-size: 1.5rem; font-weight: 700; line-height: 1.1;
+  word-break: break-all; box-shadow: 0 10px 24px rgba(200,162,75,.35);
+  transition: transform .15s, box-shadow .2s; }
+.give-btn:hover, .give-btn:focus-visible { transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(200,162,75,.45); }
+.give-btn__at { opacity: .6; margin-right: .06em; }
+
+.give-copy { margin: .9rem auto 0; display: block; background: none; border: 0;
+  color: var(--gold-deep); font: 600 .84rem var(--sans); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; }
+.give-copy:hover { color: var(--heading); }
+
+/* Whose account this is. Not decoration — a handle without a name behind it is
+   the thing that makes a brother hesitate. */
+.give-who { margin: 1.3rem 0 0; padding-top: 1.1rem; border-top: 1px solid var(--hairline); }
+.give-who small { display: block; margin-top: .2rem; color: var(--muted); font-size: .76rem; }
+.give-who__link { background: none; border: 0; padding: 0; cursor: pointer;
+  font: 700 1rem var(--display); color: var(--heading);
+  border-bottom: 1px solid var(--gold); }
+.give-who__link:hover { color: var(--gold-deep); }
+
+.give-soon { max-width: 520px; margin: 0 auto; text-align: center; }
+
+@media (max-width: 760px) {
+  .give { grid-template-columns: 1fr; gap: 1.2rem; }
+  .give-card--solo { max-width: none; }
+  .give-btn { font-size: 1.25rem; }
+}
+
 /* The board filters. Deliberately not .fam-bar — that one is display:none below
    700px because the family tree swaps it for a <select>, and this page has no
    select to swap to, so the filters simply vanished on every phone. Scrolls

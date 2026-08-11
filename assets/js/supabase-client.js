@@ -630,6 +630,62 @@
       return this._bust(client.from('site_settings').upsert({ key: key, value: value, updated_at: new Date().toISOString() }));
     },
 
+    /* ---- The alumni fund (donations; see upgrade52.sql) --------------------
+       Deliberately NOT a site_settings key: that table is world-readable, and
+       the Venmo handle belongs only to brothers who are signed in.
+
+       Read: approved brothers. Write: THE ADMIN ONLY — not the alumni president,
+       even though it is his account. This field decides where the chapter's money
+       lands, so it is the one power on this site not extended to the seat-holder;
+       a redirected payment is not undoable the way a bad board record is. */
+    donationsGet: function () {
+      if (!configured) return Promise.resolve(null);
+      return client.from('donations').select('*').eq('id', 1).maybeSingle()
+        .then(function (r) {
+          // A signed-out or unapproved caller gets no row rather than an error —
+          // callers treat null as "show the members-only lock".
+          if (r.error) throw r.error;
+          return r.data || null;
+        });
+    },
+    donationsSet: function (row) {
+      row.updated_at = new Date().toISOString();
+      return client.from('donations').update(row).eq('id', 1).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) {
+            throw new Error('The fund details were not saved — only the admin may change where money goes.');
+          }
+          return r.data[0];
+        });
+    },
+
+    /* ---- Digest notes: "what's new on the site" ---------------------------
+       Added as things ship; the next REAL digest sweeps up everything unsent and
+       stamps it. `sent_at` is written by the digest function, never from here. */
+    digestNotesList: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('digest_notes').select('*').order('created_at', { ascending: false })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    digestNoteAdd: function (row) {
+      return client.from('digest_notes').insert(row).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          var made = (r.data || [])[0];
+          if (!made) throw new Error('The note was not added — you may not have permission.');
+          return made;
+        });
+    },
+    digestNoteDelete: function (id) {
+      return client.from('digest_notes').delete().eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('The note was not deleted — you may not have permission.');
+          return true;
+        });
+    },
+
     /* ---- polls (any approved brother authors his own; members vote) ---- */
     pollsList: function () {
       return client.from('polls').select('*').order('created_at', { ascending: false })

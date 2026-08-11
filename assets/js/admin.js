@@ -104,6 +104,7 @@
       { id: 'eboard',     ic: '👑', label: 'E-Board'    },
       { id: 'email',      ic: '📧', label: 'Email'      },
       { id: 'events',     ic: '📅', label: 'Events'     },
+      { id: 'fund',       ic: '🎁', label: 'Alumni Fund' },
       { id: 'guide',      ic: '📖', label: 'Guide'      },
       { id: 'history',    ic: '📜', label: 'History'    },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
@@ -336,6 +337,7 @@
     if (state.tab === 'titles') return renderTitlesTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
+    if (state.tab === 'fund') return renderFundTab(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
     if (state.tab === 'email') return window.ZBXIEmailTab.render(q);
     if (state.tab === 'invite') return renderInviteTab(q);
@@ -573,11 +575,93 @@
   /* ---------------- events tab ---------------- */
   var EV_CATS = ['rush', 'philanthropy', 'reunion', 'meeting', 'social'];
 
+  /* ---------------- alumni fund tab ----------------
+     The Venmo handle the Donations page sends brothers to. ADMIN ONLY, and
+     deliberately so: this field decides where the chapter's money lands, which
+     makes it the one power on this site not extended to the alumni president —
+     even though the account is his. A redirected payment cannot be undone the way
+     a bad roster edit can. He asks; you change it.
+
+     The DB enforces it (donations_admin_write); this tab is only where you do it. */
+  function renderFundTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading…</p>';
+    Promise.all([Z.donationsGet(), Z.listFamilyPublic()]).then(function (res) {
+      var d = res[0] || {};
+      var roster = (res[1] || []).slice().sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
+      var supports = (d.supports || []).join('\n');
+
+      q.innerHTML =
+        '<p class="admin-hint">The Venmo handle brothers see on the <b>🎁 Alumni Fund</b> page. ' +
+        'Only you can change this — not the alumni president, even though it is his account. ' +
+        'Wherever this points is where the money goes, so it stays with one pair of hands.</p>' +
+
+        '<div class="acct-block"><h4>Where the money goes</h4>' +
+          '<div class="form-row">' +
+            '<div class="field"><label>Venmo handle <small>(without the @)</small></label>' +
+              '<input id="fundHandle" maxlength="60" value="' + esc(d.handle || '') + '" placeholder="ZBXi-Alumni"></div>' +
+            '<div class="field"><label>Whose account it is</label>' +
+              '<input id="fundName" maxlength="80" value="' + esc(d.display_name || '') + '" placeholder="Joseph Occhino"></div>' +
+          '</div>' +
+          '<div class="field"><label>Link that name to a brother <small>(so a brother can check who he is paying)</small></label>' +
+            '<select id="fundBro"><option value="">— nobody —</option>' +
+              roster.map(function (b) {
+                return '<option value="' + esc(b.id) + '"' + (d.brother_id === b.id ? ' selected' : '') + '>' +
+                  esc(b.full_name) + '</option>';
+              }).join('') + '</select></div>' +
+        '</div>' +
+
+        '<div class="acct-block"><h4>What brothers read</h4>' +
+          '<div class="field"><label>Opening line <small>(optional)</small></label>' +
+            '<textarea id="fundBlurb" rows="2" maxlength="300">' + esc(d.blurb || '') + '</textarea></div>' +
+          '<div class="field"><label>What your gift supports <small>(one per line)</small></label>' +
+            '<textarea id="fundSupports" rows="5" placeholder="Scholarships for active brothers&#10;Reunion weekends&#10;The house">' + esc(supports) + '</textarea></div>' +
+          '<p class="form-note">Say “contribute” or “support the fund” rather than “donate” unless the ' +
+            'chapter is a registered 501(c)(3) — gifts here are almost certainly not tax-deductible, and ' +
+            '“donation” implies they are.</p>' +
+        '</div>' +
+
+        '<div class="acct-block"><h4>' + (d.active ? '● The page is LIVE' : 'The page is hidden') + '</h4>' +
+          '<p class="form-note">It stays hidden until you turn it on, so it can never show brothers an empty place to send money.</p>' +
+          '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
+            '<button class="btn btn--gold" id="fundSave">Save' + (d.active ? '' : ' &amp; publish') + '</button>' +
+            (d.active ? '<button class="btn btn--ghost" id="fundHide">Hide the page</button>' : '') +
+          '</div>' +
+          '<p class="form-status" id="fundStatus"></p></div>';
+
+      function save(active) {
+        var st = document.getElementById('fundStatus');
+        var handle = document.getElementById('fundHandle').value.trim().replace(/^@+/, '');
+        if (active && !handle) {
+          st.className = 'form-status err'; st.textContent = 'A handle is needed before the page can go live.'; return;
+        }
+        st.className = 'form-status'; st.textContent = 'Saving…';
+        Z.donationsSet({
+          handle: handle,
+          display_name: document.getElementById('fundName').value.trim() || null,
+          brother_id: document.getElementById('fundBro').value || null,
+          blurb: document.getElementById('fundBlurb').value.trim() || null,
+          supports: document.getElementById('fundSupports').value.split('\n')
+            .map(function (s) { return s.trim(); }).filter(Boolean),
+          active: active
+        }).then(function () { renderFundTab(q); })
+          ['catch'](function (e) {
+            st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
+          });
+      }
+      document.getElementById('fundSave').onclick = function () { save(true); };
+      var hide = document.getElementById('fundHide');
+      if (hide) hide.onclick = function () { save(false); };
+    })['catch'](function (e) {
+      q.innerHTML = '<p class="admin-empty">Could not load the fund settings: ' + esc(String(e && e.message)) + '</p>';
+    });
+  }
+
   function renderEventsTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading events…</p>';
-    Promise.all([Z.eventsList(), Z.getSetting('announcement')]).then(function (res) {
+    Promise.all([Z.eventsList(), Z.getSetting('announcement'), Z.digestNotesList()]).then(function (res) {
       var rows = res[0];
       var ann = res[1] || { text: '', link: '', active: false };
+      var notes = res[2] || [];
       state.events = rows;
 
       var annCard =
@@ -605,8 +689,59 @@
           '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
-      q.innerHTML = annCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
+      /* Sits beside the banner because they are the same job in two places: the
+         banner tells brothers who visit, this tells brothers who don't. Written
+         when a thing ships rather than remembered on send day — the next REAL
+         digest sweeps up everything waiting and marks it used, so nothing goes
+         out twice and a rehearsal never eats the month's news. */
+      var waiting = notes.filter(function (n) { return !n.sent_at; });
+      var noteCard =
+        '<div class="acct-block" style="margin-bottom:1.4rem"><h4>✨ What\'s new — goes in the next digest</h4>' +
+        '<p class="form-note" style="margin-top:0">Add a line whenever something ships. The next monthly digest ' +
+          'collects everything waiting into a “New on the site” section at the top, then marks it used. ' +
+          'A preview or a test send never consumes them.</p>' +
+        '<div class="form-row">' +
+          '<div class="field"><label>What changed</label><input id="dnTitle" maxlength="120" placeholder="Executive Boards page"></div>' +
+          '<div class="field"><label>Link (optional)</label><input id="dnLink" maxlength="300" placeholder="https://zetabetaxi.com/eboards.html"></div>' +
+        '</div>' +
+        '<div class="field"><label>One line more (optional)</label>' +
+          '<input id="dnBody" maxlength="200" placeholder="every board since 1993, term by term"></div>' +
+        '<button class="btn btn--gold" id="dnAdd">Add to the next digest</button>' +
+        '<p class="form-status" id="dnStatus"></p>' +
+        (waiting.length
+          ? '<div class="stat-list" style="margin-top:1rem">' + waiting.map(function (n) {
+              return '<div class="stat-list__row"><b>' + esc(n.title) + '</b>' +
+                '<span>' + esc(n.body || '') + '</span>' +
+                '<em><a href="#" data-dndel="' + esc(n.id) + '">remove</a></em></div>';
+            }).join('') + '</div>'
+          : '<p class="admin-empty" style="margin-top:1rem">Nothing waiting — the next digest will be data only.</p>') +
+        '</div>';
+
+      q.innerHTML = annCard + noteCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
       document.getElementById('evNew').onclick = function () { openEventEdit(null); };
+
+      document.getElementById('dnAdd').onclick = function () {
+        var st = document.getElementById('dnStatus');
+        var title = document.getElementById('dnTitle').value.trim();
+        if (!title) { st.className = 'form-status err'; st.textContent = 'Say what changed first.'; return; }
+        st.className = 'form-status'; st.textContent = 'Adding…';
+        Z.digestNoteAdd({
+          title: title,
+          body: document.getElementById('dnBody').value.trim() || null,
+          link: document.getElementById('dnLink').value.trim() || null
+        }).then(function () { renderEventsTab(q); })
+          ['catch'](function (e) {
+            st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
+          });
+      };
+      q.querySelectorAll('[data-dndel]').forEach(function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          if (!confirm('Remove this from the next digest?')) return;
+          Z.digestNoteDelete(a.dataset.dndel).then(function () { renderEventsTab(q); })
+            ['catch'](function (err) { alert((err && err.message) || 'Could not remove it.'); });
+        };
+      });
 
       function saveAnn(active) {
         var text = document.getElementById('annText').value.trim();
