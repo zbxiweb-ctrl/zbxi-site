@@ -161,7 +161,7 @@ async function build(adminUserId: string | null) {
 
   const html = (unsubUrl: string) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
     <tr><td style="background:#0A1F44;padding:26px 28px;text-align:center">
       <div style="font:700 22px Georgia,serif;color:#E8C766;letter-spacing:.04em">Zeta Beta Xi</div>
       <div style="font:600 10px Helvetica,Arial;color:#b9c4dc;letter-spacing:.28em;margin-top:4px">EST. 1993 · GENESEO</div>
@@ -260,7 +260,7 @@ function storageAlertHtml(bytes: number): string {
   const used = gb(bytes).toFixed(2);
   return `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-  <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FBF8F1;border-radius:14px;border:1px solid #e3d9bd;overflow:hidden">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FBF8F1;border-radius:14px;border:1px solid #e3d9bd;overflow:hidden">
     <tr><td style="background:#0A1F44;padding:22px 26px;text-align:center">
       <div style="font:700 20px Georgia,serif;color:#E8C766;letter-spacing:.03em">Gallery storage heads-up</div></td></tr>
     <tr><td style="padding:24px 26px;font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657">

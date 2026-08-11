@@ -127,7 +127,7 @@ function body(rows: Row[]) {
        the site, so he's stuck at the front door.`;
   return `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#f3efe4;padding:24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
   <tr><td style="background:#0A1F44;padding:26px 28px;text-align:center">
     <div style="font:700 22px Georgia,serif;color:#E8C766;letter-spacing:.04em">Zeta Beta Xi</div>
     <div style="font:600 10px Helvetica,Arial;color:#b9c4dc;letter-spacing:.28em;margin-top:4px">APPROVAL NEEDED</div>
