@@ -62,20 +62,15 @@
     '<path d="M6.5 11.1c0-2.7 2.5-4.5 5.5-4.5s5.5 1.8 5.5 4.5z"/>' +
     '<path d="M12 6.6V5" fill="none" stroke-width="1.5"/></svg>';
 
-  // SPRING — an open laurel wreath, OUTLINED.
-  // Not another botanical silhouette: three attempts proved that two solid organic
-  // shapes at this size converge on the same blob (goblet, then "Y", then two
-  // indistinguishable lumps). The contrast that actually survives is structural —
-  // MASS against VOID. A solid acorn beside an open ring can never be confused,
-  // at any size, in any theme.
-  // Two arcs that do NOT meet: open at the top AND the bottom. Joined at the base
-  // they closed into a ring and read as a letter O — a zero on a card full of
-  // years. Held apart, they are the facing laurel pair from heraldry.
+  // SPRING — a leaf, TILTED and pointed at both ends, on a stem.
+  // An earlier version read as a water droplet, and the reason was specific: it was
+  // pointed at the top, ROUND at the bottom, and perfectly vertical — which is the
+  // definition of a droplet. A leaf is pointed at BOTH ends, sits at an angle, and
+  // grows from a stem. Those three things are what separate the two shapes, and all
+  // three survive at 34px where surface detail like a midrib does not.
   var LAUREL = SVG_OPEN +
-    '<path d="M9.8 4.6C6.3 6.5 4.4 9.5 4.4 12.5c0 3.2 2.1 6.1 5.6 7.8" ' +
-      'fill="none" stroke-width="2.1"/>' +
-    '<path d="M14.2 4.6c3.5 1.9 5.4 4.9 5.4 7.9 0 3.2-2.1 6.1-5.6 7.8" ' +
-      'fill="none" stroke-width="2.1"/></svg>';
+    '<path d="M18.3 5.2C11.2 6.2 7.2 11 7.2 17.8c7.1-1 11.1-5.8 11.1-12.6z"/>' +
+    '<path d="M7.2 17.8 4.5 20.7" fill="none" stroke-width="1.7"/></svg>';
 
   /* The board in office has no term of its own to show — its officers' role_terms
      disagree (Aaron's says Spring 2027, Blake's Fall 2026) — so its seal carries
