@@ -2252,7 +2252,8 @@
     { key: 'gallery.albums',      label: 'Manage gallery sections', desc: 'Create, rename, and delete gallery sections, right on the gallery page. Deleting a section keeps its photos — they move to Miscellaneous.', seats: ['alumni_president'] },
     { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['alumni_president'] },
     { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Edit or delete ANY brother\'s gallery photo or comment. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] },
-    { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] }
+    { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] },
+    { key: 'eboard.manage',       label: 'Record past executive boards', desc: 'Build the chapter\'s history on the Executive Boards page: create a board for a term, put brothers in its four officer seats and its chair positions, merge two half-boards into one, and delete a board. This is HISTORY only — it cannot make anyone an officer today. Today\'s seats are still yours alone, in the 👑 E-Board tab. Every change is logged under his name.', seats: ['alumni_president'] }
   ];
 
   // EVERY holder, not the first one. Grants are per SEAT, so if two brothers hold

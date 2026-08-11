@@ -25,6 +25,7 @@
     { ic: '🎓', label: 'Active',      href: 'active.html' },
     { ic: '🏛', label: 'Alumni',      href: 'alumni.html' },
     { ic: '💬', label: 'Board',       href: 'board.html' },
+    { ic: '👑', label: 'Executive Boards', href: 'eboards.html' },
     { ic: '📅', label: 'Events',      href: 'events.html' },
     { ic: '🌳', label: 'Family Tree', href: 'family-tree.html' },
     { ic: '🧭', label: 'Find a Mentor', href: 'mentor.html' },

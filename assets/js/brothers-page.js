@@ -14,7 +14,15 @@
   var filtersEl = document.getElementById('pageFilters');
   if (!gridEl) return;
 
+  /* The executive board is these four offices and nothing else. `brothers.role` is
+     a free-text field in the admin's brother form, and without this filter anything
+     typed there lands on a public board — which is how a Philanthropy Chair and a
+     Pledge Master came to stand beside presidents in the old Previous Board strip.
+     Chair positions live on eboards.html now, beneath the officers where they belong.
+     Matched on a normalised key because 'Vice President' with no hyphen is real data. */
   var EBOARD_ORDER = ['president', 'vice-president', 'treasurer', 'secretary'];
+  function ebKey(role) { return String(role || '').trim().toLowerCase().replace(/\s+/g, '-'); }
+  function isEboardTitle(role) { return EBOARD_ORDER.indexOf(ebKey(role)) !== -1; }
 
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
   function initials(name) { return window.BrotherCard ? window.BrotherCard.initials(name) : 'ΖΒΞ'; }
@@ -138,8 +146,7 @@
   }
 
   function ebOrder(a, z) {
-    return EBOARD_ORDER.indexOf(String(a.role).toLowerCase().replace(/\s+/g, '-')) -
-           EBOARD_ORDER.indexOf(String(z.role).toLowerCase().replace(/\s+/g, '-'));
+    return EBOARD_ORDER.indexOf(ebKey(a.role)) - EBOARD_ORDER.indexOf(ebKey(z.role));
   }
 
   function render(all) {
@@ -147,9 +154,8 @@
     var side = all.filter(MODE === 'active' ? isActive : function (b) { return !isActive(b); });
     // E-boards are assigned explicitly (role + which board), independent of
     // the grad-year page split — the Active and Alumni boards are separate.
-    EB = all.filter(function (b) { return b.role && b.role_scope === MODE; }).sort(ebOrder);
+    EB = all.filter(function (b) { return b.role && b.role_scope === MODE && isEboardTitle(b.role); }).sort(ebOrder);
     LIST = side.slice().sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
-    if (MODE === 'alumni') renderPrevBoard(all);
 
     if (countEl) countEl.textContent = side.length + (MODE === 'active' ? ' active brothers' : ' alumni brothers');
     if (eboardEl) {
@@ -161,30 +167,10 @@
     renderGrid();
   }
 
-  /* ---- Previous Executive Board (alumni page): filterable by title ---- */
-  var PREV_F = '';
-  function renderPrevBoard(all) {
-    var sec = document.getElementById('prevEboard');
-    var grid = document.getElementById('prevGrid');
-    var chipsEl = document.getElementById('prevChips');
-    if (!sec || !grid) return;
-    var prev = all.filter(function (b) { return b.role && b.role_scope === 'previous'; })
-      .sort(function (a, z) { return ebOrder(a, z) || String(z.role_term || '').localeCompare(String(a.role_term || '')); });
-    if (!prev.length) { sec.style.display = 'none'; return; }
-    sec.style.display = '';
-    var TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
-    chipsEl.innerHTML = '<button class="fam-chip' + (!PREV_F ? ' on' : '') + '" data-pf="">All titles</button>' +
-      TITLES.map(function (t) {
-        return '<button class="fam-chip' + (PREV_F === t ? ' on' : '') + '" data-pf="' + t + '">' + t + '</button>';
-      }).join('');
-    chipsEl.querySelectorAll('[data-pf]').forEach(function (c) {
-      c.onclick = function () { PREV_F = c.dataset.pf; renderPrevBoard(all); };
-    });
-    var rows = PREV_F ? prev.filter(function (b) { return b.role === PREV_F; }) : prev;
-    grid.innerHTML = rows.length ? rows.map(eboardCard).join('')
-      : '<p class="page-empty">No previous ' + esc(PREV_F) + 's recorded yet.</p>';
-    wire(grid);
-  }
+  /* The "Previous Executive Board" strip that used to live here is gone: past
+     boards are their own page now (eboards.html), organised by term instead of
+     flattened into one grid, and sourced from brother_titles — which can hold a
+     brother's SECOND term, something `brothers.role` never could. */
 
   if (searchEl) searchEl.addEventListener('input', function () { F.q = searchEl.value.trim().toLowerCase(); renderGrid(); });
 

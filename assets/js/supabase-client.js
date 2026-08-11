@@ -756,6 +756,85 @@
       return client.from('brother_titles').delete().eq('id', id);
     },
 
+    /* ---- Executive boards (eboards; see upgrade50.sql) ----------------------
+       A board is a TERM. Its seats are the brother_titles rows above carrying
+       that board's id — the same rows the profile card renders as a brother's
+       positions history, so a term fixed in one place is fixed in both.
+
+       Read: any approved brother. Write: the admin, or an officer holding
+       `eboard.manage`. RLS is the enforcement; the page only decides what
+       buttons to draw.
+
+       EVERY WRITE ENDS IN .select(). supabase-js v2 RESOLVES on a refusal
+       rather than rejecting, so a policy that turns a write away comes back as
+       {data: [], error: null} — indistinguishable from success unless you ask
+       for the rows back and find none. Callers throw on an empty return. */
+    eboardsList: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('eboards').select('*').order('rank', { ascending: false })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    // Every seat on every board in one request — the page holds few enough
+    // boards that per-board fetching would only add round-trips.
+    eboardSeats: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('brother_titles').select('*').not('board_id', 'is', null)
+        .order('sort', { ascending: true })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    eboardCreate: function (row) {
+      return client.from('eboards').insert(row).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          var made = (r.data || [])[0];
+          if (!made) throw new Error('The board was not created — you may not have permission.');
+          return made;
+        });
+    },
+    eboardUpdate: function (id, row) {
+      return client.from('eboards').update(row).eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('The board was not saved — you may not have permission.');
+          return r.data[0];
+        });
+    },
+    eboardDelete: function (id) {
+      return client.from('eboards').delete().eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('The board was not deleted — you may not have permission.');
+          return true;
+        });
+    },
+    /* Re-parent a seat. This is what "absorb another board" is made of: move
+       every seat across, then delete the emptied board. The seat row itself —
+       who held which office, in which term — is never touched. */
+    eboardSeatMove: function (id, boardId) {
+      return client.from('brother_titles').update({ board_id: boardId }).eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('That seat was not moved — you may not have permission.');
+          return r.data[0];
+        });
+    },
+    eboardSeatUpdate: function (id, row) {
+      return client.from('brother_titles').update(row).eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('That seat was not saved — you may not have permission.');
+          return r.data[0];
+        });
+    },
+    eboardSeatRemove: function (id) {
+      return client.from('brother_titles').delete().eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('That seat was not removed — you may not have permission.');
+          return true;
+        });
+    },
+
     /* ---- Officer permissions (Officer Console; see upgrade17.sql) ----------
        officer_grants is the Admin-controlled toggle matrix. Everyone signed in
        may READ it; only the admin may WRITE it (RLS). The real enforcement is
