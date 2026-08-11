@@ -59,9 +59,17 @@
 
         (supports.length
           ? '<section class="give-case"><h2 class="give-h">What your gift supports</h2>' +
-            '<ul class="give-list">' +
-              supports.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') +
-            '</ul></section>'
+            '<ul class="give-list">' + supports.map(function (s) {
+              // "Label — the rest of it". Splitting on the FIRST em dash lets the
+              // admin type one plain line and get a scannable heading with a
+              // quieter explanation under it, instead of a bullet that wraps to
+              // three lines and reads as a paragraph with a dot in front.
+              var parts = String(s).split(/\s+—\s+|\s+-\s+/);
+              var label = parts.shift();
+              var rest = parts.join(' — ');
+              return '<li><b>' + esc(label) + '</b>' +
+                (rest ? '<span>' + esc(rest) + '</span>' : '') + '</li>';
+            }).join('') + '</ul></section>'
           : '') +
 
         '<section class="give-card' + (supports.length ? '' : ' give-card--solo') + '">' +

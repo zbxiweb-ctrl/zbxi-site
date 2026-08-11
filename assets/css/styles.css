@@ -2168,19 +2168,29 @@ input, select, textarea { background: var(--surface-2); }
    payment link with no case attached asks for money without earning it, so the
    two are peers on desktop — and on a phone they stack purpose-first, because a
    brother scrolling should meet the reason before the button. */
-.give { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; align-items: start; }
-.give-blurb { max-width: 62ch; margin: 0 auto 2rem; text-align: center; }
-.give-h { font-family: var(--display); font-size: 1.15rem; color: var(--heading);
-  margin: 0 0 1rem; letter-spacing: .01em; }
+/* The card is narrower than the case on purpose: the eye should land on it, and a
+   column that is the same width as its neighbour competes rather than concludes. */
+.give { display: grid; grid-template-columns: 1.15fr .85fr; gap: 3rem; align-items: start;
+  max-width: 940px; margin: 0 auto; }
+.give-blurb { max-width: 56ch; margin: 0 auto 2.8rem; text-align: center; }
+.give-h { font-family: var(--display); font-size: .78rem; color: var(--muted);
+  margin: 0 0 .4rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; }
 
-.give-case { background: var(--surface); border: 1.5px solid var(--hairline);
-  border-radius: 14px; padding: 1.7rem 1.6rem; box-shadow: var(--shadow-sm); }
+/* No card around the case. Two boxes side by side made the page read as a form;
+   letting the left column breathe as plain text puts the only bordered thing on
+   the page around the one action, which is where the eye should land. */
+.give-case { padding: .3rem .2rem 0; }
 .give-list { list-style: none; margin: 0; padding: 0; }
-.give-list li { position: relative; padding: .55rem 0 .55rem 1.6rem; color: var(--text);
-  font-size: .96rem; line-height: 1.5; }
+.give-list li { position: relative; padding: .95rem 0 .95rem 1.75rem; }
 .give-list li + li { border-top: 1px solid var(--hairline); }
-.give-list li::before { content: '✦'; position: absolute; left: 0; top: .55rem;
-  color: var(--gold); font-size: .82rem; }
+.give-list li::before { content: '✦'; position: absolute; left: 0; top: 1.05rem;
+  color: var(--gold); font-size: .8rem; }
+/* Label loud, detail quiet — the three things are scannable in a glance and the
+   explanation is there for whoever wants it. */
+.give-list b { display: block; font-family: var(--display); font-size: 1.06rem;
+  color: var(--heading); font-weight: 700; line-height: 1.25; }
+.give-list span { display: block; margin-top: .22rem; color: var(--muted);
+  font-size: .89rem; line-height: 1.55; }
 
 /* The card carries the gold top rule the E-Board cards use, so "this is the
    chapter asking" reads before a word is parsed. */
