@@ -2161,7 +2161,58 @@ input, select, textarea { background: var(--surface-2); }
 .ebsec__badge { position: absolute; top: .6rem; left: 50%; transform: translateX(-50%);
   color: var(--gold-deep); font-size: .6rem; font-weight: 800;
   letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
-.ebsec--now .bsec__ic { margin-top: .35rem; }
+.ebsec--now .ebsig { margin-top: .35rem; }   /* clears the ● CURRENT badge above it */
+
+/* The board filters. Deliberately not .fam-bar — that one is display:none below
+   700px because the family tree swaps it for a <select>, and this page has no
+   select to swap to, so the filters simply vanished on every phone. Scrolls
+   sideways when the row runs out of room rather than disappearing. */
+.ebchips { display: flex; gap: .5rem; margin: 0 0 1.4rem; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .ebchips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .35rem;
+             -webkit-overflow-scrolling: touch; }
+  .ebchips .fam-chip { flex: none; }
+}
+
+/* ---- the board signet ----
+   Replaces a 👑 that was identical on all seventeen cards and drew itself
+   differently on every operating system. This is .badge__seal (line ~447) at card
+   scale: same gradient, same inset ring, so the homepage badges and these cards
+   speak one language rather than two.
+
+   Two states carry the only distinction that matters at a glance — a quiet tinted
+   disc for history, the filled gold seal for the board in office. */
+.ebsig { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 56px; height: 56px; margin: 0 auto .55rem; border-radius: 50%;
+  background: var(--tint); border: 1.5px solid var(--gold); color: var(--gold-deep); }
+/* The device gets the whole disc. It shared it with a year under a hairline rule
+   at first, which capped the glyph at 24px — and at 24px an acorn and a leaf are
+   the same blob. The year is on the very next line of the card anyway. */
+.ebsig__g { display: block; width: 34px; height: 34px; }
+.ebsig__g svg { display: block; width: 100%; height: 100%; }
+/* The sitting board wears the seal itself. `--navy-deep` is #000 in dark mode, so
+   the device stays black-on-gold there rather than navy-on-gold — checked, not assumed. */
+/* Softer gradient and a thinner inset ring than .badge__seal's: that rule is tuned
+   for a 92px badge, and at 56px its 3px highlight ate a third of the disc. */
+.ebsig--now { background: radial-gradient(circle at 35% 28%, var(--gold-bright), var(--gold));
+  border: 2px solid var(--gold-bright); color: var(--navy-deep);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.3), 0 6px 16px rgba(0,0,0,.28); }
+/* In the detail header it sits beside the back button, not centred above a card. */
+.bhead .ebsig { flex: none; width: 44px; height: 44px; margin: 0; }
+.bhead .ebsig__g { width: 26px; height: 26px; }
+
+/* ---- the men who sat on it ----
+   The card named its president and stopped. These are the rest of them: officers
+   first (seatsOf sorts that way), initials where a brother has no photo — which is
+   most of the pre-2010 boards, so the monogram is the normal case, not the fallback. */
+.ebfaces { display: flex; justify-content: center; margin: .5rem 0 .15rem; }
+.ebfaces__f { width: 22px; height: 22px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--navy); color: var(--gold-bright);
+  font-family: var(--sans); font-size: .5rem; font-weight: 700; letter-spacing: 0;
+  border: 1.5px solid var(--surface); box-shadow: 0 0 0 1px var(--gold); }
+.ebfaces__f + .ebfaces__f { margin-left: -7px; }   /* overlap, like a stack of photos */
+.ebfaces__f img { width: 100%; height: 100%; object-fit: cover; }
+.ebfaces__more { background: var(--tint); color: var(--gold-deep); }
 
 /* The Alumni page keeps a door to the boards that used to be listed on it. */
 .eb-seealso { margin: 1.5rem 0 0; font-weight: 600; }

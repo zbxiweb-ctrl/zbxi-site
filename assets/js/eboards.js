@@ -34,6 +34,85 @@
                 'Scholarship Chair', 'Brotherhood Chair', 'Webmaster'];
   var SEMS = ['Fall', 'Spring'];
 
+  /* ---------- the seasonal devices ----------
+     Two marks, drawn once, replacing the 👑 that was identical on all seventeen
+     cards and rendered as a different picture on every operating system.
+
+     stroke="currentColor" throughout, so each inherits whatever colour the signet
+     is in — one rule for the tinted history disc, one for the filled gold seal —
+     and neither glyph needs a dark-mode rule of its own.
+
+     THREE PATHS EACH, and FILLED rather than outlined. The first pass drew both as
+     line art and it failed at real size: at 22px the acorn's cup-and-nut outline
+     read as a goblet, and the two devices were hard to tell apart. Solid mass
+     survives small sizes where an outline collapses into its own stroke. The fill
+     and the stroke are both currentColor, so the edge just adds weight.
+
+     Checked at real size in a screenshot, never zoomed in an editor — zooming is
+     how the first version passed. */
+  var SVG_OPEN = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" ' +
+    'stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+
+  // FALL — an acorn: a ROUND body under a dome cap.
+  // The body is an ellipse, not a taper. A nut that narrows to a point beneath a
+  // wide flat cap on a stalk is the silhouette of a wine glass, which is exactly
+  // what the previous two versions drew.
+  var OAK = SVG_OPEN +
+    '<ellipse cx="12" cy="14.3" rx="4.7" ry="5.5"/>' +
+    '<path d="M6.5 11.1c0-2.7 2.5-4.5 5.5-4.5s5.5 1.8 5.5 4.5z"/>' +
+    '<path d="M12 6.6V5" fill="none" stroke-width="1.5"/></svg>';
+
+  // SPRING — an open laurel wreath, OUTLINED.
+  // Not another botanical silhouette: three attempts proved that two solid organic
+  // shapes at this size converge on the same blob (goblet, then "Y", then two
+  // indistinguishable lumps). The contrast that actually survives is structural —
+  // MASS against VOID. A solid acorn beside an open ring can never be confused,
+  // at any size, in any theme.
+  // Two arcs that do NOT meet: open at the top AND the bottom. Joined at the base
+  // they closed into a ring and read as a letter O — a zero on a card full of
+  // years. Held apart, they are the facing laurel pair from heraldry.
+  var LAUREL = SVG_OPEN +
+    '<path d="M9.8 4.6C6.3 6.5 4.4 9.5 4.4 12.5c0 3.2 2.1 6.1 5.6 7.8" ' +
+      'fill="none" stroke-width="2.1"/>' +
+    '<path d="M14.2 4.6c3.5 1.9 5.4 4.9 5.4 7.9 0 3.2-2.1 6.1-5.6 7.8" ' +
+      'fill="none" stroke-width="2.1"/></svg>';
+
+  /* The board in office has no term of its own to show — its officers' role_terms
+     disagree (Aaron's says Spring 2027, Blake's Fall 2026) — so its seal carries
+     the device for the CURRENT academic season and no year. Inventing a year for
+     it would be stating something nobody recorded. August starts the fall term. */
+  function currentSem() { return new Date().getMonth() >= 7 ? 'Fall' : 'Spring'; }
+
+  /* A board wears its START season: one that ran Fall 2023 – Spring 2024 took
+     office in the fall. The span itself is already spelled out underneath. */
+  /* No year inside the disc. It was set at 11px under a hairline rule, which left
+     the device only 24px — and at 24px an acorn and a leaf are the same blob. The
+     year was also redundant: the card spells out "Spring 2026" on the very next
+     line. Giving the device the whole disc is what makes the two seasons tell
+     apart at a glance, which is the only job this mark has. */
+  function signet(sem, now) {
+    return '<span class="ebsig' + (now ? ' ebsig--now' : '') + '" aria-hidden="true">' +
+      '<span class="ebsig__g">' + (sem === 'Spring' ? LAUREL : OAK) + '</span></span>';
+  }
+
+  /* The men, not just a count of them. seatsOf() already sorts officers above
+     chairs, so the first four discs are the board proper. Capped at four because
+     a fifth makes the row wider than the term above it. */
+  function faces(seats) {
+    if (!seats.length) return '';
+    var shown = seats.slice(0, 4), extra = seats.length - shown.length;
+    return '<span class="ebfaces" aria-hidden="true">' +
+      shown.map(function (s) {
+        var b = broOf(s);
+        var nm = b ? b.full_name : '?';
+        return '<span class="ebfaces__f">' + (b && b.photo_url
+          ? '<img src="' + esc(b.photo_url) + '" alt="">'
+          : esc(initials(nm))) + '</span>';
+      }).join('') +
+      (extra ? '<span class="ebfaces__f ebfaces__more">+' + esc(extra) + '</span>' : '') +
+      '</span>';
+  }
+
   var BOARDS = [], SEATS = [], ROSTER = [], BY_ID = {};
   var canEdit = false, scopeF = '', curId = null;
 
@@ -95,9 +174,10 @@
     var who = pres && broOf(pres);
     return '<button class="bsec ebsec' + (seats.length ? '' : ' bsec--empty') +
         '" data-board="' + esc(b.id) + '" aria-label="' + esc('Open the ' + termLabel(b) + ' board') + '">' +
-      '<span class="bsec__ic" aria-hidden="true">👑</span>' +
+      signet(b.start_sem, false) +
       '<span class="bsec__name">' + esc(termLabel(b)) + '</span>' +
       (who ? '<span class="ebsec__pres">' + esc(who.full_name) + ', President</span>' : '') +
+      faces(seats) +
       '<span class="bsec__n">' + esc(scopeLabel(b.scope)) + ' · ' + esc(countLine(seats)) + '</span>' +
       '</button>';
   }
@@ -109,9 +189,10 @@
     return '<button class="bsec ebsec ebsec--now" data-board="live-' + esc(scope) + '"' +
         ' aria-label="' + esc('Open the current ' + scopeLabel(scope)) + '">' +
       '<span class="ebsec__badge">● Current</span>' +
-      '<span class="bsec__ic" aria-hidden="true">👑</span>' +
+      signet(currentSem(), true) +
       '<span class="bsec__name">' + esc(scopeLabel(scope)) + '</span>' +
       (pres ? '<span class="ebsec__pres">' + esc(pres.full_name) + ', President</span>' : '') +
+      faces(seats) +
       '<span class="bsec__n">' + esc(seats.length) + ' of 4 seats filled</span>' +
       '</button>';
   }
@@ -149,7 +230,10 @@
                    (scopeF !== 'active' ? currentCard('alumni') : '');
 
     root.innerHTML =
-      '<div class="fam-bar" style="justify-content:flex-start;margin:0 0 1.4rem">' + chips + '</div>' +
+      // NOT .fam-bar: that class is display:none below 700px on the family tree,
+      // where a <select> replaces it. Borrowing it silently hid these filters on
+      // every phone. Own class, no inherited baggage.
+      '<div class="ebchips">' + chips + '</div>' +
       (canEdit ? '<div class="admin-addbar"><button class="btn btn--gold" id="ebNew">＋ New board</button></div>' : '') +
       (nowCards ? '<div class="bsecs__group"><span class="bsecs__label">IN OFFICE</span>' +
         '<div class="bsecs">' + nowCards + '</div></div>' : '') +
@@ -186,6 +270,9 @@
     root.innerHTML =
       '<div class="bhead">' +
         '<button class="bback" id="ebBack" aria-label="Back to Executive Boards" title="Back to Executive Boards">←</button>' +
+        // The same mark that was on the card you clicked, so arriving here feels
+        // like opening that card rather than landing on a different page.
+        (live ? signet(currentSem(), true) : signet(b.start_sem, false)) +
         '<div class="bhead__main"><div class="gsechead"><h3>' + esc(heading) + '</h3>' +
           '<span>' + esc(sub) + '</span></div></div>' +
       '</div>' +
