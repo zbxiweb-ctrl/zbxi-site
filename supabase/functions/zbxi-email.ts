@@ -120,8 +120,8 @@ const UNSUB_MARK = "{{UNSUB}}";
 // to 4 MB of attachments — is stored ONCE on email_batches; email_queue gets one
 // small row per brother. Storing attachments per recipient would be ~1.4 GB for
 // the full roster. zbxi-drain releases rows at the cap claim_email_batch()
-// enforces (60/day), keeping >= 40/day of the Resend allowance free for password
-// resets. See upgrade35.sql.
+// enforces (280/day) — which now keeps us under Brevo's 300/day rather than
+// reserving Resend headroom for password resets. See upgrade35 + upgrade51.
 async function enqueue(
   kind: string,
   subject: string,
@@ -231,10 +231,10 @@ Deno.serve(async (req) => {
 
     if (!list.length) return json({ sent: 0, note: "no recipients" });
 
-    // QUEUED, not blasted. A roster-wide send is ~100 emails and Resend allows
-    // 100/day across the whole account — including the password-reset mail
-    // Supabase Auth sends. Looping here spent the day's entire allowance in
-    // seconds and locked brothers out of resetting their passwords.
+    // QUEUED, not blasted. Bulk moved to Brevo (300/day) in upgrade51 and
+    // password resets stayed on Resend, so a big send can no longer lock anyone
+    // out of their account. The queue survives for a different reason: a loop
+    // that fails at recipient 60 cannot tell you which 60 already went.
     const batchId = await enqueue(
       "compose", String(subject), shell(subject, message, UNSUB_MARK),
       list.map((r) => ({ email: r.email, unsub: unsubBase + r.token })),

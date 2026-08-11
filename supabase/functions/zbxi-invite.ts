@@ -42,10 +42,11 @@ async function db(path: string, init: RequestInit = {}) {
   return body ? JSON.parse(body) : null;
 }
 
-// Hand a message to the queue instead of calling Resend here. zbxi-drain
-// releases rows at the cap claim_email_batch() enforces (60/day), which is what
-// keeps >= 40/day of the Resend allowance free for password resets.
-// See upgrade35.sql.
+// Hand a message to the queue instead of sending it here. zbxi-drain releases
+// rows at the cap claim_email_batch() enforces (280/day), which keeps us under
+// Brevo's 300/day — bulk and account email are on separate providers since
+// upgrade51, so the cap no longer protects password resets.
+// See upgrade35 + upgrade51.
 async function enqueue(
   kind: string,
   subject: string,

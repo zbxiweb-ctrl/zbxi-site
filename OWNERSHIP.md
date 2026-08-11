@@ -13,7 +13,8 @@ This document is the "keys to the kingdom" map for the ΖΒΞ website. Keep it c
 | **Code** | This website's source | GitHub repo `github.com/zbxiweb-ctrl/zbxi-site` (public) | Chapter GitHub account | Free |
 | **Hosting** | Runs & serves the site | **Cloudflare Workers**, worker `zbxi-site` (config: `wrangler.jsonc`) | Chapter Cloudflare account | Free |
 | **Members backend** | Brother accounts, profiles, family tree | Supabase project `zbxi-site` (see `supabase/schema.sql`) | Chapter account | Free tier |
-| **Email delivery** | Password resets, sign-up confirmations, the monthly digest, invites | Resend, sending domain `send.zetabetaxi.com` | Chapter account | Free (100/day, 3,000/mo) |
+| **Account email** | Password resets, sign-up confirmations | Resend, sending domain `send.zetabetaxi.com` | Chapter account | Free (100/day, 3,000/mo) |
+| **Brotherhood email** | Monthly digest, chapter emails, invitations | Brevo, same sending domain, link domain `em.send.zetabetaxi.com` | Chapter account | Free (300/day) |
 | **Contact form** | Delivers messages to an inbox | Formspree | Chapter account | Free tier |
 
 ## Where the config lives
@@ -54,7 +55,7 @@ The whole site is plain HTML/CSS/JS in this repo — no build step.
 Cloudflare $0 · Supabase $0 · Resend $0 · Formspree $0 · **Domain ≈ $10–12/yr** — the only recurring cost. Compare to vendor quotes of $2,500–4,000.
 
 Where the free tiers actually bite, in the order you'll hit them:
-1. **Resend: 100 emails/day.** With 100 brothers holding accounts, a single all-brothers email is already at the ceiling — and password-reset emails come out of the same allowance, so a big send can stop brothers resetting their passwords that day. Resend Pro is $20/mo.
+1. **Brevo: 300 emails/day** for brotherhood mail. With 113 brothers holding accounts a full send uses about a third of it, so there is real headroom — and because account email sits on a *separate* provider, a newsletter can no longer stop anyone resetting their password. The two were on one 100/day account until 2026-08-11; if they are ever recombined, that fragility comes back.
 2. **Supabase Free keeps no database backups.** Pro ($25/mo) adds point-in-time recovery.
 3. Storage and bandwidth have years of headroom; ignore them.
 

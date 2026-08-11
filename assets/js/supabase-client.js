@@ -677,6 +677,16 @@
           return made;
         });
     },
+    // Approve a draft, or rewrite its wording first. The agent's phrasing is a
+    // proposal — this is how it gets corrected before 113 brothers read it.
+    digestNoteUpdate: function (id, row) {
+      return client.from('digest_notes').update(row).eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!(r.data || []).length) throw new Error('That note was not saved — you may not have permission.');
+          return r.data[0];
+        });
+    },
     digestNoteDelete: function (id) {
       return client.from('digest_notes').delete().eq('id', id).select()
         .then(function (r) {

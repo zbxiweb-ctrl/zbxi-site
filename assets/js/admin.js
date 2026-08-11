@@ -101,6 +101,7 @@
       { id: 'awards',     ic: '🏅', label: 'Awards'     },
       { id: 'classes',    ic: '🎓', label: 'Pledge Classes' },
       { id: 'committees', ic: '👥', label: 'Committees' },
+      { id: 'digest',     ic: '📬', label: 'Digest'     },
       { id: 'eboard',     ic: '👑', label: 'E-Board'    },
       { id: 'email',      ic: '📧', label: 'Email'      },
       { id: 'events',     ic: '📅', label: 'Events'     },
@@ -337,6 +338,7 @@
     if (state.tab === 'titles') return renderTitlesTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
+    if (state.tab === 'digest') return renderDigestTab(q);
     if (state.tab === 'fund') return renderFundTab(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
     if (state.tab === 'email') return window.ZBXIEmailTab.render(q);
@@ -575,6 +577,177 @@
   /* ---------------- events tab ---------------- */
   var EV_CATS = ['rush', 'philanthropy', 'reunion', 'meeting', 'social'];
 
+  /* ---------------- digest tab ----------------
+     Everything about the monthly email in one place. These two cards used to live
+     in different tabs — the send buttons under Invite, the "what's new" notes under
+     Events — which meant writing the announcement and sending it were two unrelated
+     errands in the console. They are one job. */
+  function renderDigestTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading…</p>';
+    Z.digestNotesList().then(function (notes) {
+      var unsent = notes.filter(function (n) { return !n.sent_at; });
+      var drafts = unsent.filter(function (n) { return n.status !== 'approved'; });
+      var queued = unsent.filter(function (n) { return n.status === 'approved'; });
+
+      q.innerHTML =
+        '<p class="admin-hint">The monthly email to brothers <b>with accounts</b>. It writes most of ' +
+          'itself from the site — events, new brothers, gallery activity, pledge-class anniversaries — ' +
+          'and the one part it cannot know is what <i>changed</i>. That is the list below.</p>' +
+
+        /* Notes first: you write the announcement before you send it, so the tab
+           reads in the order the job is actually done. */
+        '<div class="acct-block"><h4>✨ What\'s new — goes in the next digest</h4>' +
+        '<p class="form-note" style="margin-top:0">When something ships that brothers would notice, it ' +
+          'gets written up here for you to approve. The next digest collects everything approved into a ' +
+          '“New on the site” section at the top, then marks it used. A preview or a test send never ' +
+          'consumes them, and <b>nothing you have not approved is ever sent</b>.</p>' +
+
+        (drafts.length
+          ? '<p class="stat-h" style="margin:1.2rem 0 .5rem">Waiting for your approval (' + drafts.length + ')</p>' +
+            drafts.map(function (n) {
+              return '<div class="admin-row" data-draft="' + esc(n.id) + '">' +
+                '<div class="admin-row__ph">✨</div>' +
+                '<div class="admin-row__info"><b>' + esc(n.title) + '</b>' +
+                  '<span>' + esc(n.body || '') + (n.link ? ' · ' + esc(n.link) : '') + '</span></div>' +
+                '<div class="admin-row__act">' +
+                  '<button class="btn btn--gold" data-dnok="' + esc(n.id) + '">Approve</button>' +
+                  '<button class="btn btn--ghost" data-dnedit="' + esc(n.id) + '">Edit</button>' +
+                  '<button class="btn btn--danger" data-dndel="' + esc(n.id) + '">Discard</button>' +
+                '</div></div>';
+            }).join('')
+          : '') +
+
+        '<p class="stat-h" style="margin:1.4rem 0 .5rem">Queued for the next digest' +
+          (queued.length ? ' (' + queued.length + ')' : '') + '</p>' +
+        (queued.length
+          ? '<div class="stat-list">' + queued.map(function (n) {
+              return '<div class="stat-list__row"><b>' + esc(n.title) + '</b>' +
+                '<span>' + esc(n.body || '') + '</span>' +
+                '<em><a href="#" data-dndel="' + esc(n.id) + '">remove</a></em></div>';
+            }).join('') + '</div>'
+          : '<p class="admin-empty">Nothing queued — the next digest will be data only.</p>') +
+
+        '<p class="stat-h" style="margin:1.4rem 0 .5rem">Add your own</p>' +
+        '<div class="form-row">' +
+          '<div class="field"><label>What changed</label><input id="dnTitle" maxlength="120" placeholder="Executive Boards page"></div>' +
+          '<div class="field"><label>Link (optional)</label><input id="dnLink" maxlength="300" placeholder="https://zetabetaxi.com/eboards.html"></div>' +
+        '</div>' +
+        '<div class="field"><label>One line more (optional)</label>' +
+          '<input id="dnBody" maxlength="200" placeholder="every board since 1993, term by term"></div>' +
+        '<button class="btn btn--gold" id="dnAdd">Add to the next digest</button>' +
+        '<p class="form-status" id="dnStatus"></p></div>' +
+
+        '<div class="acct-block"><h4>📬 Send it</h4>' +
+        '<p class="form-note" style="margin-top:0">It goes out on its own on the 1st of each month. ' +
+          'These are for sending early, or checking your work. Every email carries a one-click ' +
+          'unsubscribe. <b>Always send yourself a test first.</b></p>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
+          '<button class="btn btn--ghost" id="digPreview">👁 Preview it</button>' +
+          '<button class="btn btn--navy" id="digTest">✉️ Send a test to me</button>' +
+          '<button class="btn btn--gold" id="digSend">📬 Send to all brothers</button>' +
+        '</div>' +
+        '<p class="form-status" id="digStatus"></p></div>';
+
+      wireNoteButtons(q, notes, function () { renderDigestTab(q); });
+
+      document.getElementById('digPreview').onclick = function () {
+        var st = document.getElementById('digStatus');
+        st.className = 'form-status'; st.textContent = 'Rendering…';
+        Z.digestPreview().then(function (html) {
+          var w = window.open('', '_blank');
+          if (w) { w.document.write(html); w.document.close(); st.textContent = ''; }
+          else { st.className = 'form-status err'; st.textContent = 'Allow pop-ups to see the preview.'; }
+        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); });
+      };
+
+      function runDigest(test, btn) {
+        var st = document.getElementById('digStatus');
+        if (!test && !confirm('Send the digest to EVERY brother with an account?\n\nSend yourself a test first if you haven\'t.')) return;
+        btn.disabled = true; var label = btn.textContent; btn.textContent = test ? 'Sending…' : 'Queueing…';
+        st.className = 'form-status'; st.textContent = '';
+        Z.digestSend(test).then(function (r) {
+          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
+          if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
+          st.className = 'form-status ok';
+          // Still queued rather than blasted, but the old "about 60 a day, finishes
+          // in N days" copy is no longer true: bulk moved to its own provider with a
+          // 300/day ceiling and the drain now takes 120 per tick, so the whole roster
+          // clears on the next quarter-hour.
+          st.textContent = test
+            ? '✓ Digest sent to your inbox.'
+            : '✓ Queued for ' + r.queued + ' brother' + (r.queued === 1 ? '' : 's') +
+              ' — they go out within about 15 minutes. You can close this page.';
+        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
+          .finally(function () { btn.disabled = false; btn.textContent = label; });
+      }
+      document.getElementById('digTest').onclick = function () { runDigest(true, this); };
+      document.getElementById('digSend').onclick = function () { runDigest(false, this); };
+    }).catch(function (e) {
+      q.innerHTML = '<p class="form-status err">' + esc(String(e && e.message)) + '</p>';
+    });
+  }
+
+  /* Approve / Edit / Discard, shared so the buttons behave identically wherever the
+     list is rendered. `after` re-renders whichever tab called it. */
+  function wireNoteButtons(q, notes, after) {
+    var st = document.getElementById('dnStatus');
+    document.getElementById('dnAdd').onclick = function () {
+      var title = document.getElementById('dnTitle').value.trim();
+      if (!title) { st.className = 'form-status err'; st.textContent = 'Say what changed first.'; return; }
+      st.className = 'form-status'; st.textContent = 'Adding…';
+      Z.digestNoteAdd({
+        title: title,
+        body: document.getElementById('dnBody').value.trim() || null,
+        link: document.getElementById('dnLink').value.trim() || null,
+        // You wrote it, so you have read it. Only the agent's notes start as drafts.
+        status: 'approved'
+      }).then(after)['catch'](function (e) {
+        st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
+      });
+    };
+
+    q.querySelectorAll('[data-dnok]').forEach(function (b) {
+      b.onclick = function () {
+        Z.digestNoteUpdate(b.dataset.dnok, { status: 'approved' }).then(after)
+          ['catch'](function (err) { alert((err && err.message) || 'Could not approve it.'); });
+      };
+    });
+
+    // Editing before approving is the point: the agent's wording is a proposal.
+    q.querySelectorAll('[data-dnedit]').forEach(function (b) {
+      b.onclick = function () {
+        var n = notes.filter(function (x) { return x.id === b.dataset.dnedit; })[0];
+        if (!n) return;
+        var wrap = treeModal('Edit before approving',
+          fld('What changed', 'title', n.title || '') +
+          fld('One line more', 'body', n.body || '') +
+          fld('Link', 'link', n.link || '') +
+          '<button class="btn btn--navy" data-save style="width:100%">Save &amp; approve</button>');
+        wrap.querySelector('[data-save]').onclick = function () {
+          var stw = wrap.querySelector('[data-status]');
+          var v = function (f) { return wrap.querySelector('[data-f="' + f + '"]').value.trim(); };
+          if (!v('title')) { stw.className = 'form-status err'; stw.textContent = 'Say what changed.'; return; }
+          stw.className = 'form-status'; stw.textContent = 'Saving…';
+          Z.digestNoteUpdate(n.id, {
+            title: v('title'), body: v('body') || null, link: v('link') || null, status: 'approved'
+          }).then(function () { wrap.close(); after(); })
+            ['catch'](function (err) {
+              stw.className = 'form-status err'; stw.textContent = (err && err.message) || 'That did not save.';
+            });
+        };
+      };
+    });
+
+    q.querySelectorAll('[data-dndel]').forEach(function (a) {
+      a.onclick = function (e) {
+        e.preventDefault();
+        if (!confirm('Remove this from the next digest?')) return;
+        Z.digestNoteDelete(a.dataset.dndel).then(after)
+          ['catch'](function (err) { alert((err && err.message) || 'Could not remove it.'); });
+      };
+    });
+  }
+
   /* ---------------- alumni fund tab ----------------
      The Venmo handle the Donations page sends brothers to. ADMIN ONLY, and
      deliberately so: this field decides where the chapter's money lands, which
@@ -658,10 +831,9 @@
 
   function renderEventsTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading events…</p>';
-    Promise.all([Z.eventsList(), Z.getSetting('announcement'), Z.digestNotesList()]).then(function (res) {
+    Promise.all([Z.eventsList(), Z.getSetting('announcement')]).then(function (res) {
       var rows = res[0];
       var ann = res[1] || { text: '', link: '', active: false };
-      var notes = res[2] || [];
       state.events = rows;
 
       var annCard =
@@ -689,73 +861,9 @@
           '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
-      /* Sits beside the banner because they are the same job in two places: the
-         banner tells brothers who visit, this tells brothers who don't. Written
-         when a thing ships rather than remembered on send day — the next REAL
-         digest sweeps up everything waiting and marks it used, so nothing goes
-         out twice and a rehearsal never eats the month's news. */
-      var waiting = notes.filter(function (n) { return !n.sent_at; });
-      var noteCard =
-        '<div class="acct-block" style="margin-bottom:1.4rem"><h4>✨ What\'s new — goes in the next digest</h4>' +
-        '<p class="form-note" style="margin-top:0">Add a line whenever something ships. The next monthly digest ' +
-          'collects everything waiting into a “New on the site” section at the top, then marks it used. ' +
-          'A preview or a test send never consumes them.</p>' +
-        '<div class="form-row">' +
-          '<div class="field"><label>What changed</label><input id="dnTitle" maxlength="120" placeholder="Executive Boards page"></div>' +
-          '<div class="field"><label>Link (optional)</label><input id="dnLink" maxlength="300" placeholder="https://zetabetaxi.com/eboards.html"></div>' +
-        '</div>' +
-        '<div class="field"><label>One line more (optional)</label>' +
-          '<input id="dnBody" maxlength="200" placeholder="every board since 1993, term by term"></div>' +
-        '<button class="btn btn--gold" id="dnAdd">Add to the next digest</button>' +
-        '<p class="form-status" id="dnStatus"></p>' +
-        (waiting.length
-          ? '<div class="stat-list" style="margin-top:1rem">' + waiting.map(function (n) {
-              return '<div class="stat-list__row"><b>' + esc(n.title) + '</b>' +
-                '<span>' + esc(n.body || '') + '</span>' +
-                '<em><a href="#" data-dndel="' + esc(n.id) + '">remove</a></em></div>';
-            }).join('') + '</div>'
-          : '<p class="admin-empty" style="margin-top:1rem">Nothing waiting — the next digest will be data only.</p>') +
-        '</div>';
-
-      q.innerHTML = annCard + noteCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
+      q.innerHTML = annCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
       document.getElementById('evNew').onclick = function () { openEventEdit(null); };
 
-      document.getElementById('dnAdd').onclick = function () {
-        var st = document.getElementById('dnStatus');
-        var title = document.getElementById('dnTitle').value.trim();
-        if (!title) { st.className = 'form-status err'; st.textContent = 'Say what changed first.'; return; }
-        st.className = 'form-status'; st.textContent = 'Adding…';
-        Z.digestNoteAdd({
-          title: title,
-          body: document.getElementById('dnBody').value.trim() || null,
-          link: document.getElementById('dnLink').value.trim() || null
-        }).then(function () { renderEventsTab(q); })
-          ['catch'](function (e) {
-            st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
-          });
-      };
-      q.querySelectorAll('[data-dndel]').forEach(function (a) {
-        a.onclick = function (e) {
-          e.preventDefault();
-          if (!confirm('Remove this from the next digest?')) return;
-          Z.digestNoteDelete(a.dataset.dndel).then(function () { renderEventsTab(q); })
-            ['catch'](function (err) { alert((err && err.message) || 'Could not remove it.'); });
-        };
-      });
-
-      function saveAnn(active) {
-        var text = document.getElementById('annText').value.trim();
-        var st = document.getElementById('annStatus');
-        if (active && !text) { st.className = 'form-status err'; st.textContent = 'Write a message first.'; return; }
-        Z.setSetting('announcement', { text: text, link: document.getElementById('annLink').value.trim(), active: active })
-          .then(function (r) {
-            if (r.error) { st.className = 'form-status err'; st.textContent = r.error.message; return; }
-            renderList();
-          });
-      }
-      document.getElementById('annShow').onclick = function () { saveAnn(true); };
-      var annHide = document.getElementById('annHide');
-      if (annHide) annHide.onclick = function () { saveAnn(false); };
       q.querySelectorAll('[data-ev]').forEach(function (el) {
         var ev = state.events.filter(function (x) { return x.id === el.dataset.ev; })[0];
         each(el, '[data-evedit]', function () { openEventEdit(ev); });
@@ -921,16 +1029,6 @@
         '<button class="btn btn--gold" id="invSend">Send invitations</button>' +
         '<p class="form-status" id="invStatus"></p></div>' +
 
-        '<div class="acct-block"><h4>📬 Monthly digest</h4>' +
-        '<p class="form-note" style="margin-top:0">A once-a-month email to brothers <b>with accounts</b> — upcoming events, new job posts, new brothers, gallery activity, and pledge-class anniversaries. ' +
-        'Every email has a one-click unsubscribe. Always send yourself a test first.</p>' +
-        '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
-          '<button class="btn btn--ghost" id="digPreview">👁 Preview it</button>' +
-          '<button class="btn btn--navy" id="digTest">✉️ Send a test to me</button>' +
-          '<button class="btn btn--gold" id="digSend">📬 Send to all brothers</button>' +
-        '</div>' +
-        '<p class="form-status" id="digStatus"></p></div>' +
-
         '<h3 class="stat-h">Invitations (' + sent + ' sent · ' + joined + ' joined)</h3>' +
         (rows.length
           ? rows.map(function (r) {
@@ -969,38 +1067,6 @@
           .finally(function () { btn.disabled = false; btn.textContent = 'Send invitations'; });
       };
 
-      document.getElementById('digPreview').onclick = function () {
-        var st = document.getElementById('digStatus');
-        st.className = 'form-status'; st.textContent = 'Rendering…';
-        Z.digestPreview().then(function (html) {
-          var w = window.open('', '_blank');
-          if (w) { w.document.write(html); w.document.close(); st.textContent = ''; }
-          else { st.className = 'form-status err'; st.textContent = 'Allow pop-ups to see the preview.'; }
-        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); });
-      };
-
-      function runDigest(test, btn) {
-        var st = document.getElementById('digStatus');
-        if (!test && !confirm('Send the digest to EVERY brother with an account?\n\nSend yourself a test first if you haven\'t.')) return;
-        btn.disabled = true; var label = btn.textContent; btn.textContent = test ? 'Sending…' : 'Queueing…';
-        st.className = 'form-status'; st.textContent = '';
-        Z.digestSend(test).then(function (r) {
-          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
-          if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
-          st.className = 'form-status ok';
-          // A test still sends immediately; the real digest is queued and
-          // trickles out at about 60/day so it can never eat the whole of
-          // Resend's daily allowance and block brothers' password resets.
-          st.textContent = test
-            ? '✓ Digest sent to your inbox.'
-            : '✓ Queued for ' + r.queued + ' brother' + (r.queued === 1 ? '' : 's') +
-              ' — about 60 go out per day, so this finishes in ' + Math.ceil(r.queued / 60) +
-              ' day' + (Math.ceil(r.queued / 60) === 1 ? '' : 's') + '. You can close this page.';
-        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
-          .finally(function () { btn.disabled = false; btn.textContent = label; });
-      }
-      document.getElementById('digTest').onclick = function () { runDigest(true, this); };
-      document.getElementById('digSend').onclick = function () { runDigest(false, this); };
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">' + esc(String(e)) + '</p>'; });
   }
 
@@ -2512,7 +2578,7 @@
         '<li><b>👁 Preview it</b> — see exactly what this month\'s email looks like. Sends nothing.</li>' +
         '<li><b>✉️ Send a test to me</b> — mails it only to you. Always do this first.</li>' +
         '<li><b>📬 Send to all brothers</b> — sends it now, ahead of schedule. Rarely needed.</li></ul>' +
-        '<p><b>Big sends trickle out, on purpose.</b> Our email service allows 100 messages a day for the whole site, and password-reset emails come out of that same allowance. So a message to every brother is <i>queued</i> and goes out at about 60 a day instead of all at once — that way a newsletter can never stop a brother resetting his password. You\'ll see “Queued for N brothers”; it finishes on its own and you can close the page. <b>Send a test to me</b> and <b>Preview</b> are instant, as always.</p>' +
+        '<p><b>Big sends are queued, not blasted.</b> Brotherhood email and password resets now go through <i>different</i> services, so a newsletter can never use up the allowance a brother needs to reset his password. A message to everyone is queued and clears on the next quarter-hour — you\'ll see “Queued for N brothers”, and you can close the page. <b>Send a test to me</b> and <b>Preview</b> are instant, as always.</p>' +
         '<p>Every email has a one-click unsubscribe, and brothers can toggle it themselves under <b>My Profile → Account</b>. If nothing happened in the chapter that month, the email says so gracefully rather than arriving empty.</p>') +
       sec('🏅 Update the Greek Excellence awards', '<p>The gold medallions on the homepage come from the <b>🏅 Awards</b> tab. When Geneseo announces next year\'s Greek awards: <b>+ Add award</b> → type the year (e.g. “2025–26”), pick the pillar, give it its title. The homepage switches to the newest year automatically and keeps older years as an archive you can flip through.</p>') +
       sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +

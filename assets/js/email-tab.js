@@ -157,14 +157,13 @@
           return Z.sendEmail(p).then(function (r) { return r.json(); });
         }).then(function (j) {
           if (!j) return;
-          // Queued, not sent on the spot: about 60 leave per day so a big send
-          // can never consume the whole daily allowance and block the password
-          // resets that share it. Nothing more to do — it finishes on its own.
+          // Still queued rather than blasted, but no longer a multi-day trickle:
+          // bulk moved to its own provider (300/day) with password resets on a
+          // separate one, and the drain takes 120 per tick every 15 minutes. The
+          // whole roster clears on the next quarter-hour.
           if (!j.queued) { say('⚠ ' + (j.error || (j.errors || []).join('; ') || 'Send failed.'), true); return; }
-          var days = Math.ceil(j.queued / 60);
           say('✓ Queued for ' + j.queued + ' brother' + (j.queued === 1 ? '' : 's') +
-              ' — about 60 go out per day, so this finishes in ' + days + ' day' + (days === 1 ? '' : 's') +
-              '. You can close this page.');
+              ' — they go out within about 15 minutes. You can close this page.');
         }).catch(function (e) { if (String(e.message) !== 'handled') say('⚠ Send failed.', true); })
           .finally(function () { busy(sendBtn, false, 'Send'); });
       };

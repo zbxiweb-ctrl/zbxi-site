@@ -92,10 +92,18 @@ async function build(adminUserId: string | null) {
     db(`forum_threads?category=eq.opportunities&created_at=gt.${encodeURIComponent(since)}&order=created_at.desc&limit=5&select=id,title`),
     db(`gallery_posts?created_at=gt.${encodeURIComponent(since)}&select=id`),
     db(`brothers?pledge_class=not.is.null&select=pledge_class`),
-    // What's new on the site. Unsent only, oldest first, so the section reads in the
-    // order things actually shipped. These are STAMPED as sent by the caller — and only
-    // on the real send; see the note where the enqueue happens.
-    db(`digest_notes?sent_at=is.null&order=created_at.asc&limit=12&select=id,title,body,link`),
+    // What's new on the site. APPROVED and unsent only, oldest first, so the section
+    // reads in the order things actually shipped.
+    //
+    // `status=eq.approved` is the guard, and it lives HERE rather than in a filter
+    // further down on purpose: the agent files these notes, so an unapproved draft is
+    // wording the owner has not read yet being sent to 113 brothers in his name. Not
+    // fetching it at all is a property of what this function can see; a filter applied
+    // later is something a future edit can reorder or drop.
+    //
+    // These are STAMPED as sent by the caller — and only on the real send; see the note
+    // where the enqueue happens.
+    db(`digest_notes?status=eq.approved&sent_at=is.null&order=created_at.asc&limit=12&select=id,title,body,link`),
   ]);
 
   // The webmaster's own admin row isn't a "new brother".
@@ -223,8 +231,9 @@ const UNSUB_MARK = "{{UNSUB}}";
 
 // Hand a whole send to the queue instead of blasting it. The body is stored ONCE
 // on email_batches; email_queue gets one row per brother. zbxi-drain releases
-// them at the cap claim_email_batch() enforces (60/day), which is what keeps
-// >= 40/day of the Resend allowance free for password resets. See upgrade35.sql.
+// them at the cap claim_email_batch() enforces (280/day). That cap no longer
+// reserves anything for password resets — those moved to a separate provider in
+// upgrade51 — it keeps us under Brevo's 300/day. See upgrade35 + upgrade51.
 async function enqueue(
   kind: string,
   subject: string,
@@ -373,9 +382,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // The real send is QUEUED, never blasted. There are ~100 recipients and
-    // Resend allows 100/day across the whole account, so a direct loop consumed
-    // the entire day and silently blocked every password reset until midnight.
+    // The real send is QUEUED, never blasted. Bulk goes through Brevo (300/day)
+    // while password resets stay on Resend, so the two can no longer starve each
+    // other — but the queue still exists, because one loop that dies halfway
+    // through 113 recipients has no idea where to resume.
     const batchId = await enqueue(
       "digest", subject, html(UNSUB_MARK),
       list.map((r) => ({ email: r.email, unsub: unsubBase + r.token })),
