@@ -142,26 +142,35 @@ async function build(adminUserId: string | null) {
   milestones.sort((a, z) => z.age - a.age || a.label.localeCompare(z.label));
   const annis = milestones.slice(0, 6).map((m) => `<b>${esc(m.label)}</b> turns ${m.age}`);
 
-  /* ---- Brothers who can help ----
-     23 open to mentoring, 19 to hiring, 29 to connecting, and not one of them had
-     ever been mentioned in an email. Two names make it a person to write to rather
-     than a statistic; the counts make it worth clicking through. */
+  /* ---- Mentoring ----
+     25 open to mentoring, 30 to connecting, and not one of them had ever been
+     mentioned in an email. Two names make it a person to write to rather than a
+     statistic; the counts make it worth clicking through.
+     upgrade55 retired the separate "hiring" flag — it folded into mentor, since both
+     said "I will help someone" — and added `mentee` for the brothers doing the asking.
+     The mentee count is stated even when it is small: the whole point of that list is
+     that somebody has to be first, and a digest that only ever counts volunteers keeps
+     it that way. */
   const openTo = (k: string) => (helpers as any[]).filter((b) => (b.open_to || []).includes(k));
-  const mentors = openTo("mentor"), hirers = openTo("hire"), connectors = openTo("connect");
+  const mentors = openTo("mentor"), mentees = openTo("mentee"), connectors = openTo("connect");
   const helpLines: string[] = [];
-  if (mentors.length || hirers.length || connectors.length) {
+  if (mentors.length || mentees.length || connectors.length) {
     const bits = [
-      mentors.length ? `<b>${mentors.length}</b> open to mentoring` : "",
-      hirers.length ? `<b>${hirers.length}</b> to hiring &amp; referrals` : "",
-      connectors.length ? `<b>${connectors.length}</b> to connecting` : "",
+      mentors.length ? `<b>${mentors.length}</b> offering to mentor` : "",
+      mentees.length ? `<b>${mentees.length}</b> looking for a mentor` : "",
+      connectors.length ? `<b>${connectors.length}</b> open to connecting` : "",
     ].filter(Boolean).join(" · ");
-    helpLines.push(`${bits} — <a href="${SITE}/mentor.html" style="color:#A07E2D">find a brother</a>`);
+    helpLines.push(`${bits} — <a href="${SITE}/mentoring.html" style="color:#A07E2D">see both lists</a>`);
     // Two examples, and only ones with a field worth naming — "Anthony, —" helps nobody.
     (mentors.length ? mentors : connectors)
       .filter((b) => b.occupation || b.industry)
       .slice(0, 2)
       .forEach((b) => helpLines.push(
         `${esc(String(b.full_name).split(" ")[0])} — ${esc(b.occupation || b.industry)}`));
+    // Nobody asking yet is worth one line, once — it is an invitation, not a shortfall.
+    if (mentors.length && !mentees.length) {
+      helpLines.push(`Nobody has asked for a mentor yet — ticking <b>Being a Mentee</b> on your profile is the whole opt-in.`);
+    }
   }
 
   /* ---- This month in chapter history ----
@@ -245,7 +254,7 @@ async function build(adminUserId: string | null) {
     (photos as any[]).length
       ? sec("📸 The gallery", [`${(photos as any[]).length} new photo${(photos as any[]).length === 1 ? "" : "s"} — <a href="${SITE}/gallery.html" style="color:#A07E2D">take a look</a>`])
       : "",
-    sec("🤝 Brothers who can help", helpLines),
+    sec("🤝 Mentoring", helpLines),
     sec("📜 This month in chapter history", histLines),
   ].filter(Boolean);
 

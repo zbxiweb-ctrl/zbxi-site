@@ -44,6 +44,44 @@
     client: client,
     adminEmail: (cfg.ADMIN_EMAIL || '').toLowerCase(),
 
+    /* ---- "I'm open to…" — the one definition (upgrade55) ---------------------
+       These three keys were previously re-typed from scratch in five files
+       (portal.js, profile-card.js, mentor-page.js, brothers-page.js, main.js)
+       plus the digest, each with its own wording — which is how "Hiring &
+       referrals" and "hiring & referrals" and "💼" ended up describing the same
+       flag differently depending on which page you were looking at.
+
+       `key` is what the database stores and what brothers_open_to_valid
+       enforces. Everything else is presentation, and the split exists because
+       the same flag has to read correctly in four different places:
+         label — the checkbox on your own profile ("Being a Mentor")
+         desc  — the line under that checkbox, why you would tick it
+         chip  — the badge on your profile card, seen by other brothers
+         title — the tooltip on the little icon in a roster grid
+       A mentor is described from HIS side; a mentee from his own side too —
+       he is the one asking, and the copy should not make that sound like a
+       lesser thing. */
+    OPEN_TO: [
+      { key: 'mentor', icon: '🎓',
+        label: 'Being a Mentor',
+        desc: 'Career advice, industry questions, a look at a résumé, or a foot in the door.',
+        chip: '🎓 Open to mentoring', title: 'mentoring' },
+      { key: 'mentee', icon: '🌱',
+        label: 'Being a Mentee',
+        desc: 'Hiring, referrals, advice — you\'re the one asking, and that\'s the point.',
+        chip: '🌱 Looking for a mentor', title: 'looking for a mentor' },
+      { key: 'connect', icon: '🤝',
+        label: 'Connecting',
+        desc: 'No agenda. Grab a coffee, catch a game, say hello in a new city.',
+        chip: '🤝 Open to connecting', title: 'connecting' }
+    ],
+    // Lookup by key, for the render paths that iterate a brother's own flags.
+    openTo: function (key) {
+      var all = this.OPEN_TO;
+      for (var i = 0; i < all.length; i++) if (all[i].key === key) return all[i];
+      return null;
+    },
+
     /* ---- password-recovery latch (see the block above) ---- */
     // True from the moment a reset link lands until the password is actually
     // changed — survives the hash scrub AND a full page reload.

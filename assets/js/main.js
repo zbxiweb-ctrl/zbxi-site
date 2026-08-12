@@ -65,7 +65,7 @@
     }
   }
 
-  /* ---- Members-only teasers: Find a Mentor + Worldwide Map ----
+  /* ---- Members-only teasers: Mentoring + Worldwide Map ----
      Both pages were reachable from exactly one place on the whole site before
      this. Same three-branch shape as the gallery teaser above.
 
@@ -103,7 +103,7 @@
       '<p class="center" style="margin-top:1.8rem"><a class="btn btn--navy" href="' + href + '">' + cta + '</a></p>';
   }
   function homeTeasersLocked() {
-    homeLock('mentorTeaser', MENTOR_LOCK, 'mentor.html', 'Find a Mentor');
+    homeLock('mentorTeaser', MENTOR_LOCK, 'mentoring.html', 'Mentoring');
     homeLock('mapTeaser', MAP_LOCK, 'map.html', 'Open the map');
   }
 
@@ -129,9 +129,9 @@
             homeStats('mentorTeaser', [
               [mentors.length, mentors.length === 1 ? 'brother open to mentoring' : 'brothers open to mentoring'],
               [nf, nf === 1 ? 'field' : 'fields']
-            ], 'mentor.html', 'Find a mentor →');
+            ], 'mentoring.html', 'Open Mentoring →');
           } else {
-            homeLock('mentorTeaser', 'Nobody has ticked “open to mentoring” yet — raise your hand in My Profile and you will be the first.', 'mentor.html', 'Open Find a Mentor');
+            homeLock('mentorTeaser', 'Nobody has ticked “Being a Mentor” yet — raise your hand in My Profile and you will be the first.', 'mentoring.html', 'Open Mentoring');
           }
 
           if (nc) {

@@ -25,10 +25,17 @@
   }
 
   // "Open to" badges — the networking flags brothers set on their profile.
-  var OPEN_LABEL = { mentor: '🎓 Open to mentoring', hire: '💼 Hiring & referrals', connect: '🤝 Open to connecting' };
+  // Wording comes from ZBXI.OPEN_TO so this card and the profile checkbox that
+  // set the flag can never describe it differently (upgrade55).
   function openChips(d) {
-    var chips = (d.open_to || []).filter(function (k) { return OPEN_LABEL[k]; })
-      .map(function (k) { return '<span class="ot-chip">' + OPEN_LABEL[k] + '</span>'; }).join('');
+    var Z = window.ZBXI;
+    if (!Z || !Z.OPEN_TO) return '';
+    // Iterate the CANON, not the brother's array: upgrade55 stores open_to sorted
+    // alphabetically, which would lead with "connecting" and bury the mentoring
+    // offer. Mentor → Mentee → Connecting is the order that reads as a sentence.
+    var mine = d.open_to || [];
+    var chips = Z.OPEN_TO.filter(function (o) { return mine.indexOf(o.key) !== -1; })
+      .map(function (o) { return '<span class="ot-chip">' + o.chip + '</span>'; }).join('');
     return chips ? '<div class="ot-chips">' + chips + '</div>' : '';
   }
 

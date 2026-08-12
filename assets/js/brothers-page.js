@@ -56,9 +56,12 @@
       ? '<img src="' + esc(b.photo_url) + '" alt="">'
       : esc(initials(b.full_name));
     var extra = [b.city, b.occupation, b.company].filter(Boolean).join(' · ');
-    var OT_IC = { mentor: '🎓', hire: '💼', connect: '🤝' };
-    var ot = (b.open_to || []).filter(function (k) { return OT_IC[k]; })
-      .map(function (k) { return '<i class="bro-card__ot" title="Open to ' + (k === 'mentor' ? 'mentoring' : k === 'hire' ? 'hiring & referrals' : 'connecting') + '">' + OT_IC[k] + '</i>'; }).join('');
+    // Icons and wording from ZBXI.OPEN_TO (upgrade55) — canon order, not the
+    // brother's stored order, which is alphabetical.
+    var mine = b.open_to || [];
+    var ot = ((window.ZBXI && window.ZBXI.OPEN_TO) || [])
+      .filter(function (o) { return mine.indexOf(o.key) !== -1; })
+      .map(function (o) { return '<i class="bro-card__ot" title="Open to ' + esc(o.title) + '">' + o.icon + '</i>'; }).join('');
     return '<button class="bro-card' + (reg ? ' bro-card--live' : '') + '" data-id="' + b.id + '">' +
       '<span class="bro-card__av">' + av + (reg ? '<i class="bro-card__dot"></i>' : '') + '</span>' +
       '<span class="bro-card__meta"><b>' + esc(b.full_name) + (ot ? ' <span class="bro-card__ots">' + ot + '</span>' : '') + '</b>' +

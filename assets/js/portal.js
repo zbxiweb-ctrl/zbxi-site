@@ -252,7 +252,7 @@
     // Both of these existed for months with a single link to them anywhere on
     // the site — the collapsed account submenu. This is the grid that tells a
     // brother what he actually gets, so they belong in it.
-    { ic: '🧭', title: 'Find a Mentor', blurb: 'Alumni who volunteered to help — by field, company, and profession.', href: 'mentor.html' },
+    { ic: '🧭', title: 'Mentoring', blurb: 'Brothers offering to help, and brothers asking — by field, company, and profession.', href: 'mentoring.html' },
     // No real city named here: this grid renders to SIGNED-OUT visitors too, and
     // with 37 cities across the brothers who've filled one in, most hold exactly
     // one person — naming one points at him.
@@ -809,9 +809,15 @@
       INDUSTRIES.map(function (i) { return '<option' + (pr.industry === i ? ' selected' : '') + '>' + i + '</option>'; })
     ).join('');
     var openTo = pr.open_to || [];
-    function openBox(key, label) {
-      return '<label class="pref-box"><input type="checkbox" name="open_' + key + '"' +
-        (openTo.indexOf(key) !== -1 ? ' checked' : '') + '> ' + label + '</label>';
+    // The three options and their wording live in ZBXI.OPEN_TO (upgrade55) so the
+    // checkbox a brother ticks and the badge other brothers see can never disagree.
+    var OPEN_TO = (window.ZBXI && window.ZBXI.OPEN_TO) || [];
+    function openBox(o) {
+      return '<label class="pref-box pref-box--rich">' +
+        '<input type="checkbox" name="open_' + o.key + '"' +
+        (openTo.indexOf(o.key) !== -1 ? ' checked' : '') + '>' +
+        '<span class="pref-box__txt"><b>' + o.icon + ' ' + esc(o.label) + '</b>' +
+        '<small>' + esc(o.desc) + '</small></span></label>';
     }
 
     // Profile completion meter — an empty profile is invisible to the network.
@@ -886,9 +892,9 @@
             fld('Company / organization', 'company', pr.company, 'text', false, 'e.g. Deloitte') +
             '<div class="field"><label>Industry</label><select name="industry">' + indOpts + '</select></div>' +
           '</div>' +
-          '<div class="field"><label>I\'m open to…</label><div class="pref-row">' +
-            openBox('mentor', '🎓 Mentoring actives') + openBox('hire', '💼 Hiring & referrals') + openBox('connect', '🤝 Connecting') +
-          '</div><p class="form-note" style="margin:.4rem 0 0">These show as badges on your profile so brothers know they can reach out.</p></div>' +
+          '<div class="field"><label>I\'m open to…</label><div class="pref-row pref-row--stack">' +
+            OPEN_TO.map(openBox).join('') +
+          '</div><p class="form-note" style="margin:.4rem 0 0">Tick as many as fit — they show as badges on your profile, and they are what put you on the <a href="mentoring.html">Mentoring</a> page. Nobody is listed there without ticking a box.</p></div>' +
         '</fieldset>' +
         '<fieldset class="pf-group"><legend>Your story</legend>' +
           '<div class="field"><label>Short quote</label><input name="quote" value="' + esc(pr.quote) + '" maxlength="140"></div>' +
@@ -976,7 +982,10 @@
             linkedin: f.linkedin.value.trim() || null,
             company: f.company.value.trim() || null,
             industry: f.industry.value || null,
-            open_to: ['mentor', 'hire', 'connect'].filter(function (k) { return f['open_' + k].checked; }),
+            // Read back from the same list that rendered the boxes, so adding a fourth
+            // option is one edit in ZBXI.OPEN_TO rather than three files that must agree.
+            open_to: OPEN_TO.map(function (o) { return o.key; })
+              .filter(function (k) { return f['open_' + k] && f['open_' + k].checked; }),
             contact_prefs: chosen.length ? chosen.join(',') : null,
             quote: f.quote.value.trim() || null,
             bio: f.bio.value.trim() || null,

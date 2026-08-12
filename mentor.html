@@ -3,134 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Find a Mentor · Zeta Beta Xi</title>
-  <meta name="description" content="Search Zeta Beta Xi alumni by skill, field, or profession — members only." />
-  <link rel="canonical" href="https://zetabetaxi.com/mentor.html" />
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="Find a Mentor · Zeta Beta Xi" />
-  <meta property="og:description" content="Search Zeta Beta Xi alumni by skill, field, or profession — members only." />
-  <meta property="og:url" content="https://zetabetaxi.com/mentor.html" />
-  <meta property="og:image" content="https://zetabetaxi.com/assets/img/crest-main.jpg" />
-  <meta name="twitter:card" content="summary" />
+  <title>Mentoring · Zeta Beta Xi</title>
+  <!-- This page moved to mentoring.html in upgrade55. The stub stays because the old
+       address is already sitting in digest emails that went out to brothers — a 404 in
+       an email nobody can edit is a dead end for as long as that inbox exists.
+       canonical points at the new page so search engines index one of them, not two.
+       The meta refresh is the fallback for a browser with JS off; location.replace
+       runs first and keeps the old URL out of the back-button history, so "back"
+       returns to where the brother actually came from instead of bouncing him here. -->
+  <link rel="canonical" href="https://zetabetaxi.com/mentoring.html" />
+  <meta name="robots" content="noindex, follow" />
+  <meta http-equiv="refresh" content="0; url=mentoring.html" />
   <link rel="icon" href="assets/img/favicon.png" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="preconnect" href="https://wqhhomzbeeveuaskirfl.supabase.co" crossorigin />
-  <link rel="stylesheet" href="assets/css/fonts.css" />
-  <script>try{var _t=localStorage.getItem("zbxi-theme")||"light";document.documentElement.dataset.theme=_t;}catch(e){}</script>
-  <script>try{if(window.matchMedia&&matchMedia("(prefers-reduced-motion: no-preference)").matches)document.documentElement.classList.add("fx");}catch(e){}</script>
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <script>try{location.replace('mentoring.html' + location.search + location.hash);}catch(e){location.href='mentoring.html';}</script>
 </head>
-<body class="page-body">
-
-  <header class="nav">
-    <div class="wrap nav__inner">
-      <a class="brand" href="index.html" aria-label="Zeta Beta Xi home">
-        <img class="crest-badge" width="85" height="128" src="assets/img/crest-sm.png" alt="Zeta Beta Xi crest" />
-        <span class="brand__txt">ΖΒΞ<small>EST. 1993 · GENESEO</small></span>
-      </a>
-      <nav class="nav__links" id="navLinks">
-        <a href="index.html#about">About</a>
-        <div class="nav__group nav__group--on">
-          <button type="button" class="nav__group-btn" aria-haspopup="true">Brothers <em class="nav__caret">▾</em></button>
-          <div class="nav__group-menu">
-            <a href="active.html">Active</a>
-            <a href="alumni.html">Alumni</a>
-            <a href="eboards.html">Executive Boards</a>
-            <a href="donations.html">Alumni Fund</a>
-            <a href="gallery.html">Gallery</a>
-            <a href="board.html">Board</a>
-            <a href="mentor.html" class="on">Find a Mentor</a>
-            <a href="map.html">Worldwide Map</a>
-          </div>
-        </div>
-        <a href="family-tree.html">Family Tree</a>
-        <a href="events.html">Events</a>
-        <a href="index.html#contact">Contact</a>
-      </nav>
-      <div class="nav__account" id="navAccount"></div>
-      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
-    </div>
-  </header>
-
-  <main class="page-main">
-    <section class="page-hero">
-      <div class="wrap center">
-        <p class="eyebrow">Brothers Only</p>
-        <h1 class="section-title" style="color:var(--gold-bright)">Find a Mentor</h1>
-        <hr class="rule" />
-        <p class="lede">Thirty years of alumni, one search away — by skill, field, or profession.</p>
-      </div>
-    </section>
-
-    <section class="section" style="padding-top:3rem">
-      <div class="wrap">
-        <div id="mentorGate"></div>
-        <div id="mentorSec" style="display:none">
-          <p class="lede" style="margin-bottom:1rem">Brothers open to mentoring appear first. <button type="button" class="net-help" id="netHelpBtn">❓ How networking works</button></p>
-          <div class="mentor-bar">
-            <input class="admin-search" id="mentorSearch" type="search" placeholder="Try “finance”, “law school”, “engineer”, “marketing”…" />
-            <button type="button" class="btn btn--gold" id="mentorReqBtn" style="display:none">🎓 Request a mentor</button>
-          </div>
-          <div class="page-filters" style="margin-top:.8rem"><select class="page-filter" id="mentorFilter"></select></div>
-          <div class="bro-grid" id="mentorGrid" style="margin-bottom:3rem"></div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <div class="wrap">
-      <img class="crest-badge" width="85" height="128" src="assets/img/crest-sm.png" alt="Zeta Beta Xi crest" />
-      <p class="motto">Brothers of Zeta Beta Xi</p>
-      <nav class="footer__nav">
-        <a href="index.html#about">About</a><a href="active.html">Active</a><a href="alumni.html">Alumni</a><a href="eboards.html">Executive Boards</a><a href="donations.html">Alumni Fund</a><a href="family-tree.html">Family Tree</a><a href="events.html">Events</a><a href="gallery.html">Gallery</a><a href="board.html">Board</a><a href="mentor.html">Find a Mentor</a><a href="map.html">Worldwide Map</a><a href="index.html#brothers-portal">Log In / Sign Up</a><a href="index.html#contact">Contact</a>
-      </nav>
-      <small>ΖΒΞ · Established 1993 · SUNY Geneseo, NY · © <span id="year"></span> Zeta Beta Xi. All rights reserved.</small>
-      <small class="footer__disclaimer">Zeta Beta Xi is an independent, self-governed local fraternity and a registered student organization at SUNY Geneseo. It is not owned, operated, or officially endorsed by SUNY Geneseo.</small>
-      <small class="footer__legal"><a href="privacy.html">Privacy Policy</a> · <a href="terms.html">Terms of Use</a> · <a href="accessibility.html">Accessibility</a></small>
-    </div>
-  </footer>
-
-  <!-- Brother profile modal (mentor cards open it) -->
-  <div class="bmodal" id="brotherModal" aria-hidden="true">
-    <div class="bmodal__card">
-      <button class="bmodal__close" data-close aria-label="Close">✕</button>
-      <div class="bmodal__head">
-        <div class="bmodal__avatar" data-f="avatar">ΖΒΞ</div>
-        <div>
-          <h3 data-f="name">Brother</h3>
-          <p class="bmodal__sub" data-f="sub"></p>
-        </div>
-      </div>
-      <div class="bmodal__body" data-f="body"></div>
-    </div>
-  </div>
-
-  <!-- My Profile / Account popup (opened from the header menu) -->
-  <div class="pmodal" id="profileModal" aria-hidden="true">
-    <div class="pmodal__card card-form">
-      <button class="pmodal__close" data-pm-close aria-label="Close">✕</button>
-      <div data-pm-body><p class="form-note">Loading…</p></div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.2" integrity="sha384-sgcvElP/LlNRtORGYFLO/9K/bENcpJK19HgvqslWXog6d8f/Va4TpltGiBlGntCM" crossorigin="anonymous"></script>
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/turnstile.js"></script>
-  <script src="assets/js/supabase-client.js"></script>
-  <script src="assets/js/mfa-guard.js"></script>
-  <script src="assets/js/page-shell.js"></script>
-  <script src="assets/js/header-account.js"></script>
-  <script src="assets/js/theme-toggle.js"></script>
-  <script src="assets/js/a11y.js"></script>
-  <script src="assets/js/ask-modal.js"></script>
-  <script src="assets/js/portal.js"></script>
-  <script src="assets/js/password-peek.js"></script>
-  <script src="assets/js/notify.js"></script>
-  <script src="assets/js/profile-card.js"></script>
-  <script src="assets/js/mentor-page.js"></script>
-  <script src="assets/js/scroll-fx.js"></script>
+<body>
+  <p style="font-family:system-ui,sans-serif;padding:2rem;text-align:center">
+    Find a Mentor is now <a href="mentoring.html">Mentoring</a>.
+  </p>
 </body>
 </html>

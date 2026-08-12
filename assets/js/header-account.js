@@ -29,7 +29,7 @@
     { ic: '🎁', label: 'Alumni Fund',  href: 'donations.html' },
     { ic: '📅', label: 'Events',      href: 'events.html' },
     { ic: '🌳', label: 'Family Tree', href: 'family-tree.html' },
-    { ic: '🧭', label: 'Find a Mentor', href: 'mentor.html' },
+    { ic: '🧭', label: 'Mentoring', href: 'mentoring.html' },
     { ic: '🖼', label: 'Gallery',     href: 'gallery.html' },
     { ic: '🗺', label: 'Worldwide Map', href: 'map.html' }
   ];
@@ -141,7 +141,7 @@
         // Starts COLLAPSED, and remembers what you chose.
         //
         // It used to start open, because at the time this submenu was the only
-        // route to Find a Mentor and Worldwide Map and a brother can't guess
+        // route to Mentoring and Worldwide Map and a brother can't guess
         // what's behind a closed accordion. That stopped being true: the members
         // pages carry their own top nav (Active / Alumni / Gallery / Board / Find
         // a Mentor / Worldwide Map), the footer repeats those links on EVERY
