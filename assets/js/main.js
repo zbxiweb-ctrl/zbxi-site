@@ -84,7 +84,7 @@
      and geocodes sequentially at <=1 request/sec, so 37 cities would be ~40
      seconds of Nominatim traffic on every single homepage load — and an OSM
      usage-policy problem. A teaser is a count and a button. */
-  var MENTOR_LOCK = 'Brothers across 320+ alumni have volunteered to mentor, hire and refer. Sign in as a verified brother to search them by field and profession.';
+  var MENTOR_LOCK = 'Brothers have volunteered to mentor, and others have asked for one. Sign in as a verified brother to see both lists.';
   var MAP_LOCK = 'Brothers have landed all over the world since 1993. Sign in as a verified brother to see the map and find who is near you.';
 
   function homeLock(id, msg, href, cta) {
