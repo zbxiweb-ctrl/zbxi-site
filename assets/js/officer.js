@@ -76,6 +76,23 @@
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },
     { perm: 'suggestions.respond', id: 'suggest',    ic: '💡', label: 'Suggestions', render: renderSuggestTab },
     { perm: 'gallery.moderate',    id: 'gallery',    ic: '🖼', label: 'Gallery',     render: renderGalleryTab },
+    /* Three powers whose CONTROLS live on the page itself, not in this console. They had
+       no tab and no card, so a president holding one had to already know it existed —
+       the permission was real and invisible. These are signposts, deliberately not second
+       editors: building one here would mean two screens writing the same rows, and the
+       page is where you can see what you are changing. */
+    { perm: 'gallery.albums',      id: 'albums',     ic: '🗂', label: 'Gallery sections', render: function (q) {
+        onPage(q, { href: 'gallery.html', link: 'Open the gallery',
+          what: 'Create, rename and delete the gallery sections.',
+          how: 'Sign in on the main site and open the Gallery. The section controls appear above the photos for you. Deleting a section keeps its photos — they move to Miscellaneous.' }); } },
+    { perm: 'polls.moderate',      id: 'polls',      ic: '📊', label: 'Polls',       render: function (q) {
+        onPage(q, { href: 'board.html', link: 'Open the Board',
+          what: 'Edit or delete any brother\'s poll.',
+          how: 'Open the Board and find the poll. Edit and delete links appear on it for you. Every brother can already manage his own — this is only for cleaning up someone else\'s.' }); } },
+    { perm: 'eboard.manage',       id: 'eboards',    ic: '👑', label: 'Past boards', render: function (q) {
+        onPage(q, { href: 'eboards.html', link: 'Open Executive Boards',
+          what: 'Build the chapter\'s history — a board per term, its officers and chairs.',
+          how: 'Open the Executive Boards page. Editing controls appear on each board for you. This is HISTORY only: it cannot make anyone an officer today, and it cannot touch the webmaster\'s own record.' }); } },
     // Shared composer (email-tab.js); the zbxi-email fn re-checks the grant
     // server-side, so this entry only decides whether the tab is visible.
     { perm: 'email.send',          id: 'email',      ic: '📧', label: 'Email',       render: function (q) { window.ZBXIEmailTab.render(q); } },
@@ -83,6 +100,18 @@
     // job with a queue. Read-only, and the serious actions only. (upgrade46)
     { perm: 'history.view',        id: 'history',    ic: '📜', label: 'History',     render: renderHistoryTab }
   ];
+
+  /* A tool whose controls live on the site itself. Says what the power is, where it is,
+     and sends you there — rather than pretending the console can do it. */
+  function onPage(q, o) {
+    q.innerHTML =
+      '<p class="admin-hint">' + esc(o.what) + '</p>' +
+      '<div class="acct-block"><h4>Where it lives</h4>' +
+        '<p class="form-note" style="margin-top:0">' + esc(o.how) + '</p>' +
+        '<div class="admin-addbar"><a class="btn btn--gold" href="' + esc(o.href) + '" target="_blank" rel="noopener">' +
+          esc(o.link) + ' →</a></div>' +
+      '</div>';
+  }
 
   var state = { seat: null, seatLabel: '', grants: {}, tools: [], tab: null, events: [], verified: [] };
 
@@ -311,6 +340,11 @@
     if (have.gallery) setMeta('gallery', 'Moderate →');
     if (have.email) setMeta('email', 'Compose →');
     if (have.history) setMeta('history', 'Look something up →');
+    // The three whose controls are on the page — the card says so rather than showing
+    // a count it cannot get, and "…" would just look like something failed to load.
+    if (have.albums) setMeta('albums', 'On the gallery page →');
+    if (have.polls) setMeta('polls', 'On the Board →');
+    if (have.eboards) setMeta('eboards', 'On the boards page →');
   }
 
   /* ================= APPROVALS (upgrade44) =================================

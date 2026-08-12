@@ -775,7 +775,18 @@
         .then(function (r) { return (r.data || []).map(function (x) { return x.user_id; }); });
     },
     committeeCreate: function (name) { return client.from('committees').insert({ name: name }).select().single(); },
-    committeeRename: function (id, name) { return client.from('committees').update({ name: name }).eq('id', id); },
+    // .select() is not decoration: without it PostgREST answers 204 whether the row was
+    // updated or the row rules refused, so a refusal is indistinguishable from success.
+    // This verb had no caller until the Rename button existed; now that it does, an
+    // empty result is treated as the failure it is.
+    committeeRename: function (id, name) {
+      return client.from('committees').update({ name: name }).eq('id', id).select()
+        .then(function (r) {
+          if (r.error) throw r.error;
+          if (!r.data || !r.data.length) throw new Error('That committee could not be renamed.');
+          return r.data[0];
+        });
+    },
     committeeDelete: function (id) { return client.from('committees').delete().eq('id', id); },
     committeeAdd: function (cid, userId) {
       return client.from('committee_members').upsert({ committee_id: cid, user_id: userId });

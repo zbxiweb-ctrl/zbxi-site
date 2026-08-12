@@ -1760,6 +1760,7 @@
             '<div class="admin-row__info"><b>' + esc(c.name) + '</b><span data-commcount>…</span></div>' +
             '<div class="admin-row__act">' +
               '<button class="btn btn--ghost" data-members>Members</button>' +
+              '<button class="btn btn--ghost" data-rename>Rename</button>' +
               '<button class="btn btn--danger" data-del>Delete</button>' +
             '</div></div>';
         }).join('') : '<p class="admin-empty">No committees yet.</p>');
@@ -1775,6 +1776,18 @@
           el.querySelector('[data-commcount]').textContent = ids.length + ' member' + (ids.length === 1 ? '' : 's');
         });
         each(el, '[data-members]', function () { openCommitteeMembers(c); });
+        // Z.committeeRename has existed since the committees feature shipped; there was
+        // simply never a button calling it, while the officer permission grid advertised
+        // "create or RENAME committees". The power was real and unreachable.
+        each(el, '[data-rename]', function () {
+          ZBXIAsk.text({ title: 'Rename committee', value: c.name, ok: 'Save' }, function (name) {
+            name = (name || '').trim();
+            if (!name || name === c.name) return;
+            Z.committeeRename(c.id, name)
+              .then(function () { renderList(); })
+              ['catch'](function (e) { alert((e && e.message) || 'Could not rename that committee.'); });
+          });
+        });
         each(el, '[data-del]', function () {
           if (confirm('Delete "' + c.name + '"? Its private threads are deleted too.')) Z.committeeDelete(c.id).then(function () { renderList(); });
         });
@@ -2632,12 +2645,17 @@
             '<p class="sug-card__body">' + esc(s.body) + '</p>' +
             '<small>' + stamp(s.created_at) + (s.responded_at ? ' · replied ' + stamp(s.responded_at) : '') + '</small>' +
             (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +
+            // Delete is the webmaster's alone — the officer console offers Respond and
+            // Archive only, and its permission description says so. Both places now say
+            // the same thing, which is what makes "cannot delete" mean anything.
             (showActions
               ? '<div class="sug-card__act">' +
                   '<textarea data-resp placeholder="Write a response — the brother gets a 🔔"></textarea>' +
                   '<div><button class="btn btn--gold" data-send>Respond</button>' +
-                  '<button class="btn btn--ghost" data-arch>Archive</button></div></div>'
-              : '<div class="sug-card__act"><button class="btn btn--ghost" data-arch>Archive</button></div>') +
+                  '<button class="btn btn--ghost" data-arch>Archive</button>' +
+                  '<button class="btn btn--danger" data-del>Delete</button></div></div>'
+              : '<div class="sug-card__act"><div><button class="btn btn--ghost" data-arch>Archive</button>' +
+                  '<button class="btn btn--danger" data-del>Delete</button></div></div>') +
           '</div>';
         }).join('');
       }
@@ -2658,6 +2676,17 @@
         var arch = el.querySelector('[data-arch]');
         if (arch) arch.onclick = function () {
           Z.suggestionUpdate(id, { status: 'archived' }).then(function () { renderList(); });
+        };
+        // Z.suggestionDelete has always existed; nothing called it, while two on-screen
+        // notes told the reader that deleting "stays with the webmaster". Archive is the
+        // everyday action — this is for a suggestion that should not be kept at all.
+        var del = el.querySelector('[data-del]');
+        if (del) del.onclick = function () {
+          if (!confirm('Delete this suggestion permanently?\n\nArchiving hides it and keeps the record; deleting cannot be undone.')) return;
+          Z.suggestionDelete(id).then(function (r) {
+            if (r && r.error) { alert(r.error.message || 'Could not delete that.'); return; }
+            renderList();
+          });
         };
       });
     });
@@ -2826,7 +2855,7 @@
         '<li>Members have their own “❓ How networking works” guide on the Mentoring page.</li></ul>' +
         '<p><b>🎓 Request a mentor:</b> an active picks a field on the Mentoring page and up to <b>five</b> brothers who volunteered to mentor in it get a 🔔 with his name and email. Capped and rate-limited (one request per brother per week) so nobody gets spammed. If nobody has raised the mentoring flag in that field yet, he\'s told to reach out directly instead.</p>') +
       sec('📅 Run the chapter calendar', '<p>The calendar is <b>members-only</b> — the public sees a sign-in card instead. Two ways to add events:</p><ul>' +
-        '<li><b>Right on the calendar</b> (easiest): sign in on the homepage, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
+        '<li><b>Right on the calendar</b> (easiest): sign in and open the <b>Events</b> page, click any day, press <b>＋ Add event on this day</b>. Use ✎ Edit / 🗑 Delete on an event to change it in place.</li>' +
         '<li><b>Here in the console</b>: <b>Events</b> tab → <b>+ New event</b> (same fields, plus the announcement banner editor).</li></ul>' +
         '<p>Tick <b>All-day</b> for things without a start time. If you type a location, it becomes a map link automatically. Brothers RSVP with one tap so you know who\'s coming.</p>') +
       sec('✉️ Invite brothers (the most valuable thing you can do)', '<p>Most brothers on the tree have <b>no account</b> — so they never see the gallery, the board, the directory, or the digest. The <b>✉️ Invite</b> tab fixes that:</p><ol>' +
@@ -2835,12 +2864,31 @@
         '<li>The link is smart: if he already has an account it opens <b>Log in</b>; if not, it opens <b>Create account</b> with his email filled in.</li>' +
         '<li>When he signs up he lands in your <b>Pending</b> tab — approve him once. The invite list marks him <b>● Joined</b>.</li></ol>' +
         '<p>Only invite brothers you know. This is a personal invitation, not a mailing list.</p>') +
-      sec('📬 The monthly digest', '<p>Once a month every brother <i>with an account</i> gets one email: upcoming events, new job posts, new brothers, gallery activity, and pledge-class anniversaries. It sends itself automatically — you don\'t have to do anything.</p><ul>' +
+      sec('📬 The monthly digest', '<p>Once a month every brother <i>with an account</i> gets one email: upcoming events, new job posts, new brothers, gallery activity, pledge-class anniversaries, mentoring, and anything new on the site. It sends itself automatically — but there is <b>one thing that needs you</b>, below.</p>' +
+        '<p><b>✨ Approve what it says about new features.</b> Everything in the 📬 <b>Digest</b> tab. When something new ships, a short note about it is filed there as a <b>draft</b> — you read it, then <b>Approve</b>, <b>Edit</b> the wording, or <b>Discard</b> it. <b>A draft is never sent.</b> The digest fetches only approved notes, so silence on your part means that month simply has no "New on the site" section — it can never send words you have not read. You can also write your own note, which arrives already approved because you wrote it.</p>' +
+        '<p>The send controls live in the ✉️ <b>Invite</b> tab:</p><ul>' +
         '<li><b>👁 Preview it</b> — see exactly what this month\'s email looks like. Sends nothing.</li>' +
         '<li><b>✉️ Send a test to me</b> — mails it only to you. Always do this first.</li>' +
         '<li><b>📬 Send to all brothers</b> — sends it now, ahead of schedule. Rarely needed.</li></ul>' +
         '<p><b>Big sends are queued, not blasted.</b> Brotherhood email and password resets now go through <i>different</i> services, so a newsletter can never use up the allowance a brother needs to reset his password. A message to everyone is queued and clears on the next quarter-hour — you\'ll see “Queued for N brothers”, and you can close the page. <b>Send a test to me</b> and <b>Preview</b> are instant, as always.</p>' +
         '<p>Every email has a one-click unsubscribe, and brothers can toggle it themselves under <b>My Profile → Account</b>. If nothing happened in the chapter that month, the email says so gracefully rather than arriving empty.</p>') +
+      /* Seven tabs had real power and no explanation in here at all. A guide that
+         silently omits a tab is worse than one that admits it is thin: the webmaster
+         concludes the tab is not for him. */
+      sec('🎁 The Alumni Fund', '<p>The <b>🎁 Alumni Fund</b> tab holds one thing: the Venmo handle brothers send to, and a switch for whether the page is visible at all. It is the alumni president\'s <i>personal</i> Venmo, so treat changing it as his decision, not yours.</p>' +
+        '<p><b>Only you can change it.</b> The alumni president can see the handle in his own console but cannot edit it — that is enforced in the database, not just hidden. If you turn the page off, brothers see nothing rather than a blank place to send money.</p>') +
+      sec('🎖 Title requests', '<p>A brother can ask for an office he held to be recorded — he picks the title, the season and the year. It shows on nobody\'s profile until you approve it in the <b>🎖 Title requests</b> tab (the number tells you how many are waiting).</p>' +
+        '<p><b>One thing to know:</b> an approved request records the title but attaches it to <i>no board</i>. It shows on his profile and on no Executive Board. The 👑 <b>E-Board</b> tab lists these under <b>Not on any board</b> so you can put them on the right board on the Executive Boards page — or leave them, which is fine; they are correct on the profile either way.</p>') +
+      sec('📧 Email the brothers', '<p>The <b>📧 Email</b> tab writes to everyone, one pledge class, or brothers you pick — with attachments. Unsubscribed brothers are always skipped, and every email carries a one-click unsubscribe.</p>' +
+        '<p><b>It only reaches brothers with accounts.</b> A brother whose address is on the roster but who never signed up will not receive it — invite him first (✉️ Invite). Large sends are queued and clear over the following quarter-hours, so "Queued for N brothers" is success, not a delay you need to sit and watch.</p>') +
+      sec('📜 History', '<p>The <b>📜 History</b> tab is the chapter\'s audit trail: anything that <b>deleted</b> something or changed <b>who can do what</b>, including your own actions and every action the alumni president takes, under his name. Everyday noise — photos, comments, profile edits — is deliberately left out so the serious entries are findable.</p>' +
+        '<p>It is a record, not a control panel: nothing here can be undone from here.</p>') +
+      sec('🛡 Officers — what you hand over', '<p>The <b>🛡 Officers</b> tab is the switchboard for the alumni president\'s console. Every power is off until you turn it on, each row explains in plain English exactly what it does and does not allow, and every change is logged.</p>' +
+        '<p><b>Two things this cannot do.</b> It cannot give anyone your account — the admin console is tied to your email address and nothing in this tab changes that. And nothing he does can reach your own brother record: he cannot rename you, or add or remove a chapter title on you. That is enforced in the database.</p>') +
+      sec('🖼 The gallery', '<p>The <b>🖼 Gallery</b> tab manages the <b>sections</b> photos are filed under, and shows how much storage is left (10 GB free; you get an email long before it matters). Deleting a section never deletes photos — they move to Miscellaneous.</p>' +
+        '<p><b>Photos and comments are moderated on the gallery page itself</b>, where you can see what you are removing. Sign in on the main site and the delete controls appear for you on every post.</p>') +
+      sec('🧭 Mentoring', '<p>The <b>🧭 Mentoring</b> tab decides who appears on the Mentoring page and on which list — Mentors, Mentees, or just open to connecting. Brothers normally set this themselves on their own profile; this is for fixing a mistake, or adding the man who asked you in person.</p>' +
+        '<p>A brother is on a list <b>only</b> if his box is ticked. Nobody is listed automatically.</p>') +
       sec('🏅 Update the Greek Excellence awards', '<p>The gold medallions on the homepage come from the <b>🏅 Awards</b> tab. When Geneseo announces next year\'s Greek awards: <b>+ Add award</b> → type the year (e.g. “2025–26”), pick the pillar, give it its title. The homepage switches to the newest year automatically and keeps older years as an archive you can flip through.</p>') +
       sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, board thread, or reply (delete links appear for you on each item). Brothers can attach photos to threads and react 👍 ❤️ 😂 to replies; deleting a thread or reply removes its photo and reactions with it.</p>') +
