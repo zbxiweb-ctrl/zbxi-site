@@ -1132,6 +1132,9 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 @media (max-width: 620px) {
   .admin-row { flex-wrap: wrap; }
   .admin-row__act { width: 100%; }
+  /* The action area goes full-width here, so a right-aligned caption strands itself
+     against the edge while every other line in the row is left-aligned. */
+  .admin-row__locked { text-align: left; max-width: none; }
   .admin-row__act .btn { flex: 1; }
 }
 
