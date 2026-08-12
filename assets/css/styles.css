@@ -1088,6 +1088,11 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .admin-row__act .btn--danger { background: none; border: 1px solid rgba(178,58,58,.6); color: #e59a9a; }
 .admin-row__act .btn--danger:hover { background: #7a2626; color: #fff; border-color: #7a2626; transform: none; }
 .admin-row__act .btn--gold { box-shadow: 0 6px 16px rgba(200,162,75,.28); }
+/* Where an Edit button would be on the webmaster's own row (upgrade54). Deliberately NOT
+   styled as a disabled button: there is no action here to re-enable, it is a standing rule.
+   --on-navy-3 because this sits on the navy console shell and must flip in dark mode. */
+.admin-row__locked { display: inline-block; max-width: 15rem; color: var(--on-navy-3);
+  font-size: .74rem; line-height: 1.35; text-align: right; letter-spacing: .01em; }
 
 /* Timestamp line on record rows — its own muted line so it never collides with actions. */
 .admin-row__when { display: block; color: var(--on-navy-3); font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
@@ -3079,11 +3084,6 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .stat-card,
 :root[data-theme="dark"] .stat-list,
 :root[data-theme="dark"] .guide-sec,
-/* The step circle is --navy, and the navy tokens flip to black in dark mode — so
-   it came out DARKER than the near-black card it sits on and the number all but
-   disappeared. A gold wash keeps the existing gold numeral readable. */
-:root[data-theme="dark"] .welcome-step__n { background: rgba(200,162,75,.18); }
-
 :root[data-theme="dark"] .welcome-step,
 :root[data-theme="dark"] .welcome-card,
 :root[data-theme="dark"] .welcome-note,
@@ -3096,6 +3096,14 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .treeed-list,
 :root[data-theme="dark"] .bell__menu,
 :root[data-theme="dark"] .gmodal__card { border: 1px solid var(--hairline); }
+
+/* The step circle is --navy, and the navy tokens flip to black in dark mode — so
+   it came out DARKER than the near-black card it sits on and the number all but
+   disappeared. A gold wash keeps the existing gold numeral readable.
+   KEEP THIS RULE BELOW the list above: a CSS comment does NOT terminate a selector
+   list, so parking it mid-list silently hands this gold wash to every selector in
+   it (that regression shipped in 508aac0 and washed out the profile modal). */
+:root[data-theme="dark"] .welcome-step__n { background: rgba(200,162,75,.18); }
 
 /* Controls that borrowed navy for their border would vanish on a black card. */
 :root[data-theme="dark"] .fam-chip,

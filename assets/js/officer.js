@@ -499,7 +499,12 @@
 
   function renderRecordsTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading the roster…</p>';
-    Z.listFamilyPublic().then(function (all) {
+    // The webmaster's row is fetched alongside the roster because family_public carries no
+    // email — see Z.adminBrotherId. It stays IN the list (it is a real brother on the public
+    // roster, and hiding it here would be a different kind of lie); it just loses its Edit
+    // button. The server refuses the edit either way; this only explains why.
+    Promise.all([Z.listFamilyPublic(), Z.adminBrotherId()]).then(function (res) {
+      var all = res[0] || [], adminBid = res[1];
       var byId = {};
       all.forEach(function (b) { byId[b.id] = b; });
 
@@ -564,7 +569,9 @@
           return '<div class="admin-row" data-r="' + esc(b.id) + '">' +
             '<div class="admin-row__ph">' + esc(initials(b.full_name)) + '</div>' +
             '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b><span>' + meta + '</span></div>' +
-            '<div class="admin-row__act">' + btn('edit', 'Edit', '') + '</div></div>';
+            '<div class="admin-row__act">' + (b.id === adminBid
+              ? '<span class="admin-row__locked">🔒 Webmaster account — managed by the site administrator</span>'
+              : btn('edit', 'Edit', '')) + '</div></div>';
         }).join('');
         list.querySelectorAll('[data-r]').forEach(function (el) {
           each(el, '[data-edit]', function () { openRecordEdit(byId[el.dataset.r], all); });

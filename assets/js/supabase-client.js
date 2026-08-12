@@ -920,6 +920,18 @@
           { onConflict: 'seat,permission' });
       });
     },
+    // Which roster row is the webmaster's (upgrade54). family_public carries no email,
+    // so the console cannot work this out locally. Cached: it never changes in a session.
+    // UI only — the real refusal is in officer_update_brother and the bt_officer_* policies.
+    adminBrotherId: function () {
+      var self = this;
+      if (!self._adminBidP) {
+        self._adminBidP = client.rpc('admin_brother_id')
+          .then(function (r) { if (r.error) throw r.error; return r.data || null; })
+          .catch(function () { return null; });
+      }
+      return self._adminBidP;
+    },
     // The caller's seat, derived server-side from his own pinned role/scope.
     myOfficerSeat: function () {
       return client.rpc('my_officer_seat')
