@@ -271,9 +271,17 @@
           <a href="#contact" class="btn btn--ghost" style="margin-top:1.4rem">Get in Touch</a>
         </div>
       </div>
-      <!-- Donation campaigns: links come from config.js DONATION_LINKS (chapter
-           pastes Stripe Payment Link / PayPal / Venmo URLs; no code changes). -->
-      <div class="give-grid" id="giveGrid"></div>
+      <!-- This was three "Give now" buttons fed by DONATION_LINKS in config.js. No links
+           were ever pasted in, so the block hid itself and nobody could give from here —
+           while a real Alumni Fund page existed the whole time. One link to the page that
+           works beats three buttons that never did. The page is brothers-only and says so
+           when you land on it. -->
+      <div class="give-cta">
+        <p>The chapter's fund is run by the Alumni President, and it goes back into the
+          active brothers, the reunions, and keeping this site running.</p>
+        <a class="btn btn--gold" href="donations.html">See how to give →</a>
+        <small>Brothers only — you'll be asked to sign in.</small>
+      </div>
     </div>
   </section>
 

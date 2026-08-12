@@ -1549,12 +1549,14 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .admin-row--past { opacity: .55; }
 
 /* ---------- Giving campaigns ---------- */
-.give-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; margin-top: 2.6rem; }
-.give-tile { background: var(--surface); border-radius: var(--radius); padding: 1.6rem 1.5rem; box-shadow: var(--shadow-sm); text-align: center; }
-.give-tile__ic { font-size: 1.9rem; }
-.give-tile h4 { color: var(--heading); font-family: var(--display); font-size: 1.15rem; margin: .55rem 0 .4rem; }
-.give-tile p { color: var(--muted); font-size: .9rem; margin: 0 0 1rem; }
-.give-tile__soon { display: inline-block; color: var(--muted); font-size: .82rem; border: 1.5px dashed var(--hairline); border-radius: 999px; padding: .45rem 1rem; }
+/* One route to giving, pointing at the page that actually does it. Replaced the
+   three-tile .give-grid, whose buttons were fed by config links nobody ever set —
+   so the whole block hid itself for months. Those rules are gone with it. */
+.give-cta { background: var(--surface); border: 1.5px solid var(--hairline); border-left: 4px solid var(--gold);
+  border-radius: var(--radius); padding: 1.5rem 1.6rem; margin-top: 2.6rem; box-shadow: var(--shadow-sm);
+  max-width: 640px; }
+.give-cta p { color: var(--muted); font-size: .95rem; margin: 0 0 1.1rem; }
+.give-cta small { display: block; margin-top: .7rem; color: var(--muted); font-size: .8rem; }
 
 /* ---------- Discussion board ---------- */
 .thread-list { display: grid; gap: .7rem; }
@@ -1651,7 +1653,6 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 @media (max-width: 900px) {
   .ggrid { grid-template-columns: repeat(3, 1fr); }
   .gsecs { grid-template-columns: repeat(2, 1fr); }
-  .give-grid { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 
   /* ---- the photo owns the screen ----
@@ -3148,7 +3149,6 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .card-form,
 :root[data-theme="dark"] .event,
 :root[data-theme="dark"] .ev-card,
-:root[data-theme="dark"] .give-tile,
 :root[data-theme="dark"] .thread-row,
 :root[data-theme="dark"] .thread-view,
 :root[data-theme="dark"] .stat-card,

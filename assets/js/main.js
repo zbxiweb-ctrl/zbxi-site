@@ -228,30 +228,10 @@
     }).catch(function () {}); // fallback markup stands
   }
 
-  /* ---- Giving campaigns (links from config.js DONATION_LINKS) ---- */
-  var giveEl = document.getElementById('giveGrid');
-  if (giveEl) {
-    var LINKS = (window.ZBXI_CONFIG && window.ZBXI_CONFIG.DONATION_LINKS) || {};
-    var CAMPAIGNS = [
-      { key: 'annual_fund', icon: '🏛️', title: 'Annual Brotherhood Fund', blurb: 'Keeps the chapter running — rush, brotherhood events and day-to-day operations.' },
-      { key: 'scholarship', icon: '🎓', title: 'Scholarship & Academics', blurb: 'Supports active brothers with books, fees and academic awards.' },
-      { key: 'philanthropy', icon: '🤝', title: 'Philanthropy Drives', blurb: 'Fuels our service work in the Geneseo community and beyond.' }
-    ];
-    // Only advertise giving once a real link exists — a wall of "coming soon"
-    // buttons advertises a gap. Tiles without a link are simply not shown.
-    var live = CAMPAIGNS.filter(function (c) { return LINKS[c.key]; });
-    if (!live.length) {
-      giveEl.style.display = 'none';
-    } else {
-      giveEl.innerHTML = live.map(function (c) {
-        return '<div class="give-tile">' +
-          '<span class="give-tile__ic">' + c.icon + '</span>' +
-          '<h4>' + c.title + '</h4><p>' + c.blurb + '</p>' +
-          '<a class="btn btn--gold" href="' + esc(LINKS[c.key]) + '" target="_blank" rel="noopener">Give now</a>' +
-        '</div>';
-      }).join('');
-    }
-  }
+  /* The three DONATION_LINKS campaign tiles used to be built here. No links were ever
+     configured, so the block hid itself and the home page said nothing about giving —
+     while donations.html existed and worked. It is now a plain link in index.html; there
+     is no JavaScript left to run, and DONATION_LINKS is no longer read by anything. */
 
   /* ---- Forms (Formspree). Graceful AJAX submit + inline status. ---- */
   function wireForm(formId, statusId) {

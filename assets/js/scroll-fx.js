@@ -23,7 +23,7 @@
   if (split[1]) split[1].classList.add('reveal--right');
 
   // --- staggered groups: children cascade, offset by their index (capped) ---
-  ['.values', '.medals', '.dir-cards', '.stat-row', '.give-grid'].forEach(function (s) {
+  ['.values', '.medals', '.dir-cards', '.stat-row', '.give-cta'].forEach(function (s) {
     document.querySelectorAll(s).forEach(function (g) {
       g.classList.add('stagger');
       Array.prototype.forEach.call(g.children, function (c, i) {

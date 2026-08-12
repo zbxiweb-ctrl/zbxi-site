@@ -19,11 +19,10 @@ window.ZBXI_CONFIG = {
   // Leave '' to disable the widgets entirely.
   TURNSTILE_SITEKEY: '0x4AAAAAAD2Mxx_Wd2cIu6R0',
 
-  // Giving campaigns: paste the chapter's Stripe Payment Link / PayPal / Venmo
-  // URLs here when ready — the "Give now" buttons appear automatically.
-  DONATION_LINKS: {
-    annual_fund:  '',   // e.g. 'https://buy.stripe.com/…'
-    scholarship:  '',
-    philanthropy: ''
-  }
+  // NOTE: DONATION_LINKS used to live here — three campaign URLs that fed "Give now"
+  // buttons on the home page. Nothing was ever pasted in, so the block hid itself for
+  // months while donations.html did the job properly. Removed rather than left empty:
+  // a config key that no longer feeds anything is worse than none, because the next
+  // person pastes a link into it and wonders why nothing happens.
+  // The Venmo handle brothers actually give to is set in Admin → 🎁 Alumni Fund.
 };
