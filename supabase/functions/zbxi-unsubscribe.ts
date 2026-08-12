@@ -1,4 +1,7 @@
-// zbxi-unsubscribe — one-click opt-out from the digest. Public (no login):
+// zbxi-unsubscribe — one-click opt-out from brotherhood email. Public (no login):
+// NOTE: email_opt_out is read by the digest, the notification mailer (upgrade59) AND the
+// event reminder (upgrade63), so the wording below says "brotherhood email", not "digest".
+// It suppresses all three; promising only the digest under-described what it does.
 // the tokenised link in every email is the credential. Also answers the
 // List-Unsubscribe-Post one-click POST that Gmail/Apple Mail send.
 const SB = Deno.env.get("SUPABASE_URL")!;
@@ -19,7 +22,7 @@ const page = (title: string, msg: string, cta?: string) => `<!doctype html><html
 
 const donePage = (ok: boolean) =>
   ok
-    ? page("You're unsubscribed", "You won't get the brotherhood digest anymore. Nothing else changes — your profile and account stay exactly as they are. Changed your mind? Untick “email opt-out” in My Profile.")
+    ? page("You're unsubscribed", "You won't get brotherhood email anymore — the monthly digest, event reminders, or a note when a brother reaches out. Nothing else changes — your profile and account stay exactly as they are. Changed your mind? Untick “email opt-out” in My Profile.")
     : page("Link not recognised", "That unsubscribe link didn't match a brother. It may have already been used, or the address was mistyped.");
 const html = (body: string) => new Response(body, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
 
@@ -53,8 +56,8 @@ Deno.serve(async (req) => {
     return html(page("Preview link", "This was a preview email — there is nothing to unsubscribe."));
   }
   return html(page(
-    "Unsubscribe from the digest?",
-    "Click below to stop receiving the brotherhood digest. Your profile and account stay exactly as they are.",
+    "Unsubscribe from brotherhood email?",
+    "Click below to stop receiving brotherhood email: the monthly digest, event reminders, and notes when a brother reaches out to you. Your profile and account stay exactly as they are.",
     `<form method="POST" action="?t=${encodeURIComponent(token)}" style="margin:0">
        <button type="submit" style="background:#C8A24B;color:#0A1F44;border:0;cursor:pointer;font-weight:700;font-size:14px;padding:11px 24px;border-radius:999px">Unsubscribe me</button>
      </form>`,

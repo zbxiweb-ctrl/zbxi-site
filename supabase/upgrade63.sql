@@ -94,6 +94,13 @@ begin
        set reminded_at = now()
       from due
      where e.id = due.id
+       -- Re-checked UNDER THE ROW LOCK, and this line is the whole "one email per event,
+       -- ever" guarantee. Without it, two runs that overlap in time both read "not yet
+       -- reminded" in their own snapshot; the second one blocks on the lock, wakes up,
+       -- re-evaluates only `e.id = due.id` (still true) and claims the same event a second
+       -- time — 60 duplicate emails. With it, the second run's re-check sees the stamp and
+       -- takes zero rows. Same shape claim_email_batch() already uses.
+       and e.reminded_at is null
     returning e.id, e.title, e.starts_at, e.ends_at, e.all_day, e.location, e.description, e.remind_all
   )
   -- the brothers who said they are coming
@@ -190,6 +197,12 @@ begin
   --     the same reminder going out every day until the event happens.
   if def not ilike '%set reminded_at = now()%' then
     raise exception 'claim_event_reminders no longer stamps reminded_at as it claims';
+  end if;
+
+  -- (c2) …and re-checks the stamp under the lock. Dropping this line makes two overlapping
+  --      runs each send the whole thing. Found by security review of bbfbcf0.
+  if def not ilike '%and e.reminded_at is null%' then
+    raise exception 'claim_event_reminders no longer re-checks reminded_at under the lock — two overlapping runs would both send';
   end if;
 
   -- (d) It honours the opt-out.

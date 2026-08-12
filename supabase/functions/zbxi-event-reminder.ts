@@ -196,9 +196,17 @@ Deno.serve(async (req) => {
   }
 
   // ?peek — what is due, claiming nothing. Safe to hit any time.
+  //
+  // Bounded by the SAME window the claim uses. Without the upper bound it counted every
+  // future unreminded event — an event three months out reported as "due" — and this is the
+  // endpoint you'd check before deciding whether it is safe to trigger a send by hand. A
+  // diagnostic that over-reports is worse than none.
   if (peek) {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() + 3.5 * 86400000);
     const rows = await db(
-      `events?reminded_at=is.null&starts_at=gt.${new Date().toISOString()}&select=id,title,starts_at,remind_all&order=starts_at`,
+      `events?reminded_at=is.null&starts_at=gt.${now.toISOString()}` +
+      `&starts_at=lte.${cutoff.toISOString()}&select=id,title,starts_at,remind_all&order=starts_at&limit=5`,
     );
     return json({ due: rows.length, rows });
   }
