@@ -517,30 +517,86 @@
     function close() { wrap.remove(); }
     wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) close(); });
 
-    // Positions history editor — writes immediately (independent of Save changes).
+    /* Positions history editor — writes immediately (independent of Save changes).
+
+       THREE GUARDS, because this is the most dangerous of the four places that write
+       brother_titles and it used to give no clue what it was touching:
+
+       1. Each row now says WHICH BOARD it belongs to. Without that, a row here looks
+          like a stray duplicate when it is actually a seat on a published board.
+       2. Deleting a row that belongs to a board asks first, and names the board. The
+          delete is a bare delete-by-id with no undo, and it silently removes that man
+          from the Executive Boards page.
+       3. The title is a picker (the same officer/chair lists the boards page uses)
+          rather than free text. Free text is how "Vice President" without the hyphen
+          gets back in — the exact spelling upgrade50 normalised, and the thing the
+          officer/chair split on the boards page is derived from. Free text is still
+          available, but as a deliberate choice rather than the default. */
     function renderPositions() {
       var box = wrap.querySelector('#posEditor');
       if (!box) return;
-      Z.brotherTitlesList(b.id).then(function (list) {
+      Promise.all([
+        Z.brotherTitlesList(b.id),
+        Z.eboardsList()['catch'](function () { return []; })
+      ]).then(function (res) {
+        var list = res[0] || [], boards = res[1] || [];
+        var boardById = {};
+        boards.forEach(function (bd) { boardById[bd.id] = bd; });
+        function boardOf(t) {
+          if (!t.board_id) return null;
+          var bd = boardById[t.board_id];
+          if (!bd) return 'a board';
+          return (bd.scope === 'alumni' ? 'Alumni' : 'Active') + ' Board · ' + termLabelOf(bd);
+        }
+
         var rowsHtml = list.length
           ? list.map(function (t) {
-              return '<div class="pos-row" data-pos="' + esc(t.id) + '"><span>' + esc(t.title) +
+              var bn = boardOf(t);
+              return '<div class="pos-row" data-pos="' + esc(t.id) + '"' +
+                (bn ? ' data-board="' + esc(bn) + '"' : '') + '><span>' + esc(t.title) +
                 (t.term ? ' · ' + esc(t.term) : '') + (t.scope ? ' <em>(' + esc(t.scope) + ')</em>' : '') +
+                (bn ? '<small class="pos-board">📋 on ' + esc(bn) + '</small>'
+                    : '<small class="pos-board pos-board--none">not on any board</small>') +
                 '</span><button type="button" class="pos-del" data-del title="Remove">✕</button></div>';
             }).join('')
           : '<p class="form-note" style="margin:.2rem 0">No positions recorded yet.</p>';
+
+        var titleOpts = '<option value="">— pick a position —</option>' +
+          '<optgroup label="Executive Board">' +
+            SEAT_TITLES.map(function (t) { return '<option>' + t + '</option>'; }).join('') +
+          '</optgroup><optgroup label="Chairs">' +
+            CHAIR_TITLES.map(function (t) { return '<option>' + t + '</option>'; }).join('') +
+          '</optgroup><option value="__other__">Something else…</option>';
+
         box.innerHTML = rowsHtml +
           '<div class="pos-add">' +
-            '<input class="pos-in" data-nt placeholder="Title (e.g. Treasurer)">' +
+            '<select class="pos-in" data-ntsel>' + titleOpts + '</select>' +
+            '<input class="pos-in" data-nt placeholder="Type the position" style="display:none">' +
             '<input class="pos-in pos-in--term" data-ntm placeholder="Term (e.g. Spring 2021)">' +
             '<select data-nsc>' + ['', 'active', 'alumni', 'previous'].map(function (s) { return '<option value="' + s + '">' + (s || '— none —') + '</option>'; }).join('') + '</select>' +
-            '<button type="button" class="btn btn--ghost" data-add>+ Add</button></div>';
+            '<button type="button" class="btn btn--ghost" data-add>+ Add</button></div>' +
+          '<p class="form-note" style="margin:.35rem 0 0">Positions added here are not attached to a board. Record a whole term on the <a href="eboards.html" target="_blank" rel="noopener">Executive Boards</a> page instead.</p>';
+
+        var sel = box.querySelector('[data-ntsel]');
+        var free = box.querySelector('[data-nt]');
+        sel.onchange = function () {
+          var other = sel.value === '__other__';
+          free.style.display = other ? '' : 'none';
+          if (other) free.focus();
+        };
+
         box.querySelectorAll('[data-pos]').forEach(function (el) {
-          el.querySelector('[data-del]').onclick = function () { Z.brotherTitleDelete(el.dataset.pos).then(renderPositions); };
+          el.querySelector('[data-del]').onclick = function () {
+            var bn = el.getAttribute('data-board');
+            if (bn && !confirm('This position is part of ' + bn + ' on the Executive Boards page.\n\n' +
+                               'Removing it here takes him off that board too, and there is no undo.\n\nRemove it?')) return;
+            Z.brotherTitleDelete(el.dataset.pos).then(renderPositions);
+          };
         });
+
         box.querySelector('[data-add]').onclick = function () {
-          var t = box.querySelector('[data-nt]').value.trim();
-          if (!t) { box.querySelector('[data-nt]').focus(); return; }
+          var t = sel.value === '__other__' ? free.value.trim() : sel.value;
+          if (!t) { (sel.value === '__other__' ? free : sel).focus(); return; }
           Z.brotherTitleAdd({ brother_id: b.id, title: t, term: box.querySelector('[data-ntm]').value.trim() || null, scope: box.querySelector('[data-nsc]').value || null, sort: list.length }).then(renderPositions);
         };
       }).catch(function () { box.innerHTML = '<p class="form-status err">Could not load positions.</p>'; });
@@ -1375,6 +1431,13 @@
 
   /* ---------------- e-board tab ---------------- */
   var SEAT_TITLES = ['President', 'Vice-President', 'Treasurer', 'Secretary'];
+  // Offered in the positions picker alongside SEAT_TITLES. Same list eboards.js uses;
+  // the field stays free-text-capable because every chapter invents its own chairs.
+  // The point of the picker is that the FOUR officer titles keep their exact spelling —
+  // the boards page derives its officer/chair split from them.
+  var CHAIR_TITLES = ['Pledge Master', 'Rush Chair', 'Philanthropy Chair', 'Social Chair',
+                      'Alumni Chair', 'Risk Manager', 'Historian', 'Sergeant at Arms',
+                      'Scholarship Chair', 'Brotherhood Chair', 'Webmaster'];
 
   function officersCommitteeId() {
     return Z.committeesList().then(function (cs) {
@@ -1420,11 +1483,34 @@
         '<p class="form-note">Run once each semester. It does two things in one go: <b>records the outgoing board on the Executive Boards page</b>, then moves those officers to Previous officers and empties the Officers committee. Then assign the new boards above and add the new pledge class in 📋 Unclaimed.</p>' +
         '<button class="btn btn--ghost-danger" id="rolloverBtn">Record the term &amp; roll over…</button>' +
         '<p class="form-status" id="rolloverStatus"></p></div>' +
+      '<div id="ebReconcile"></div>' +
       '<h3 class="stat-h">Previous officers (' + prev.length + ')</h3>' +
       (prev.length ? '<div class="stat-list">' + prev.map(function (b) {
         return '<div class="stat-list__row"><b>' + esc(b.full_name) + '</b><span>' + esc(b.role) + (b.role_term ? ' · ' + esc(b.role_term) : '') + '</span>' +
           '<em><a href="#" data-cleartitle="' + b.id + '">clear title</a></em></div>';
       }).join('') + '</div>' : '<p class="admin-empty">No previous officers recorded yet.</p>');
+
+    /* Positions recorded against no board. An approved title request has no board to
+       attach to, and the Executive Boards page only reads seats that have one — so
+       these render on a brother's profile card and on no board, permanently. Shown
+       here rather than fixed automatically: which board a loose title belongs to is a
+       judgement call, and guessing it wrong rewrites chapter history. */
+    Z.orphanTitles().then(function (orphans) {
+      var box = document.getElementById('ebReconcile');
+      if (!box || !orphans.length) return;
+      var byName = orphans.map(function (t) {
+        var who = state.verifiedById[t.brother_id];
+        return { name: who ? who.full_name : 'Unknown brother', t: t };
+      }).sort(function (a, z) { return a.name.localeCompare(z.name); });
+      box.innerHTML = '<h3 class="stat-h">⚠️ Not on any board (' + orphans.length + ')</h3>' +
+        '<p class="admin-hint">These positions show on a brother\'s profile but on no Executive Board — approved title requests land here, because a request has no board to attach to. ' +
+        'Add them to the right board on the <a href="eboards.html" target="_blank" rel="noopener">Executive Boards</a> page, or leave them: they are correct on the profile either way.</p>' +
+        '<div class="stat-list">' + byName.slice(0, 25).map(function (r) {
+          return '<div class="stat-list__row"><b>' + esc(r.name) + '</b><span>' + esc(r.t.title) +
+            (r.t.term ? ' · ' + esc(r.t.term) : '') + '</span><em>' + esc(r.t.scope || '—') + '</em></div>';
+        }).join('') + '</div>' +
+        (byName.length > 25 ? '<p class="admin-hint">…and ' + (byName.length - 25) + ' more.</p>' : '');
+    })['catch'](function () { /* reconciliation is a nicety; never break the tab over it */ });
 
     q.querySelectorAll('[data-assign]').forEach(function (b) {
       b.onclick = function () {
@@ -2663,8 +2749,23 @@
     function sec(title, body) {
       return '<details class="guide-sec"><summary>' + title + '</summary><div>' + body + '</div></details>';
     }
+    /* Every section of the site and where it is run from. Coverage you can check at
+       a glance: if it exists on the site it is in this list. Where the note says the
+       editing happens on the page, that is deliberate — a second editor here would be
+       two screens writing the same rows. */
+    function sectionMap() {
+      var rows = (Z.SECTIONS || []).map(function (s) {
+        return '<div class="stat-list__row"><b><a href="' + esc(s.href) + '" target="_blank" rel="noopener">' + esc(s.name) + '</a></b>' +
+          '<span>' + esc(s.note) + '</span>' +
+          '<em>' + (s.tab ? '<a href="#" data-goto="' + esc(s.tab) + '">open its tab →</a>' : 'nothing to manage') + '</em></div>';
+      }).join('');
+      return '<details class="guide-sec" open><summary>🗺 Every section, and where you run it</summary>' +
+        '<div><div class="stat-list">' + rows + '</div></div></details>';
+    }
+
     q.innerHTML =
       '<div class="guide-intro"><h3>Webmaster guide</h3><p>Everything you need to run this site lives in this console — no coding, ever. Click a task:</p></div>' +
+      sectionMap() +
       sec('✅ A new brother made an account — approve him', '<ol>' +
         '<li>Open the <b>Pending</b> tab (the number shows how many are waiting — the 🔔 bell also alerts you).</li>' +
         '<li>Check the name/pledge class look right (edit if needed).</li>' +
@@ -2730,6 +2831,17 @@
         '<li>This console only works for the admin email (currently zbxi.web@gmail.com). Handing off = handing over that Google account (see OWNERSHIP.md in the project).</li>' +
         '<li>Brothers who forget passwords use “Forgot your password?” on the site — you never manage their passwords.</li>' +
         '<li>The site itself (hosting, domain) runs itself — nothing to renew except the domain (~$12/yr at Namecheap).</li></ul>');
+
+    // "open its tab →" on the section map jumps to the owning tab. Reuses the real
+    // rail button so the highlight, the URL hash and the search reset all stay honest
+    // rather than being re-implemented here and drifting.
+    q.querySelectorAll('[data-goto]').forEach(function (a) {
+      a.onclick = function (e) {
+        e.preventDefault();
+        var btn = document.querySelector('#tabs [data-tab="' + a.dataset.goto + '"]');
+        if (btn) btn.click();
+      };
+    });
   }
 
   /* ---------------- history tab ----------------

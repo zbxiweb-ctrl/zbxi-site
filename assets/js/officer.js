@@ -215,12 +215,55 @@
         '<span class="oc-card__meta" data-meta="' + t.id + '">…</span>' +
       '</button>';
     }).join('');
+    /* Every section of the site, and where it is run from — the same list the admin
+       console shows, from the same Z.SECTIONS data. An officer holds real power now
+       and had no way to see the shape of the site he is helping run; this is the map.
+       Sections he cannot manage still appear, marked as the webmaster's, because
+       "you can't do this one" is more useful than the row being missing. */
+    function sectionMap() {
+      var mine = {};
+      state.tools.forEach(function (t) { mine[t.id] = true; });
+      var rows = (Z.SECTIONS || []).map(function (s) {
+        var where = !s.tab ? 'nothing to manage'
+                  : mine[s.tab] ? '<a href="#" data-goto="' + esc(s.tab) + '">open its tool →</a>'
+                  : 'the webmaster\'s';
+        return '<div class="stat-list__row"><b><a href="' + esc(s.href) + '" target="_blank" rel="noopener">' + esc(s.name) + '</a></b>' +
+          '<span>' + esc(s.note) + '</span><em>' + where + '</em></div>';
+      }).join('');
+      return '<h3 class="stat-h">🗺 Every section, and where it is run</h3>' +
+        '<div class="stat-list">' + rows + '</div>';
+    }
+
     q.innerHTML =
       '<p class="admin-hint">Welcome, <b>' + esc(state.myName) + '</b>. Here’s what needs attention — pick a tool to jump in.</p>' +
-      '<div class="oc-home">' + cards + '</div>';
+      '<div class="oc-home">' + cards + '</div>' +
+      sectionMap() +
+      '<div id="ocFund"></div>';
+
     q.querySelectorAll('[data-go]').forEach(function (b) {
       b.onclick = function () { enter(b.dataset.go); };
     });
+    // Jump to a tool from the map, through the real rail button so the highlight and
+    // title stay correct rather than being re-implemented here.
+    q.querySelectorAll('[data-goto]').forEach(function (a) {
+      a.onclick = function (e) { e.preventDefault(); enter(a.dataset.goto); };
+    });
+
+    /* The Alumni Fund handle, READ ONLY. He can see where the chapter's money is
+       pointed — reasonable for the man whose own Venmo it is — but changing it stays
+       the webmaster's alone, and that is enforced in the database, not here: he holds
+       every other grant and still gets zero rows on a write. Proven by probe. */
+    Z.donationsGet().then(function (d) {
+      var box = document.getElementById('ocFund');
+      if (!box || !d) return;
+      box.innerHTML = '<h3 class="stat-h">🎁 Alumni Fund</h3>' +
+        '<div class="stat-list"><div class="stat-list__row">' +
+          '<b>' + (d.handle ? '@' + esc(String(d.handle).replace(/^@/, '')) : '— not set —') + '</b>' +
+          '<span>' + (d.active ? 'The Alumni Fund page is live for brothers.' : 'The page is hidden from brothers right now.') + '</span>' +
+          '<em>webmaster sets this</em>' +
+        '</div></div>';
+    })['catch'](function () { /* a nicety; never break the Overview over it */ });
+
     fillHomeCounts();
   }
 

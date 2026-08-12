@@ -847,6 +847,17 @@
     /* ---- Positions history (brother_titles; see upgrade19.sql) --------------
        The FULL list of titles a brother has held. brothers.role stays the
        headline (E-Board). Admin writes; approved brothers read (RLS). */
+    // Positions recorded against no board. Title-request approval mints these (it has
+    // no board to attach to), and eboardSeats() filters them out — so they show on a
+    // brother's profile card but on no board, invisible to the Executive Boards page
+    // forever. The E-Board tab surfaces the count so they can be reconciled rather
+    // than silently accumulating.
+    orphanTitles: function () {
+      if (!configured) return Promise.resolve([]);
+      return client.from('brother_titles').select('id,brother_id,title,term,scope')
+        .is('board_id', null)
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
     brotherTitlesList: function (broId) {
       return client.from('brother_titles').select('*').eq('brother_id', broId)
         .order('sort', { ascending: true })
@@ -958,6 +969,26 @@
           { onConflict: 'seat,permission' });
       });
     },
+    /* ---- Every section under the Brothers / Brothers Only menus -----------------
+       Defined once, as data, and rendered by BOTH consoles — the same reason
+       OPEN_TO lives here. The point is coverage you can check at a glance: if a
+       section exists on the site it appears in this list, and the list says where
+       it is managed. `tab` = the console tab that owns it; `page` = the editor
+       lives on the page itself (the Executive Boards pattern), which is a
+       deliberate choice, not a gap — a second editor in the console would be two
+       screens writing the same rows. */
+    SECTIONS: [
+      { name: 'Active Brothers',   href: 'active.html',    tab: 'approved',   note: 'Roster of brothers still at Geneseo. Managed through the brother records.' },
+      { name: 'Alumni Brothers',   href: 'alumni.html',    tab: 'approved',   note: 'Same records — a brother chooses his side on his own profile.' },
+      { name: 'Executive Boards',  href: 'eboards.html',   tab: 'eboard',     note: 'Today\'s seats are set in the console; past boards are edited on the page.' },
+      { name: 'Alumni Fund',       href: 'donations.html', tab: 'fund',       note: 'The Venmo handle and whether the page is visible at all.' },
+      { name: 'Gallery',           href: 'gallery.html',   tab: 'gallery',    note: 'Sections and storage here; photos and comments are moderated on the page.' },
+      { name: 'Board',             href: 'board.html',     tab: 'committees', note: 'Committees and private spaces here; threads are moderated on the page.' },
+      { name: 'Mentoring',         href: 'mentoring.html', tab: 'mentoring',  note: 'Who is on the Mentors and Mentees lists.' },
+      { name: 'Worldwide Map',     href: 'map.html',       tab: null,         note: 'Draws itself from the city on each brother\'s profile — nothing to manage.' },
+      { name: 'Family Tree',       href: 'family-tree.html', tab: 'tree',     note: 'Bigs and littles. Fixing a big here redraws the tree.' },
+      { name: 'Events',            href: 'events.html',    tab: 'events',     note: 'The calendar, RSVPs and the announcement banner.' }
+    ],
     // Which roster row is the webmaster's (upgrade54). family_public carries no email,
     // so the console cannot work this out locally. Cached: it never changes in a session.
     // UI only — the real refusal is in officer_update_brother and the bt_officer_* policies.
