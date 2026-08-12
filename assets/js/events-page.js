@@ -50,17 +50,52 @@
   /* -- RSVPs -- */
   function rsvpsFor(id) { return RSVPS.filter(function (r) { return r.event_id === id; }); }
   function iGo(id) { return ME && RSVPS.some(function (r) { return r.event_id === id && r.user_id === ME.id; }); }
+  function myRsvp(id) {
+    return ME ? RSVPS.filter(function (r) { return r.event_id === id && r.user_id === ME.id; })[0] : null;
+  }
+  // The two numbers a host actually needs. "12 brothers" answers who is coming;
+  // "19 with guests" is what he caters from. The second half only appears when
+  // somebody is actually bringing someone, so an ordinary meeting reads plainly.
+  function headcount(rs) {
+    var g = rs.reduce(function (n, r) { return n + (r.guests || 0); }, 0);
+    var b = rs.length + (rs.length === 1 ? ' brother' : ' brothers');
+    return g ? b + ' · <b>' + (rs.length + g) + '</b> with guests' : b;
+  }
+  // 0-20 matches the database CHECK exactly. A shorter list would look tidier and
+  // silently cap a real family at whatever number I picked, which then reads as a
+  // wrong headcount rather than as a limit.
+  function guestPicker(n) {
+    var out = '';
+    for (var i = 0; i <= 20; i++) {
+      out += '<option value="' + i + '"' + (i === (n || 0) ? ' selected' : '') + '>' +
+        (i === 0 ? 'just me' : '+' + i) + '</option>';
+    }
+    return '<select class="ev-rsvp__g" aria-label="How many guests are you bringing">' + out + '</select>';
+  }
   function rsvpBar(e) {
     if (!CAN_RSVP) return '';
     var rs = rsvpsFor(e.id);
+    var mine = myRsvp(e.id);
     var names = rs.map(function (r) {
       var m = RSVP_DIR[r.user_id];
       return m ? m.full_name.split(' ')[0] : 'a brother';
     });
     var who = names.length ? '<small class="ev-rsvp__who">Going: ' + esc(names.slice(0, 6).join(', ')) + (names.length > 6 ? ' +' + (names.length - 6) : '') + '</small>' : '';
+    // Guests and the note only appear once you're going — asking "how many are you
+    // bringing" of a brother who has not said he is coming is a question about nothing.
+    var extra = mine
+      ? '<span class="ev-rsvp__bring">Bringing: ' + guestPicker(mine.guests) + '</span>' +
+        '<button type="button" class="ev-rsvp__notebtn">' + (mine.note ? '✎ note' : '✎ add a note') + '</button>'
+      : '';
+    var noteRow = mine && mine.note
+      ? '<small class="ev-rsvp__note">“' + esc(mine.note) + '”</small>' : '';
     return '<div class="ev-rsvp" data-rsvp="' + e.id + '">' +
-      '<button class="ev-rsvp__btn' + (iGo(e.id) ? ' on' : '') + '">' + (iGo(e.id) ? '✓ I\'m going' : '✋ I\'m going') + '</button>' +
-      '<b>' + rs.length + '</b> going' + who + '</div>';
+      '<button class="ev-rsvp__btn' + (mine ? ' on' : '') + '">' + (mine ? '✓ I\'m going' : '✋ I\'m going') + '</button>' +
+      extra +
+      '<span class="ev-rsvp__n">' + headcount(rs) + '</span>' +
+      (CAN_MANAGE && rs.length ? '<button type="button" class="ev-rsvp__door">📋 Door list</button>' : '') +
+      who + noteRow +
+      '<span class="ev-rsvp__edit" hidden></span></div>';
   }
   function wireRsvps(scope) {
     scope.querySelectorAll('[data-rsvp]').forEach(function (bar) {
@@ -70,11 +105,137 @@
         var going = iGo(id);
         var op = going ? window.ZBXI.unrsvp(id, ME.id) : window.ZBXI.rsvp(id, ME.id);
         if (going) RSVPS = RSVPS.filter(function (r) { return !(r.event_id === id && r.user_id === ME.id); });
-        else RSVPS.push({ event_id: id, user_id: ME.id });
+        else RSVPS.push({ event_id: id, user_id: ME.id, guests: 0, note: null });
         refresh();
         op.then(function (r) { if (r.error) window.ZBXI.rsvpList().then(function (l) { RSVPS = l; refresh(); }); });
       };
+      var sel = bar.querySelector('.ev-rsvp__g');
+      if (sel) sel.onchange = function () { saveRsvp(id, parseInt(sel.value, 10), undefined); };
+      var nb = bar.querySelector('.ev-rsvp__notebtn');
+      if (nb) nb.onclick = function () { openNoteBox(bar, id); };
+      var door = bar.querySelector('.ev-rsvp__door');
+      if (door) door.onclick = function () {
+        var ev = EV_ALL.filter(function (x) { return x.id === id; })[0];
+        if (ev) openDoorList(ev);
+      };
     });
+  }
+
+  /* One line for the door — "+ wife and 2 kids", "arriving late". Revealed rather than
+     always on screen: most RSVPs do not need one, and an empty box on every event is
+     clutter that makes the bar look like a form. */
+  function openNoteBox(bar, id) {
+    var host = bar.querySelector('.ev-rsvp__edit');
+    var mine = myRsvp(id);
+    if (!host || !mine) return;
+    if (!host.hidden) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = '<input class="ev-rsvp__notein" maxlength="140" placeholder="e.g. wife + 2 kids, arriving late" ' +
+      'aria-label="A note for whoever is on the door">';
+    var input = host.querySelector('.ev-rsvp__notein');
+    input.value = mine.note || '';
+    input.focus();
+    // Saves on blur or Enter. No Save button: one field with one obvious meaning does
+    // not need a second control to confirm it.
+    var commit = function () { saveRsvp(id, undefined, input.value.trim()); };
+    input.onblur = commit;
+    input.onkeydown = function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } };
+  }
+
+  // guests/note are each optional so one control can save without clobbering the other.
+  function saveRsvp(id, guests, note) {
+    var mine = myRsvp(id);
+    if (!mine || !ME) return;
+    var g = guests === undefined ? (mine.guests || 0) : guests;
+    var n = note === undefined ? (mine.note || null) : (note || null);
+    mine.guests = g; mine.note = n;      // optimistic, like the going/not-going toggle
+    refresh();
+    window.ZBXI.rsvpUpdate(id, ME.id, g, n).then(function (r) {
+      // A refusal removes no rows and returns 204 rather than raising, so an empty
+      // result is the only signal that it did not take. Re-read rather than leaving
+      // the screen showing a number the database never accepted.
+      if ((r && r.error) || !r || !r.data || !r.data.length) {
+        window.ZBXI.rsvpList().then(function (l) { RSVPS = l; refresh(); });
+      }
+    });
+  }
+
+  /* -- the door list -------------------------------------------------------------
+     A report, not an editor: the brother on the door reads it, he does not change it.
+     Everything on it is already in memory (RSVPS + the member directory), so opening
+     it costs no query. Shown only to whoever can manage events — the same CAN_MANAGE
+     flag that draws Edit and Delete. */
+  function sortName(full) {
+    var p = String(full || '').trim().split(/\s+/);
+    return p.length > 1 ? p[p.length - 1] + ', ' + p.slice(0, -1).join(' ') : (p[0] || 'A brother');
+  }
+  function doorRows(e) {
+    return rsvpsFor(e.id).map(function (r) {
+      var m = RSVP_DIR[r.user_id] || {};
+      return { name: sortName(m.full_name), cls: m.pledge_class || '', guests: r.guests || 0, note: r.note || '' };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+  function doorText(e) {
+    var rows = doorRows(e);
+    var total = rows.length + rows.reduce(function (n, r) { return n + r.guests; }, 0);
+    return [e.title.toUpperCase(), evTime(e) + (e.location ? ' · ' + e.location : ''), ''].concat(
+      rows.map(function (r) {
+        return r.name + (r.cls ? ' (' + r.cls + ')' : '') + (r.guests ? ' +' + r.guests : '') +
+               (r.note ? ' — ' + r.note : '');
+      }),
+      ['', rows.length + (rows.length === 1 ? ' brother' : ' brothers') + ' · ' + total + ' people expected']
+    ).join('\n');
+  }
+  function openDoorList(e) {
+    var m = document.getElementById('doorModal');
+    if (!m) { m = document.createElement('div'); m.id = 'doorModal'; m.className = 'pmodal'; document.body.appendChild(m); }
+    var rows = doorRows(e);
+    var total = rows.length + rows.reduce(function (n, r) { return n + r.guests; }, 0);
+    m.innerHTML = '<div class="pmodal__card card-form door">' +
+      '<button class="pmodal__close" data-door-close aria-label="Close">✕</button>' +
+      '<div id="doorSheet">' +
+        '<h3 class="door__h">' + esc(e.title) + '</h3>' +
+        '<p class="door__when">' + evTime(e) + (e.location ? ' · ' + esc(e.location) : '') + '</p>' +
+        (rows.length
+          ? '<table class="door__t"><tbody>' + rows.map(function (r) {
+              return '<tr><td class="door__nm">' + esc(r.name) + '</td>' +
+                '<td class="door__cls">' + esc(r.cls) + '</td>' +
+                '<td class="door__g">' + (r.guests ? '+' + r.guests : '') + '</td>' +
+                '<td class="door__note">' + esc(r.note) + '</td></tr>';
+            }).join('') + '</tbody></table>'
+          : '<p class="form-note">Nobody has RSVP\'d yet.</p>') +
+        '<p class="door__tot"><b>' + rows.length + (rows.length === 1 ? ' brother' : ' brothers') +
+          '</b> · ' + total + ' people expected</p>' +
+      '</div>' +
+      '<div class="door__acts">' +
+        '<button class="btn btn--navy" id="doorPrint">🖨 Print</button>' +
+        '<button class="btn btn--ghost" id="doorCopy">📋 Copy</button>' +
+      '</div>' +
+      '<p class="form-status" id="doorStatus" role="status"></p>' +
+    '</div>';
+    m.classList.add('open');
+    m.setAttribute('aria-hidden', 'false');
+    function close() {
+      m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+      document.removeEventListener('keydown', onEsc);
+      if (location.hash.indexOf('#door=') === 0) history.replaceState(null, '', location.pathname);
+    }
+    function onEsc(x) { if (x.key === 'Escape') close(); }
+    m.querySelector('[data-door-close]').onclick = close;
+    m.addEventListener('click', function (x) { if (x.target === m) close(); });
+    document.addEventListener('keydown', onEsc);
+    // window.print() on the page itself: the @media print block hides everything
+    // except #doorSheet, so there is no popup to be blocked and no second page to
+    // keep in sync with this one.
+    m.querySelector('#doorPrint').onclick = function () { window.print(); };
+    m.querySelector('#doorCopy').onclick = function () {
+      var txt = doorText(e), st = m.querySelector('#doorStatus');
+      var ok = function () { st.className = 'form-status ok'; st.textContent = '✓ Copied — paste it into a text or a group chat.'; };
+      var no = function () { st.className = 'form-status err'; st.textContent = 'Could not copy automatically — print it instead.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(ok)['catch'](no);
+      } else { no(); }
+    };
   }
 
   /* -- layout: month grid + Up Next rail -- */
@@ -427,6 +588,14 @@
         buildCalLayout();
         renderMonth();
         renderRail();
+        // events.html#door=<event id> — how the Admin and Officer consoles open the
+        // door list. They keep ONE implementation (this one) rather than each growing
+        // their own copy of a report built from data they would have to re-query.
+        var d = /^#door=([0-9a-f-]{36})$/i.exec(location.hash || '');
+        if (d && CAN_MANAGE) {
+          var ev = EV_ALL.filter(function (x) { return x.id.toLowerCase() === d[1].toLowerCase(); })[0];
+          if (ev) openDoorList(ev);
+        }
       }).catch(function () { calWrap.innerHTML = '<p class="page-empty">Could not load the calendar — try refreshing.</p>'; });
     }).catch(lockedCal);
   }

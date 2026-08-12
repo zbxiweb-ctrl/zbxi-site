@@ -122,6 +122,9 @@
              side panel carries it here and the two never show at once. -->
         <span class="gpill gpill--side" data-g="sidesec" hidden></span>
         <p class="gmodal__caption" data-g="caption"></p>
+        <!-- Who is in this photo (upgrade60). Painted by gallery.js; the strip hides
+             itself entirely when there is nobody tagged and nobody may tag. -->
+        <div class="gtags" data-g="tags" hidden></div>
         <div class="gedit-form" data-g="editform" hidden></div>
         <div class="gmodal__actions">
           <button class="glike" data-g="like">♡ <span data-g="likecount">0</span></button>
@@ -135,6 +138,23 @@
           <button type="submit" class="btn btn--navy">Post</button>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- Brother profile card — opened by clicking a name tagged in a photo. Same
+       markup and same renderer (profile-card.js) as the roster and the family tree,
+       so a tagged name opens exactly the card a brother already knows. -->
+  <div class="bmodal" id="brotherModal" aria-hidden="true">
+    <div class="bmodal__card">
+      <button class="bmodal__close" data-close aria-label="Close">✕</button>
+      <div class="bmodal__head">
+        <div class="bmodal__avatar" data-f="avatar">ΖΒΞ</div>
+        <div>
+          <h3 data-f="name">Brother</h3>
+          <p class="bmodal__sub" data-f="sub"></p>
+        </div>
+      </div>
+      <div class="bmodal__body" data-f="body"></div>
     </div>
   </div>
 
@@ -159,6 +179,7 @@
   <script src="assets/js/password-peek.js"></script>
   <script src="assets/js/notify.js"></script>
   <script src="assets/js/ask-modal.js"></script>
+  <script src="assets/js/profile-card.js"></script>
   <script src="assets/js/gallery.js"></script>
   <script src="assets/js/scroll-fx.js"></script>
 </body>

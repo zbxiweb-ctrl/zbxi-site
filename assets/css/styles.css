@@ -1466,6 +1466,46 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .gedit:hover { color: var(--heading); }
 .gedit + .gdelete { margin-left: 0; }
 
+/* ---- Who is in this photo (upgrade60) --------------------------------------
+   Names, not face boxes. The strip sits under the caption in the side panel and
+   inside the comment sheet on mobile, so it is read in the same place either way. */
+.gtags { margin: .55rem 0 0; }
+.gtags__row { display: flex; flex-wrap: wrap; align-items: center; gap: .38rem; }
+.gtags__lbl { color: var(--muted); font-size: .74rem; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; margin-right: .2rem; }
+.gtag { display: inline-flex; align-items: center; gap: .1rem; border-radius: 999px;
+  background: var(--tint); border: 1px solid var(--hairline); padding: 0 .2rem 0 0; }
+.gtag__name { border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
+  font-weight: 600; color: var(--heading); padding: .28rem .2rem .28rem .7rem; border-radius: 999px; }
+.gtag__name:hover { color: var(--gold-deep); text-decoration: underline; }
+.gtag__x { border: 0; background: none; cursor: pointer; color: var(--muted);
+  font-size: .72rem; line-height: 1; padding: .3rem .45rem; border-radius: 999px; }
+.gtag__x:hover { color: #b54848; }
+.gtag--add { border-style: dashed; color: var(--muted); cursor: pointer; font: inherit;
+  font-size: .8rem; font-weight: 600; padding: .28rem .8rem; background: none; }
+.gtag--add:hover { color: var(--gold-deep); border-color: var(--gold-bright); }
+.gtagpick { margin-top: .5rem; }
+.gtagpick__in { width: 100%; padding: .5rem .7rem; border-radius: 10px; font: inherit;
+  font-size: .88rem; border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text); }
+.gtagpick__list { max-height: 190px; overflow-y: auto; margin-top: .35rem; }
+.gtagpick__hit { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem;
+  width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--hairline);
+  background: none; cursor: pointer; font: inherit; font-size: .88rem; color: var(--text); padding: .45rem .3rem; }
+.gtagpick__hit:hover { background: var(--tint); }
+.gtagpick__hit i { font-style: normal; color: var(--muted); font-size: .72rem; }
+.gtagpick__none { color: var(--muted); font-size: .82rem; margin: .5rem .3rem; }
+
+/* ---- Decade filter (upgrade60) ---------------------------------------------
+   Only drawn when a section actually spans more than one decade — see
+   decadeChipsHtml(). A filter with one option is furniture. */
+.gdecs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.gdec { border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text);
+  border-radius: 999px; padding: .35rem .85rem; font: inherit; font-size: .82rem;
+  font-weight: 600; cursor: pointer; transition: border-color .15s, background .15s; }
+.gdec:hover { border-color: var(--gold-bright); }
+.gdec.on { background: var(--navy); color: var(--on-navy); border-color: var(--navy); }
+.gdec i { font-style: normal; font-weight: 700; opacity: .6; font-size: .74rem; margin-left: .2rem; }
+
 /* Inline post editor (caption + section). Replaces the caption line in place, so
    the photo never moves while you're typing under it. */
 .gedit-form { display: flex; flex-direction: column; gap: .55rem; margin: .8rem 0; }
@@ -2068,6 +2108,61 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .ev-rsvp__btn.on { background: var(--navy); color: var(--gold-bright); border-color: var(--heading); }
 .ev-rsvp b { color: var(--heading); }
 .ev-rsvp__who { color: var(--muted); font-size: .8rem; width: 100%; }
+
+/* ---- guests + the note (upgrade61) ---------------------------------------- */
+.ev-rsvp__bring { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .8rem; }
+.ev-rsvp__g { border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text);
+  border-radius: 999px; padding: .25rem .5rem; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.ev-rsvp__g:hover { border-color: var(--gold-bright); }
+.ev-rsvp__notebtn, .ev-rsvp__door { border: 0; background: none; cursor: pointer; font: inherit;
+  font-size: .8rem; color: var(--muted); text-decoration: underline; padding: 0; }
+.ev-rsvp__notebtn:hover, .ev-rsvp__door:hover { color: var(--gold-deep); }
+.ev-rsvp__door { margin-left: auto; }
+.ev-rsvp__n { color: var(--muted); font-size: .82rem; }
+.ev-rsvp__note { color: var(--muted); font-size: .8rem; width: 100%; font-style: italic; }
+.ev-rsvp__edit { width: 100%; }
+.ev-rsvp__edit[hidden] { display: none; }
+.ev-rsvp__notein { width: 100%; padding: .45rem .7rem; border-radius: 10px; font: inherit; font-size: .85rem;
+  border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text); }
+
+/* ---- the door list (upgrade61) --------------------------------------------
+   A report you print and stand at the door with. The print rule hides the whole
+   page except the sheet, so there is no second window to be blocked and no second
+   copy of this list to keep in sync. */
+.door__h { margin: 0; font-family: var(--display); font-size: 1.4rem; color: var(--heading); }
+.door__when { margin: .2rem 0 1rem; color: var(--muted); font-size: .85rem; }
+.door__t { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.door__t td { border-bottom: 1px solid var(--hairline); padding: .45rem .3rem; vertical-align: top; }
+.door__nm { font-weight: 600; color: var(--heading); }
+.door__cls { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.door__g { font-weight: 700; color: var(--gold-deep); white-space: nowrap; text-align: right; }
+.door__note { color: var(--muted); font-size: .82rem; font-style: italic; }
+.door__tot { margin: 1rem 0 0; font-size: .9rem; color: var(--text); }
+.door__acts { display: flex; gap: .6rem; margin-top: 1.2rem; flex-wrap: wrap; }
+
+@media print {
+  /* display:none on the siblings, NOT visibility:hidden. Two reasons, both found by
+     printing this and looking at it rather than by reasoning about it:
+       1. visibility leaves the hidden page laid out, so the modal card — which is
+          overflow:auto and only as tall as the screen — CLIPPED the list of names.
+          Everything past the first row silently failed to print.
+       2. .ev-rsvp__btn carries `transition: all .15s`, and `all` includes visibility,
+          so the going/not-going button was still fading when the print snapshot was
+          taken and printed on top of the sheet. display is not transitionable.
+     The modal is appended straight to <body>, so `body > *` reaches every sibling. */
+  body > *:not(#doorModal) { display: none !important; }
+  #doorModal { position: static !important; display: block !important; overflow: visible !important;
+    background: none !important; padding: 0 !important; }
+  #doorModal .pmodal__card { position: static !important; overflow: visible !important;
+    max-height: none !important; height: auto !important; width: 100% !important; max-width: none !important;
+    margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important;
+    background: #fff !important; }
+  /* Ink, not screen colours: the navy-on-cream palette prints as grey mush. */
+  #doorSheet, #doorSheet .door__h, #doorSheet .door__nm, #doorSheet .door__g,
+  #doorSheet .door__when, #doorSheet .door__cls, #doorSheet .door__note, #doorSheet .door__tot { color: #000 !important; }
+  #doorSheet .door__t td { border-bottom: 1px solid #999 !important; }
+  .door__acts, #doorModal .pmodal__close { display: none !important; }
+}
 
 /* ---------- Brother spotlight ---------- */
 .spot-card { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 2rem; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; max-width: 860px; margin-inline: auto; text-align: left; }

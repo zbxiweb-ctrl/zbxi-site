@@ -757,7 +757,11 @@
           '<div class="admin-row__ph">📅</div>' +
           '<div class="admin-row__info"><b>' + esc(e.title) + (e.all_day ? ' <span class="tab-count">all-day</span>' : '') + '</b>' +
             '<span>' + esc(when) + (e.location ? ' · ' + esc(e.location) : '') + ' · ' + esc(e.category) + '</span></div>' +
-          '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
+          // Links to the door list on the calendar rather than rebuilding the report
+          // here — this tab and the Admin console would otherwise grow two copies.
+          '<div class="admin-row__act">' +
+            '<a class="btn btn--ghost" href="events.html#door=' + esc(e.id) + '">📋 Door list</a>' +
+            btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
       // "Open the calendar" mirrors the Gallery tool's affordance — this tool

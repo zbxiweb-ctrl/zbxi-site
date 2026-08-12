@@ -41,7 +41,9 @@ begin
     from information_schema.column_privileges
    where table_schema = 'public' and table_name = 'gallery_posts'
      and privilege_type = 'INSERT' and grantee = 'authenticated'
-     and column_name not in ('author_user', 'image_path', 'caption', 'album_id');
+     -- taken_year added by upgrade60 (2026-08-12): the optional year a photo was taken.
+     -- Listed here as well so THIS file stays re-runnable in either order.
+     and column_name not in ('author_user', 'image_path', 'caption', 'album_id', 'taken_year');
   if bad is not null then
     raise exception 'gallery_posts: authenticated can INSERT %; created_at/id must stay server-set', bad;
   end if;
@@ -50,9 +52,9 @@ begin
     from information_schema.column_privileges
    where table_schema = 'public' and table_name = 'gallery_posts'
      and privilege_type = 'UPDATE' and grantee = 'authenticated'
-     and column_name not in ('caption', 'album_id');
+     and column_name not in ('caption', 'album_id', 'taken_year');   -- taken_year: upgrade60
   if bad is not null then
-    raise exception 'gallery_posts: authenticated can UPDATE %; an edit must only touch caption + album_id', bad;
+    raise exception 'gallery_posts: authenticated can UPDATE %; an edit must only touch caption + album_id + taken_year', bad;
   end if;
 
   select string_agg(distinct privilege_type, ', ') into bad

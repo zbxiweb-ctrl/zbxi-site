@@ -926,7 +926,11 @@
           '<div class="admin-row__ph">📅</div>' +
           '<div class="admin-row__info"><b>' + esc(e.title) + (e.all_day ? ' <span class="tab-count">all-day</span>' : '') + '</b>' +
             '<span>' + esc(when) + (e.location ? ' · ' + esc(e.location) : '') + ' · ' + esc(e.category) + '</span></div>' +
-          '<div class="admin-row__act">' + btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
+          // The door list lives on the calendar (one implementation, and the RSVP data
+          // is already loaded there). This is a link to it, not a second copy.
+          '<div class="admin-row__act">' +
+            '<a class="btn btn--ghost" href="events.html#door=' + esc(e.id) + '">📋 Door list</a>' +
+            btn('evedit', 'Edit', 'ghost') + btn('evdel', 'Delete', 'danger') + '</div></div>';
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
       q.innerHTML = annCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;

@@ -48,6 +48,18 @@
     return '<div class="bm__row"><span>Positions held</span><b>' + val + '</b></div>';
   }
 
+  // "In 6 photos" — the payoff of tagging (upgrade60). A link, not a fact: it opens
+  // the gallery filtered to this brother. Hidden at zero rather than shown as "0
+  // photos", which reads as an accusation on a man who has been in the chapter 30
+  // years and simply hasn't been tagged yet.
+  function photosRow(d) {
+    var n = d.photo_count || 0;
+    if (!n) return '';
+    return '<div class="bm__row"><span>In the gallery</span><b>' +
+      '<a href="gallery.html?tagged=' + encodeURIComponent(d.id) + '">📷 ' +
+      n + (n === 1 ? ' photo' : ' photos') + '</a></b></div>';
+  }
+
   // The detail body for an APPROVED viewer, given the full brothers row.
   function detailHtml(d) {
     var prefs = String(d.contact_prefs || '').split(',');
@@ -71,6 +83,7 @@
       row('Currently in', d.city) +
       row('Hometown', d.hometown) +
       row('Skills & interests', d.skills) +
+      photosRow(d) +
       contact +
       (d.bio ? '<p class="bm__bio">' + esc(d.bio) + '</p>' : '') +
       (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
@@ -113,12 +126,21 @@
       var claimCta = lineage +
         '<div class="bm__locked">🌳 <b>Profile unclaimed</b><span>Is this you? Sign in and claim your name to bring this profile to life.</span>' +
         '<a class="btn btn--gold" href="' + portal + '" data-close>Claim your profile</a></div>';
+      var notOnSite = '<div class="bm__locked">🌳 <b>Not on the site yet</b><span>' + esc(b.full_name) +
+        ' is in the family tree from the chapter records but hasn’t created an account yet.</span></div>';
       body.innerHTML = lineage + '<p class="bm__loading">…</p>';
       window.ZBXI.getUser().then(function (me) {
-        body.innerHTML = me
-          ? lineage + '<div class="bm__locked">🌳 <b>Not on the site yet</b><span>' + esc(b.full_name) +
-              ' is in the family tree from the chapter records but hasn’t created an account yet.</span></div>'
-          : claimCta;
+        if (!me) { body.innerHTML = claimCta; return; }
+        body.innerHTML = lineage + notOnSite;
+        // He has no account, so nothing above ran brotherDetail() — but the photo
+        // count is the one fact worth having about a man who never signed up: it is
+        // the argument for inviting him. anon has no read on gallery_tags at all, so
+        // this only ever runs for a signed-in brother.
+        if (window.ZBXI.galleryTagCount) {
+          window.ZBXI.galleryTagCount(b.id).then(function (n) {
+            if (n) body.innerHTML = lineage + photosRow({ id: b.id, photo_count: n }) + notOnSite;
+          })['catch'](function () {});
+        }
       }).catch(function () { body.innerHTML = claimCta; });
       return;
     }

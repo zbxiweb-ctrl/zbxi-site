@@ -23,6 +23,10 @@
     switch (n.kind) {
       case 'like':        return { ic: '♥', text: '<b>' + esc(p.actor || 'A brother') + '</b> liked your photo', href: 'gallery.html' };
       case 'comment':     return { ic: '💬', text: '<b>' + esc(p.actor || 'A brother') + '</b> commented: “' + esc(p.text || '') + '”', href: 'gallery.html' };
+      // upgrade60. The post id is escaped because it comes from the payload, same
+      // reasoning as the new_pending href below — a literal in this file is safe, a
+      // value out of the database is not.
+      case 'photo_tag':   return { ic: '📷', text: '<b>' + esc(p.actor || 'A brother') + '</b> tagged you in a photo', href: 'gallery.html#p=' + esc(p.post_id || '') };
       case 'reply':       return { ic: '↩', text: '<b>' + esc(p.actor || 'A brother') + '</b> replied to “' + esc(p.title || 'your thread') + '”', href: 'board.html' + (p.thread_id ? '#thread=' + p.thread_id : '') };
       case 'approved':    return { ic: '🎉', text: 'You\'re <b>approved</b> — tap for your member orientation', href: 'welcome.html' };
       // Since upgrade44 an Alumni President can clear the queue too, and admin.html

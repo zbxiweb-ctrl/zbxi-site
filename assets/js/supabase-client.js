@@ -356,11 +356,16 @@
       var self = this;
       return Promise.all([
         client.from('roster_detail').select('*').eq('id', id).maybeSingle(),
-        client.from('brother_titles').select('title,term,scope,sort').eq('brother_id', id).order('sort', { ascending: true })
+        client.from('brother_titles').select('title,term,scope,sort').eq('brother_id', id).order('sort', { ascending: true }),
+        // How many gallery photos he has been tagged in (upgrade60). head:true asks
+        // for the count only — no rows cross the wire. A brother with no account has
+        // a count too, which is the whole point: he is in the photos regardless.
+        client.from('gallery_tags').select('post_id', { count: 'exact', head: true }).eq('brother_id', id)
       ]).then(function (res) {
         var d = res[0].data;
         if (!d) return null;
         d.brother_titles = res[1].data || [];
+        d.photo_count = (res[2] && res[2].count) || 0;
         return self._signPhotos(d);
       });
     },
@@ -516,14 +521,46 @@
         .catch(function () { return {}; });   // signed-out / error -> {} (posts show the placeholder)
     },
     galleryCreate: function (row) { return client.from('gallery_posts').insert(row).select().single(); },
-    // Edit your own post (or anyone's, with gallery.moderate). Only these two
-    // fields are sent, and only these two are UPDATE-grantable to `authenticated`
-    // — upgrade41 revoked the rest, so a wider patch is refused by Postgres itself
-    // rather than by this line.
-    galleryUpdate: function (id, caption, albumId) {
+    // Edit your own post (or anyone's, with gallery.moderate). Only these three
+    // fields are sent, and only these three are UPDATE-grantable to `authenticated`
+    // — upgrade41 revoked the rest and upgrade60 added taken_year, so a wider patch
+    // is refused by Postgres itself rather than by this line.
+    galleryUpdate: function (id, caption, albumId, takenYear) {
       return client.from('gallery_posts')
-        .update({ caption: caption || null, album_id: albumId || null })
+        .update({ caption: caption || null, album_id: albumId || null, taken_year: takenYear || null })
         .eq('id', id).select().single();
+    },
+
+    /* ---- who is in a photo (upgrade60) ----
+       Tags point at brothers.id — the ROSTER — not at an account, because most of
+       the men in the old photos never signed up. One flat read for the whole table:
+       it is small, the gallery already holds every post in memory, and a per-post
+       query would be one round trip per photo opened. */
+    galleryTags: function () {
+      return client.from('gallery_tags').select('post_id, brother_id, tagged_by')
+        .then(function (r) { return r.data || []; });
+    },
+    // One brother's photo count on its own. brotherDetail() already returns this for
+    // a brother WITH an account, but the profile card never calls it for a brother
+    // WITHOUT one — and he is exactly who "he's in 6 photos" is worth knowing about,
+    // because it is the reason to go and invite him.
+    galleryTagCount: function (brotherId) {
+      return client.from('gallery_tags').select('post_id', { count: 'exact', head: true })
+        .eq('brother_id', brotherId)
+        .then(function (r) { return (r && r.count) || 0; });
+    },
+    galleryTagAdd: function (postId, brotherId, userId) {
+      return client.from('gallery_tags')
+        .insert({ post_id: postId, brother_id: brotherId, tagged_by: userId })
+        .select().single();
+    },
+    // .select() is not decoration. An RLS `using` refusal deletes zero rows and
+    // returns 204 — indistinguishable from success — so without the returned rows
+    // "remove tag" would silently do nothing for anyone not allowed to. The caller
+    // treats an empty array as a refusal and says so.
+    galleryTagRemove: function (postId, brotherId) {
+      return client.from('gallery_tags').delete()
+        .eq('post_id', postId).eq('brother_id', brotherId).select();
     },
     galleryDeletePost: function (id, imagePath) {
       return this._gallery({ op: 'delete-post', id: id });   // fn deletes the row (RLS) + the R2 object
@@ -633,7 +670,7 @@
 
     /* ---- event RSVPs (members only; RLS-gated) ---- */
     rsvpList: function () {
-      return client.from('event_rsvps').select('event_id, user_id')
+      return client.from('event_rsvps').select('event_id, user_id, guests, note')
         .then(function (r) { return r.data || []; });
     },
     rsvp: function (eventId, userId) {
@@ -641,6 +678,16 @@
     },
     unrsvp: function (eventId, userId) {
       return client.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', userId);
+    },
+    // How many you're bringing, and one line for the door (upgrade61). Only these two
+    // columns are UPDATE-grantable to `authenticated` — event_id and user_id were
+    // revoked, so an RSVP cannot be re-pointed at another event or another brother
+    // even by a hand-written request. .select() so a refusal is visible rather than
+    // a silent 204.
+    rsvpUpdate: function (eventId, userId, guests, note) {
+      return client.from('event_rsvps')
+        .update({ guests: guests, note: note || null })
+        .eq('event_id', eventId).eq('user_id', userId).select();
     },
 
     /* ---- site settings (announcement banner) ----

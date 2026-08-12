@@ -32,8 +32,13 @@
   // seat has gallery.moderate switched on. The DB enforces both (the gallery
   // insert/update/delete policies); these flags only shape the UI.
   var me = null, dir = {}, posts = [], likes = [], urls = {}, isAdmin = false, canMod = false, canPost = false;
-  // view: 'sections' = the cover-card front door, 'grid' = one section's photos.
+  // view: 'sections' = the cover-card front door, 'grid' = one section's photos,
+  // 'tagged' = every photo one brother appears in (?tagged=<brother id>).
   var albums = [], curAlbum = 'all', canAlbums = false, manageOpen = false, view = 'sections';
+  // upgrade60: who is in which photo, the roster to tag against (all 359 verified
+  // brothers, not just the 113 with accounts), and my own roster id — which is what
+  // decides whether I may take MY OWN name off a photo.
+  var tags = [], roster = [], myBrotherId = null, taggedId = null, decade = 'all';
   // Standing inside ONE named section (not the sections page, not "All photos").
   function inSection() { return view === 'grid' && curAlbum !== 'all'; }
 
@@ -57,6 +62,36 @@
     var av = a.photo_url ? '<img src="' + esc(a.photo_url) + '" alt="">' :
       '<span>' + esc(String(a.full_name || 'Ζ').trim()[0] || 'Ζ') + '</span>';
     return '<span class="author-chip"><i class="author-chip__av">' + av + '</i><b>' + esc(a.full_name) + '</b></span>';
+  }
+
+  /* ---------- when was it taken (upgrade60) ----------
+     A YEAR, not a date. Nobody knows the day a 1997 formal was shot, and "3d ago"
+     already answers it for anything recent. The list starts blank and runs newest
+     first, because most photos posted are recent ones. */
+  var YEAR_MIN = 1993;   // the chapter's founding
+  function yearPicker(id, sel) {
+    var now = new Date().getFullYear(), out = '';
+    for (var y = now; y >= YEAR_MIN; y--) {
+      out += '<option value="' + y + '"' + (Number(sel) === y ? ' selected' : '') + '>' + y + '</option>';
+    }
+    return '<select class="zselect gupload__year" id="' + id + '" aria-label="Year the photo was taken">' +
+      '<option value="">Year taken…</option>' + out + '</select>';
+  }
+  function decadeOf(p) { return p.taken_year ? Math.floor(p.taken_year / 10) * 10 : null; }
+
+  /* ---------- who is in the photo (upgrade60) ---------- */
+  function tagsFor(pid) { return tags.filter(function (t) { return t.post_id === pid; }); }
+  function rosterName(bid) {
+    var b = roster.filter(function (x) { return x.id === bid; })[0];
+    return b ? b.full_name : 'A brother';
+  }
+  // Mirrors the gtags_remove policy. The database is the real gate — this only
+  // decides whether to OFFER the ✕, so a brother is never shown a control that
+  // would be refused.
+  function canUntag(t, p) {
+    if (!me) return false;
+    return t.tagged_by === me.id || canMod || (p && p.author_user === me.id) ||
+           (myBrotherId && t.brother_id === myBrotherId);
   }
 
   /* ---------- grid ---------- */
@@ -103,6 +138,7 @@
             : '') +
           '<div class="gupload__row">' +
             (!inSection() && albums.length ? albumPicker('guAlbum', miscId()) : '') +
+            yearPicker('guYear', '') +
             '<input id="guCaption" aria-label="Photo caption" placeholder="Write a caption…" maxlength="300">' +
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
@@ -171,19 +207,72 @@
     return a ? a.name : 'Photos';
   }
   function secHeadHtml() {
+    // The tagged view names the brother instead of the section — it is a different
+    // question ("where does he appear?"), and the section he happens to be filed
+    // under is not the answer.
+    if (view === 'tagged') {
+      var n2 = basePosts().length;
+      return '<div class="gsechead"><h3>Photos of ' + esc(rosterName(taggedId)) + '</h3>' +
+        '<span>' + (n2 === 0 ? 'None yet' : n2 + (n2 === 1 ? ' photo' : ' photos')) + '</span></div>';
+    }
     var n = postsIn(curAlbum).length;
     return '<div class="gsechead"><h3>' + esc(curSecName()) + '</h3>' +
       '<span>' + (n === 0 ? 'No photos yet' : n + (n === 1 ? ' photo' : ' photos')) + '</span></div>';
   }
 
+  /* The photos this view is about, BEFORE the decade filter. One function so the
+     chips count the same set the grid draws. */
+  function basePosts() {
+    if (view === 'tagged') {
+      var mine = tags.filter(function (t) { return t.brother_id === taggedId; })
+                     .map(function (t) { return t.post_id; });
+      return posts.filter(function (p) { return mine.indexOf(p.id) !== -1; });
+    }
+    return curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
+  }
+
+  /* Decade chips. They appear ONLY when they would do something — a section whose
+     photos are all from one decade gets no row, because a filter with one option is
+     furniture. "Undated" is offered as its own chip rather than hidden: on a wall of
+     dated photos, the ones nobody has dated yet are exactly what you want to find. */
+  function decadeChipsHtml(base) {
+    var ds = [], undated = false;
+    base.forEach(function (p) {
+      var d = decadeOf(p);
+      if (d == null) { undated = true; return; }
+      if (ds.indexOf(d) === -1) ds.push(d);
+    });
+    if (!ds.length || ds.length + (undated ? 1 : 0) < 2) return '';
+    ds.sort(function (a, b) { return b - a; });
+    var chip = function (val, label, n) {
+      return '<button class="gdec' + (decade === val ? ' on' : '') + '" data-dec="' + val + '">' +
+        label + ' <i>' + n + '</i></button>';
+    };
+    var html = chip('all', 'All', base.length);
+    ds.forEach(function (d) {
+      html += chip(String(d), d + 's', base.filter(function (p) { return decadeOf(p) === d; }).length);
+    });
+    if (undated) html += chip('none', 'Undated', base.filter(function (p) { return decadeOf(p) == null; }).length);
+    return '<div class="gdecs" role="group" aria-label="Filter by decade">' + html + '</div>';
+  }
+
+  function applyDecade(base) {
+    if (decade === 'all') return base;
+    if (decade === 'none') return base.filter(function (p) { return decadeOf(p) == null; });
+    return base.filter(function (p) { return decadeOf(p) === Number(decade); });
+  }
+
   function gridHtml() {
-    var shown = curAlbum === 'all' ? posts : posts.filter(function (p) { return albumOf(p) === curAlbum; });
+    var base = basePosts();
+    var shown = applyDecade(base);
     if (!shown.length) {
-      return '<p class="page-empty">' + (curAlbum === 'all'
-        ? 'No posts yet — be the first to share a memory.'
+      return decadeChipsHtml(base) + '<p class="page-empty">' + (
+        decade !== 'all' ? 'No photos from that decade in here yet.'
+        : view === 'tagged' ? 'No photos of him yet — tag him in one and it lands here.'
+        : curAlbum === 'all' ? 'No posts yet — be the first to share a memory.'
         : 'No photos in this album yet.') + '</p>';
     }
-    return '<div class="ggrid">' + shown.map(function (p) {
+    return decadeChipsHtml(base) + '<div class="ggrid">' + shown.map(function (p) {
       var u = urls[p.image_path];
       var img = u ? '<img src="' + esc(u) + '" loading="lazy" alt="' + esc(p.caption || 'Gallery photo') + '">' : '<span class="ggrid__ph">…</span>';
       return '<button class="ggrid__cell" data-post="' + esc(p.id) + '" aria-label="' + esc('Open photo' + (p.caption ? ': ' + p.caption : '')) + '">' + img +
@@ -202,10 +291,19 @@
       ? sectionsHtml() + sectionMgrHtml()
       : '<button class="back-pill" id="gsecBack">← All sections</button>' + secHeadHtml() + gridHtml();
     var back = body.querySelector('#gsecBack');
-    if (back) back.addEventListener('click', function () { view = 'sections'; renderGrid(); });
+    if (back) back.addEventListener('click', function () {
+      // Leaving a view clears its filter. Carrying a decade (or one brother) back
+      // to the sections page would silently hide photos on the next section opened.
+      view = 'sections'; decade = 'all'; taggedId = null;
+      if (location.search) history.replaceState(null, '', location.pathname);
+      renderGrid();
+    });
+    body.querySelectorAll('[data-dec]').forEach(function (b) {
+      b.addEventListener('click', function () { decade = b.dataset.dec; renderBody(); });
+    });
     body.querySelectorAll('[data-sec]').forEach(function (c) {
       c.addEventListener('click', function () {
-        curAlbum = c.dataset.sec; view = 'grid';
+        curAlbum = c.dataset.sec; view = 'grid'; decade = 'all';
         // renderGrid, not renderBody: the composer changes with the section
         // (its picker disappears inside one), and only renderGrid rebuilds it.
         renderGrid();
@@ -330,10 +428,12 @@
       var albumSel = document.getElementById('guAlbum');
       var albumId = inSection() ? curAlbum
                   : (albumSel && albumSel.value ? albumSel.value : null);   // null -> Miscellaneous
+      var yearSel = document.getElementById('guYear');
+      var takenYear = yearSel && yearSel.value ? parseInt(yearSel.value, 10) : null;
       Z.downscale(f, 1600).then(function (blob) {
         return Z.galleryUpload(me.id, blob, 'jpg');
       }).then(function (path) {
-        return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null, album_id: albumId });
+        return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null, album_id: albumId, taken_year: takenYear });
       }).then(function (r) {
         if (r.error) throw r.error;
         btn.textContent = 'Post';
@@ -359,7 +459,10 @@
     g('caption').textContent = p.caption || '';
     var an = albumName(p);
     // The pill already says the section, so the date line stops repeating it.
-    g('date').textContent = when(p.created_at);
+    // When the photo carries a year, that comes FIRST: on a 1997 photo "posted 3d
+    // ago" is the least interesting fact about it, and reading it first is exactly
+    // the confusion this feature exists to remove.
+    g('date').textContent = (p.taken_year ? '📅 ' + p.taken_year + ' · posted ' : '') + when(p.created_at);
     // Both pills are painted; CSS shows exactly one (bars are mobile, side is
     // desktop). hidden when a post has no section, so an empty pill never draws.
     ['barsec', 'sidesec'].forEach(function (k) {
@@ -377,6 +480,121 @@
     paintCaption(p);
   }
 
+  /* ---------- "In this photo" ----------------------------------------------------
+     Names, not faces: no boxes to drag, nothing to line up on a phone. A chip opens
+     that brother's profile card — including for the 246 men with no account, whose
+     card says "in the family tree, hasn't created an account yet". That is the point
+     of tagging against the roster rather than against accounts. */
+  function paintTags(p) {
+    var box = g('tags');
+    if (!box) return;
+    var mine = tagsFor(p.id);
+    // Nothing to show and nothing to do -> draw nothing at all.
+    if (!mine.length && !me) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    var chips = mine.map(function (t) {
+      return '<span class="gtag"><button type="button" class="gtag__name" data-tagopen="' + esc(t.brother_id) + '">' +
+        esc(rosterName(t.brother_id)) + '</button>' +
+        (canUntag(t, p) ? '<button type="button" class="gtag__x" data-taguntag="' + esc(t.brother_id) +
+          '" aria-label="' + esc('Remove ' + rosterName(t.brother_id) + ' from this photo') + '">✕</button>' : '') +
+        '</span>';
+    }).join('');
+    box.innerHTML =
+      '<div class="gtags__row">' +
+        '<span class="gtags__lbl">' + (mine.length ? '👥 In this photo' : '👥 Nobody tagged yet') + '</span>' +
+        chips +
+        (me ? '<button type="button" class="gtag gtag--add" data-tagadd>＋ Tag someone</button>' : '') +
+      '</div>' +
+      '<div class="gtagpick" data-tagpick hidden></div>' +
+      '<p class="form-status" data-tagstatus role="status"></p>';
+
+    box.querySelectorAll('[data-tagopen]').forEach(function (b) {
+      b.onclick = function () { openBrother(b.dataset.tagopen); };
+    });
+    box.querySelectorAll('[data-taguntag]').forEach(function (b) {
+      b.onclick = function () { removeTag(p, b.dataset.taguntag, box); };
+    });
+    var add = box.querySelector('[data-tagadd]');
+    if (add) add.onclick = function () { openTagPicker(p, box); };
+  }
+
+  /* The picker. Types over the whole verified roster — 359 names, already in memory
+     from the family tree — and shows the ten best matches, because a 359-row list on
+     a phone is not a picker. Already-tagged men are filtered out rather than shown
+     and refused. */
+  function openTagPicker(p, box) {
+    var pick = box.querySelector('[data-tagpick]');
+    if (!pick) return;
+    if (!pick.hidden) { pick.hidden = true; pick.innerHTML = ''; return; }
+    pick.hidden = false;
+    pick.innerHTML = '<input class="gtagpick__in" type="search" placeholder="Type a brother\'s name…" ' +
+      'aria-label="Search brothers to tag" autocomplete="off"><div class="gtagpick__list"></div>';
+    var input = pick.querySelector('.gtagpick__in');
+    var list = pick.querySelector('.gtagpick__list');
+    function draw() {
+      var q = input.value.trim().toLowerCase();
+      var taken = tagsFor(p.id).map(function (t) { return t.brother_id; });
+      var hits = roster.filter(function (b) {
+        return taken.indexOf(b.id) === -1 && (!q || b.full_name.toLowerCase().indexOf(q) !== -1);
+      }).slice(0, 10);
+      list.innerHTML = hits.length
+        ? hits.map(function (b) {
+            return '<button type="button" class="gtagpick__hit" data-pickid="' + esc(b.id) + '">' +
+              esc(b.full_name) + (b.pledge_class ? '<i>' + esc(b.pledge_class) + '</i>' : '') + '</button>';
+          }).join('')
+        : '<p class="gtagpick__none">No brother by that name on the roster.</p>';
+      list.querySelectorAll('[data-pickid]').forEach(function (h) {
+        h.onclick = function () { addTag(p, h.dataset.pickid, box); };
+      });
+    }
+    input.addEventListener('input', draw);
+    draw();
+    input.focus();
+  }
+
+  function tagSay(box, msg, bad) {
+    var st = box.querySelector('[data-tagstatus]');
+    if (!st) return;
+    st.className = 'form-status' + (bad ? ' err' : '');
+    st.textContent = msg || '';
+  }
+
+  function addTag(p, brotherId, box) {
+    tagSay(box, '');
+    Z.galleryTagAdd(p.id, brotherId, me.id).then(function (r) {
+      if (r.error) throw r.error;
+      tags.push({ post_id: p.id, brother_id: brotherId, tagged_by: me.id });
+      paintTags(p);
+    })['catch'](function (err) {
+      tagSay(box, (err && err.message) || 'Could not add that tag.', true);
+    });
+  }
+
+  function removeTag(p, brotherId, box) {
+    tagSay(box, '');
+    Z.galleryTagRemove(p.id, brotherId).then(function (r) {
+      if (r.error) throw r.error;
+      // Zero rows back means RLS declined without raising — the same silent refusal
+      // that removeComment() already guards against. Say so rather than appearing
+      // to work and reverting on the next reload.
+      if (!r.data || !r.data.length) throw new Error('You can only remove a tag you added, or your own name.');
+      tags = tags.filter(function (t) { return !(t.post_id === p.id && t.brother_id === brotherId); });
+      paintTags(p);
+    })['catch'](function (err) {
+      tagSay(box, (err && err.message) || 'Could not remove that tag.', true);
+    });
+  }
+
+  /* Open the shared brother card over the photo viewer. The viewer stays open and
+     stays scroll-locked underneath: profile-card.js adds `modal-open`, while the
+     viewer's own lock is `modal-locked` + a fixed body, so closing the card cannot
+     release the page out from under the photo. */
+  function openBrother(brotherId) {
+    var b = roster.filter(function (x) { return x.id === brotherId; })[0];
+    if (!b || !window.BrotherCard) return;
+    window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+  }
+
   /* Inline edit — caption and section, nothing else. That limit is not a UI
      convention: upgrade41 revoked UPDATE on every other column of gallery_posts,
      so who posted a photo and which image it points at cannot be changed from the
@@ -389,6 +607,7 @@
       '<textarea id="geCap" rows="2" maxlength="300" aria-label="Caption" placeholder="Write a caption…"></textarea>' +
       '<div class="gedit-form__row">' +
         (albums.length ? albumPicker('geAlbum', albumOf(p)) : '') +
+        yearPicker('geYear', p.taken_year) +
         '<button class="btn btn--gold" id="geSave" type="button">Save</button>' +
         '<button class="btn btn--ghost" id="geCancel" type="button">Cancel</button>' +
       '</div>' +
@@ -405,13 +624,15 @@
       var btn = box.querySelector('#geSave');
       var st = box.querySelector('#geStatus');
       var sel = box.querySelector('#geAlbum');
+      var yr = box.querySelector('#geYear');
       btn.disabled = true; btn.textContent = 'Saving…';
       st.className = 'form-status'; st.textContent = '';
-      Z.galleryUpdate(p.id, cap.value.trim(), sel ? sel.value : null).then(function (r) {
+      Z.galleryUpdate(p.id, cap.value.trim(), sel ? sel.value : null,
+                      yr && yr.value ? parseInt(yr.value, 10) : null).then(function (r) {
         if (r.error) throw r.error;
-        p.caption = r.data.caption; p.album_id = r.data.album_id;
+        p.caption = r.data.caption; p.album_id = r.data.album_id; p.taken_year = r.data.taken_year;
         closeEdit(p);
-        renderBody();   // section chips and their counts can both change
+        renderBody();   // section counts and the decade chips can both change
       })['catch'](function (err) {
         btn.disabled = false; btn.textContent = 'Save';
         st.className = 'form-status err';
@@ -686,6 +907,7 @@
     // known — object-fit: contain makes the painted box depend on naturalWidth.
     g('img').onload = function () { if (sheetY != null) paintSheet(sheetY); };
     closeEdit(p);   // paints the caption, and drops a form left open on the last post
+    paintTags(p);
     var ed = g('edit');
     ed.style.display = (me && (p.author_user === me.id || canMod)) ? '' : 'none';
     ed.onclick = function () { openEdit(p); };
@@ -908,13 +1130,32 @@
 
   /* ---------- data ---------- */
   function loadAll() {
-    return Promise.all([Z.galleryList(), Z.galleryLikesAll(), Z.memberDirectory(), Z.galleryAlbums()]).then(function (res) {
+    return Promise.all([Z.galleryList(), Z.galleryLikesAll(), Z.memberDirectory(), Z.galleryAlbums(),
+                        Z.galleryTags(), Z.listFamilyPublic()]).then(function (res) {
       posts = res[0]; likes = res[1]; dir = res[2] || {}; albums = res[3] || [];
+      // The tag table and the roster. listFamilyPublic() is the SAME cached read the
+      // family tree uses, so this costs nothing on a page the brother has visited.
+      tags = res[4] || [];
+      roster = (res[5] || []).slice().sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
       var paths = posts.map(function (p) { return p.image_path; });
       return Z.gallerySignedUrls(paths).then(function (map) {
         urls = map; renderGrid();
       });
     });
+  }
+
+  /* A notification ("you were tagged") links to gallery.html#p=<post id>, and a
+     profile card links to gallery.html?tagged=<brother id>. Both have to survive the
+     load, so they are read once here and applied after the first render. */
+  function openDeepLink() {
+    var m = /[#&]p=([0-9a-f-]{36})/i.exec(location.hash || '');
+    if (!m) return;
+    var p = posts.filter(function (x) { return x.id.toLowerCase() === m[1].toLowerCase(); })[0];
+    if (!p) return;
+    // Land in the section the photo lives in, so closing the viewer leaves the
+    // brother somewhere that makes sense rather than on the front door.
+    if (view !== 'tagged') { curAlbum = albumOf(p) || 'all'; view = 'grid'; renderGrid(); }
+    openPost(p);
   }
 
   function gallerySkeleton() {
@@ -932,12 +1173,19 @@
       canPost = true;   // being an approved brother IS the permission (upgrade41)
       Promise.all([
         Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false),
-        Z.officerCan ? Z.officerCan('gallery.albums') : Promise.resolve(false)
+        Z.officerCan ? Z.officerCan('gallery.albums') : Promise.resolve(false),
+        // My own ROSTER id. Not the same thing as my account id, and it is what
+        // decides whether the ✕ appears on a tag of me (upgrade60).
+        Z.myProfile ? Z.myProfile(u.id) : Promise.resolve(null)
       ]).then(function (r) {
         canMod = isAdmin || r[0];
         canAlbums = isAdmin || r[1];
+        myBrotherId = (r[2] && r[2].id) || null;
+        // ?tagged=<brother id> — "show me every photo he is in", from his profile card.
+        var t = /[?&]tagged=([0-9a-f-]{36})/i.exec(location.search || '');
+        if (t) { taggedId = t[1]; view = 'tagged'; }
         if (!root.querySelector('.sk')) root.innerHTML = gallerySkeleton();  // unless already painted above
-        loadAll().catch(function () {
+        loadAll().then(openDeepLink).catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';
         });
       });
