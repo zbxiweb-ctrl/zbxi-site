@@ -1578,8 +1578,12 @@
       return;
     }
 
-    // Most terms run two semesters, so the default is "the term ending now".
-    var end = currentTerm(), start = previousTerm(end);
+    /* The default is the term that has just FINISHED, not the one now starting —
+       you archive a board after it has served. In August the current semester is
+       Fall, so the completed term is the Spring just gone, and a two-semester board
+       served Fall-before → that Spring. Editable, and labelled, because a chapter
+       that runs single-semester boards or elects off-cycle will differ. */
+    var end = previousTerm(currentTerm()), start = previousTerm(end);
     function semSel(name, val) {
       return '<select data-f="' + name + '">' +
         SEMS.map(function (s) { return '<option' + (val === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
