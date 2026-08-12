@@ -68,6 +68,9 @@
     // him, then fix whatever was typed wrong. (upgrade46)
     { perm: 'members.invite',      id: 'invite',     ic: '✉️', label: 'Invite',      render: renderInviteTab },
     { perm: 'members.edit',        id: 'records',    ic: '🗂', label: 'Records',     render: renderRecordsTab },
+    // Shared with the admin console (mentoring-tab.js). Gated on members.edit because
+    // that is the grant officer_set_open_to itself checks — one permission, not two.
+    { perm: 'members.edit',        id: 'mentoring',  ic: '🧭', label: 'Mentoring',   render: function (q) { window.ZBXIMentoringTab.render(q); } },
     { perm: 'events.manage',       id: 'events',     ic: '📅', label: 'Events',      render: renderEventsTab },
     { perm: 'committees.manage',   id: 'committees', ic: '👥', label: 'Committees',  render: renderCommitteesTab },
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },

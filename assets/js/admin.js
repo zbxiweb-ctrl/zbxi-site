@@ -106,9 +106,11 @@
       { id: 'email',      ic: '📧', label: 'Email'      },
       { id: 'events',     ic: '📅', label: 'Events'     },
       { id: 'fund',       ic: '🎁', label: 'Alumni Fund' },
+      { id: 'gallery',    ic: '🖼', label: 'Gallery'    },
       { id: 'guide',      ic: '📖', label: 'Guide'      },
       { id: 'history',    ic: '📜', label: 'History'    },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
+      { id: 'mentoring',  ic: '🧭', label: 'Mentoring'  },
       { id: 'officers',   ic: '🛡', label: 'Officers'   },
       { id: 'stats',      ic: '📊', label: 'Stats'      },
       { id: 'suggest',    ic: '💡', label: 'Suggestions', count: 'suggest' },
@@ -340,6 +342,8 @@
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'digest') return renderDigestTab(q);
     if (state.tab === 'fund') return renderFundTab(q);
+    if (state.tab === 'gallery') return renderGalleryTab(q);
+    if (state.tab === 'mentoring') return window.ZBXIMentoringTab.render(q);
     if (state.tab === 'awards') return renderAwardsTab(q);
     if (state.tab === 'email') return window.ZBXIEmailTab.render(q);
     if (state.tab === 'invite') return renderInviteTab(q);
@@ -1412,9 +1416,9 @@
       '<p class="admin-hint">The Active and Alumni boards are separate. Assigning a seat moves the previous holder to “Previous officers” automatically, and current officers are kept in the private <b>E-Board Officers</b> committee on the Board.</p>' +
       panel('active', '🎓 Active Brothers Executive Board') +
       panel('alumni', '🌍 Alumni Brothers Executive Board') +
-      '<div class="acct-block acct-block--danger"><h4>🔄 Semester rollover</h4>' +
-        '<p class="form-note">Run once each semester: every current officer (both boards) moves to Previous officers and the Officers committee is emptied. Then assign the new boards above and add the new pledge class in 📋 Unclaimed.</p>' +
-        '<button class="btn btn--ghost-danger" id="rolloverBtn">Run semester rollover</button>' +
+      '<div class="acct-block acct-block--danger"><h4>🔄 End of term</h4>' +
+        '<p class="form-note">Run once each semester. It does two things in one go: <b>records the outgoing board on the Executive Boards page</b>, then moves those officers to Previous officers and empties the Officers committee. Then assign the new boards above and add the new pledge class in 📋 Unclaimed.</p>' +
+        '<button class="btn btn--ghost-danger" id="rolloverBtn">Record the term &amp; roll over…</button>' +
         '<p class="form-status" id="rolloverStatus"></p></div>' +
       '<h3 class="stat-h">Previous officers (' + prev.length + ')</h3>' +
       (prev.length ? '<div class="stat-list">' + prev.map(function (b) {
@@ -1446,19 +1450,157 @@
       };
     });
     var ro = document.getElementById('rolloverBtn');
-    if (ro) ro.onclick = function () {
-      if (!confirm('Semester rollover: move ALL current officers (both boards) to Previous officers and empty the Officers committee?')) return;
-      var st = document.getElementById('rolloverStatus');
-      st.className = 'form-status'; st.textContent = 'Rolling over…';
-      var officers = state.data.verified.filter(function (b) { return b.role && (b.role_scope === 'active' || b.role_scope === 'alumni'); });
-      Promise.all(officers.map(function (b) { return Z.updateBrother(b.id, { role_scope: 'previous' }); }))
-        .then(function () { return officersCommitteeId(); })
-        .then(function (cid) {
-          if (!cid) return;
-          return Promise.all(officers.filter(function (b) { return b.user_id; })
-            .map(function (b) { return Z.committeeRemove(cid, b.user_id); }));
-        })
-        .then(loadAll);
+    if (ro) ro.onclick = function () { openRollover(); };
+  }
+
+  /* ---- End of term: archive FIRST, then retire ------------------------------
+     This used to be a one-line confirm() that flipped every officer to
+     'previous' and wrote no history at all. That was a trap with no warning and
+     no undo: the "Archive this board as history" button on the Executive Boards
+     page only renders while the seats are still LIVE, so the moment rollover ran
+     it vanished, and the term was gone unless you happened to archive first.
+     Nothing in either screen said the order mattered.
+
+     So the two halves are one action now, and the order is enforced rather than
+     documented: if the archive fails, NOBODY is retired. The reverse (retire,
+     then fail to archive) is the exact loss this is here to prevent. */
+  var SEMS = ['Fall', 'Spring'];
+  function currentTerm() {
+    var d = new Date();
+    // July onward reads as the Fall term; January–June as Spring.
+    return d.getMonth() >= 6 ? { sem: 'Fall', year: d.getFullYear() }
+                             : { sem: 'Spring', year: d.getFullYear() };
+  }
+  function previousTerm(t) {
+    return t.sem === 'Fall' ? { sem: 'Spring', year: t.year }
+                            : { sem: 'Fall', year: t.year - 1 };
+  }
+  function termLabelOf(row) {
+    var start = row.start_sem + ' ' + row.start_year;
+    if (!row.end_sem || !row.end_year) return start;
+    return start + ' – ' + row.end_sem + ' ' + row.end_year;
+  }
+
+  function openRollover() {
+    var officers = state.data.verified.filter(function (b) {
+      return b.role && (b.role_scope === 'active' || b.role_scope === 'alumni');
+    });
+    if (!officers.length) {
+      var s0 = document.getElementById('rolloverStatus');
+      s0.className = 'form-status err';
+      s0.textContent = 'There are no sitting officers to roll over.';
+      return;
+    }
+
+    // Most terms run two semesters, so the default is "the term ending now".
+    var end = currentTerm(), start = previousTerm(end);
+    function semSel(name, val) {
+      return '<select data-f="' + name + '">' +
+        SEMS.map(function (s) { return '<option' + (val === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select>';
+    }
+    function scopeList(scope, label) {
+      var men = officers.filter(function (b) { return b.role_scope === scope; });
+      if (!men.length) return '';
+      return '<div class="stat-list"><div class="stat-list__row"><b>' + label + '</b>' +
+        '<span>' + men.length + ' officer' + (men.length === 1 ? '' : 's') + '</span></div>' +
+        men.map(function (b) {
+          return '<div class="stat-list__row"><b>' + esc(b.full_name) + '</b><span>' + esc(b.role) + '</span></div>';
+        }).join('') + '</div>';
+    }
+
+    var wrap = treeModal('End of term',
+      '<p class="form-note" style="margin-top:0">These officers will be <b>written onto the Executive Boards page</b> under the term below, and then moved to Previous officers. ' +
+        'One board is created per side. Nothing is retired unless the history is recorded first.</p>' +
+      scopeList('active', '🎓 Active Board') +
+      scopeList('alumni', '🌍 Alumni Board') +
+      '<div class="field"><label>Term starts</label><div class="eb-termrow">' +
+        semSel('start_sem', start.sem) +
+        '<input type="number" data-f="start_year" min="1993" max="2100" value="' + start.year + '"></div></div>' +
+      '<div class="field"><label>Term ends <small>(leave the year blank for a single semester)</small></label>' +
+        '<div class="eb-termrow">' + semSel('end_sem', end.sem) +
+        '<input type="number" data-f="end_year" min="1993" max="2100" value="' + end.year + '"></div></div>' +
+      '<div class="field"><label>Note <small>(optional — what this board is remembered for)</small></label>' +
+        '<textarea data-f="note" rows="2" maxlength="300"></textarea></div>' +
+      '<button class="btn btn--ghost-danger" data-go style="width:100%">Record the term &amp; roll over</button>');
+
+    wrap.querySelector('[data-go]').onclick = function () {
+      var st = wrap.querySelector('[data-status]');
+      function v(n) { return String(wrap.querySelector('[data-f="' + n + '"]').value).trim(); }
+      var base = {
+        start_sem: v('start_sem'), start_year: parseInt(v('start_year'), 10),
+        end_sem: v('end_year') ? v('end_sem') : null,
+        end_year: v('end_year') ? parseInt(v('end_year'), 10) : null,
+        note: v('note') || null
+      };
+      if (!base.start_sem || !base.start_year) {
+        st.className = 'form-status err'; st.textContent = 'A term needs a starting semester and year.'; return;
+      }
+      var go = wrap.querySelector('[data-go]');
+      go.disabled = true;
+      st.className = 'form-status'; st.textContent = 'Recording the term…';
+      // Which half we reached, so a failure can say something true rather than
+      // something reassuring. Step 2 failing partway is a real state: some
+      // officers retired, the rest not — and the history is already safe.
+      var archived = false;
+
+      var scopes = ['active', 'alumni'].filter(function (sc) {
+        return officers.some(function (b) { return b.role_scope === sc; });
+      });
+
+      // ── step 1: history. Sequential, same as the Executive Boards page does it —
+      //    parallel inserts that half-fail leave a board nobody can tell is short.
+      var chain = Promise.resolve();
+      scopes.forEach(function (sc) {
+        chain = chain.then(function () {
+          var row = {
+            scope: sc, start_sem: base.start_sem, start_year: base.start_year,
+            end_sem: base.end_sem, end_year: base.end_year, note: base.note
+          };
+          return Z.eboardCreate(row).then(function (made) {
+            var seats = officers.filter(function (b) { return b.role_scope === sc; });
+            var inner = Promise.resolve();
+            seats.forEach(function (b) {
+              inner = inner.then(function () {
+                return Z.brotherTitleAdd({
+                  brother_id: b.id, title: b.role, term: termLabelOf(row),
+                  scope: sc, board_id: made.id, sort: SEAT_TITLES.indexOf(b.role) + 1
+                });
+              });
+            });
+            return inner;
+          });
+        });
+      });
+
+      // ── step 2: only now retire them.
+      chain.then(function () {
+        archived = true;
+        st.textContent = 'Term recorded. Retiring the officers…';
+        return Promise.all(officers.map(function (b) {
+          return Z.updateBrother(b.id, { role_scope: 'previous' });
+        }));
+      }).then(function () {
+        return officersCommitteeId();
+      }).then(function (cid) {
+        if (!cid) return;
+        return Promise.all(officers.filter(function (b) { return b.user_id; })
+          .map(function (b) { return Z.committeeRemove(cid, b.user_id); }));
+      }).then(function () {
+        wrap.close();
+        loadAll();
+      })['catch'](function (e) {
+        go.disabled = false;
+        var why = (e && e.message) || 'something went wrong.';
+        st.className = 'form-status err';
+        st.textContent = archived
+          // History is already written. Re-running would create a second board for
+          // the same term, so say that instead of inviting a blind retry.
+          ? 'The term WAS recorded on the Executive Boards page, but retiring the officers did not finish — ' + why +
+            ' Some may still be sitting. Retire the rest by hand with the Retire buttons above; do NOT run this again or the term will be recorded twice.'
+          : 'Stopped before anyone was retired — ' + why +
+            ' Nothing was changed. Fix this and run it again.';
+      });
     };
   }
 
@@ -2679,16 +2821,99 @@
     return b ? b.full_name : null;
   }
 
-  function renderStatsTab(q) {
-    q.innerHTML = '<p class="admin-empty">Crunching the numbers…</p>';
+  /* ---- 🖼 Gallery ------------------------------------------------------------
+     This is a MOVE, not a rewrite. The storage meter and the album manager were
+     buried at the bottom of 📊 Stats — the one tab nobody opens looking for a
+     control — and there was no Gallery entry in the console at all. Same code,
+     somewhere findable, plus the one thing that was genuinely missing: a way to
+     get to the photos themselves. Deleting a photo or a comment happens ON the
+     gallery page, where you can see what you are deleting; putting a second
+     delete UI here would be two screens doing one job. */
+  function renderGalleryTab(q) {
+    q.innerHTML = '<p class="admin-empty">Loading the gallery…</p>';
     Promise.all([
-      Z.adminStats(), Z.activityList(50),
       Z.galleryAlbums()['catch'](function () { return []; }),
       Z.galleryList()['catch'](function () { return []; }),
       Z.galleryUsage()   // returns null on any error — never rejects the batch
     ]).then(function (res) {
+      var gAlbums = res[0] || [], gPosts = res[1] || [], gUsage = res[2] || null;
+      var gGB = gUsage ? gUsage.bytes / 1073741824 : null;
+      var gPct = gGB == null ? 0 : Math.min(100, gGB / 10 * 100);
+
+      var html = '<p class="admin-hint">Sections (albums) are managed here. <b>Photos and comments are moderated on the gallery page itself</b> — you can see what you are removing before you remove it.</p>' +
+        '<div class="admin-addbar"><a class="btn btn--ghost" href="gallery.html" target="_blank" rel="noopener">🖼 Open the gallery →</a></div>';
+
+      html += '<h3 class="stat-h">Storage</h3>';
+      if (gUsage) {
+        html += '<div class="stor-meter">' +
+          '<div class="stor-meter__bar"><span style="width:' + gPct.toFixed(1) + '%;' + (gGB >= 8 ? 'background:#b4342b' : '') + '"></span></div>' +
+          '<p class="stor-meter__label"><b>' + gGB.toFixed(2) + ' GB</b> of 10 GB · ' +
+            (gUsage.objects || 0) + ' photo' + (gUsage.objects === 1 ? '' : 's') + '</p>' +
+          '<p class="admin-hint">Photos auto-compress to ~300&nbsp;KB. You\'ll get an email if it ever passes 8&nbsp;GB — plenty of runway before then.</p>' +
+        '</div>';
+      } else {
+        html += '<p class="admin-hint">Storage usage is unavailable right now.</p>';
+      }
+
+      var albCount = function (a) {
+        return gPosts.filter(function (p) { return p.album_id === a.id || (a.name === 'Miscellaneous' && !p.album_id); }).length;
+      };
+      html += '<h3 class="stat-h">Sections (' + gAlbums.length + ')</h3>' +
+        (gAlbums.length ? '<div class="stat-list">' + gAlbums.map(function (a) {
+          var n = albCount(a);
+          return '<div class="stat-list__row"><b>' + esc(a.name) + '</b>' +
+            '<span>' + n + ' photo' + (n === 1 ? '' : 's') + '</span>' +
+            '<em>' + (a.name === 'Miscellaneous'
+              ? 'default section'
+              : '<a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a> · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a>') +
+            '</em></div>';
+        }).join('') + '</div>' : '<p class="admin-empty">No sections yet.</p>') +
+        '<p style="margin:.6rem 0 1.4rem"><button class="btn btn--ghost" id="albumAdd">+ New section</button></p>';
+
+      q.innerHTML = html;
+
+      /* ---- album manager wiring (admin-only; RLS enforces it too) ---- */
+      function reGallery() { renderGalleryTab(q); }
+      var albumAdd = document.getElementById('albumAdd');
+      if (albumAdd) albumAdd.onclick = function () {
+        ZBXIAsk.text({ title: 'New section', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
+          name = (name || '').trim(); if (!name) return;
+          Z.albumCreate(name).then(function (r) {
+            if (r && r.error) alert(r.error.message || 'Could not create that section (is the name already taken?).');
+            reGallery();
+          });
+        });
+      };
+      q.querySelectorAll('[data-alb-rn]').forEach(function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          ZBXIAsk.text({ title: 'Rename section', value: a.getAttribute('data-alb-nm'), ok: 'Save' }, function (name) {
+            name = (name || '').trim(); if (!name) return;
+            Z.albumRename(a.getAttribute('data-alb-rn'), name).then(reGallery);
+          });
+        };
+      });
+      q.querySelectorAll('[data-alb-del]').forEach(function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          if (!confirm('Delete the section “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
+          Z.albumDelete(a.getAttribute('data-alb-del')).then(reGallery);
+        };
+      });
+    })['catch'](function (e) {
+      q.innerHTML = '<p class="form-status err">' + esc((e && e.message) || 'Could not load the gallery.') + '</p>';
+    });
+  }
+
+  function renderStatsTab(q) {
+    q.innerHTML = '<p class="admin-empty">Crunching the numbers…</p>';
+    // Three gallery fetches used to ride along here purely to feed the album
+    // manager that now lives in the 🖼 Gallery tab. Dropped with it — Stats was
+    // making three requests it no longer reads.
+    Promise.all([
+      Z.adminStats(), Z.activityList(50)
+    ]).then(function (res) {
       var s = res[0] || {}, acts = res[1] || [];
-      var gAlbums = res[2] || [], gPosts = res[3] || [], gUsage = res[4] || null;
       if (s.error) { q.innerHTML = '<p class="form-status err">' + esc(s.error) + '</p>'; return; }
       function statCard(n, label) {
         return '<div class="stat-card"><b>' + (n == null ? '—' : n) + '</b><span>' + label + '</span></div>';
@@ -2736,35 +2961,9 @@
           : 'every registered profile is complete 🎉') +
         '</span><em></em></div></div>';
 
-      /* ---- gallery: storage meter + album manager ---- */
-      var gGB = gUsage ? gUsage.bytes / 1073741824 : null;
-      var gPct = gGB == null ? 0 : Math.min(100, gGB / 10 * 100);
-      html += '<h3 class="stat-h">🖼️ Gallery storage</h3>';
-      if (gUsage) {
-        html += '<div class="stor-meter">' +
-          '<div class="stor-meter__bar"><span style="width:' + gPct.toFixed(1) + '%;' + (gGB >= 8 ? 'background:#b4342b' : '') + '"></span></div>' +
-          '<p class="stor-meter__label"><b>' + gGB.toFixed(2) + ' GB</b> of 10 GB · ' +
-            (gUsage.objects || 0) + ' photo' + (gUsage.objects === 1 ? '' : 's') + '</p>' +
-          '<p class="admin-hint">Photos auto-compress to ~300&nbsp;KB. You\'ll get an email if it ever passes 8&nbsp;GB — plenty of runway before then.</p>' +
-        '</div>';
-      } else {
-        html += '<p class="admin-hint">Storage usage is unavailable right now.</p>';
-      }
-
-      var albCount = function (a) {
-        return gPosts.filter(function (p) { return p.album_id === a.id || (a.name === 'Miscellaneous' && !p.album_id); }).length;
-      };
-      html += '<h3 class="stat-h">🗂️ Gallery albums</h3>' +
-        '<div class="stat-list">' + gAlbums.map(function (a) {
-          var n = albCount(a);
-          return '<div class="stat-list__row"><b>' + esc(a.name) + '</b>' +
-            '<span>' + n + ' photo' + (n === 1 ? '' : 's') + '</span>' +
-            '<em>' + (a.name === 'Miscellaneous'
-              ? 'default section'
-              : '<a href="#" data-alb-rn="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">rename</a> · <a href="#" data-alb-del="' + esc(a.id) + '" data-alb-nm="' + esc(a.name) + '">delete</a>') +
-            '</em></div>';
-        }).join('') + '</div>' +
-        '<p style="margin:.6rem 0 1.4rem"><button class="btn btn--ghost" id="albumAdd">+ New album</button></p>';
+      // Gallery storage and the album manager moved to their own 🖼 Gallery tab -
+      // they were controls buried in a page of numbers. The gallery COUNTS in the
+      // stat cards above stay here, because those are genuinely stats.
 
       html += '<p style="margin:1.4rem 0 0"><button class="btn btn--ghost" id="exportCsv">⬇ Export roster (CSV)</button> ' +
         '<span style="color:var(--on-dark);font-size:.82rem">Backup of every brother — opens in Excel/Sheets.</span></p>' +
@@ -2781,35 +2980,6 @@
       }).join('') + '</div>' : '<p class="admin-empty">No activity recorded yet.</p>';
 
       q.innerHTML = html;
-
-      /* ---- album manager wiring (admin-only; RLS enforces it too) ---- */
-      function reStats() { renderStatsTab(q); }
-      var albumAdd = document.getElementById('albumAdd');
-      if (albumAdd) albumAdd.onclick = function () {
-        ZBXIAsk.text({ title: 'New album', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
-          name = (name || '').trim(); if (!name) return;
-          Z.albumCreate(name).then(function (r) {
-            if (r && r.error) alert(r.error.message || 'Could not create that album (is the name already taken?).');
-            reStats();
-          });
-        });
-      };
-      q.querySelectorAll('[data-alb-rn]').forEach(function (a) {
-        a.onclick = function (e) {
-          e.preventDefault();
-          ZBXIAsk.text({ title: 'Rename album', value: a.getAttribute('data-alb-nm'), ok: 'Save' }, function (name) {
-            name = (name || '').trim(); if (!name) return;
-            Z.albumRename(a.getAttribute('data-alb-rn'), name).then(reStats);
-          });
-        };
-      });
-      q.querySelectorAll('[data-alb-del]').forEach(function (a) {
-        a.onclick = function (e) {
-          e.preventDefault();
-          if (!confirm('Delete the album “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
-          Z.albumDelete(a.getAttribute('data-alb-del')).then(reStats);
-        };
-      });
 
       var exp = document.getElementById('exportCsv');
       if (exp) exp.onclick = function () {

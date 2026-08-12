@@ -1094,6 +1094,23 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .admin-row__locked { display: inline-block; max-width: 15rem; color: var(--on-navy-3);
   font-size: .74rem; line-height: 1.35; text-align: right; letter-spacing: .01em; }
 
+/* Mentoring tab (mentoring-tab.js) — one row per brother, three pill toggles.
+   Painted on the navy console shell, so every colour here comes from the --on-navy
+   family or --gold: a literal cream/blue-grey would not flip in dark mode. */
+.admin-row--mtg { flex-wrap: wrap; align-items: flex-start; }
+.mtg-toggles { display: flex; gap: .45rem; flex-wrap: wrap; flex: none; }
+.mtg-toggle { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+  border: 1px solid rgba(200,162,75,.32); border-radius: 99px; padding: .3rem .7rem;
+  font-size: .8rem; font-weight: 600; color: var(--on-navy-2); background: none;
+  transition: border-color .15s, color .15s, background .15s; }
+.mtg-toggle:hover { border-color: rgba(200,162,75,.6); color: var(--on-navy); }
+.mtg-toggle input { margin: 0; flex: none; }
+.mtg-toggle--on { border-color: var(--gold-bright); color: var(--gold-bright);
+  background: rgba(200,162,75,.12); }
+.mtg-toggle input:disabled + span { opacity: .5; }
+/* Status sits on its own line so a save message never shoves the toggles around. */
+.admin-row--mtg .form-status { flex-basis: 100%; margin: .45rem 0 0; font-size: .78rem; }
+
 /* Timestamp line on record rows — its own muted line so it never collides with actions. */
 .admin-row__when { display: block; color: var(--on-navy-3); font-size: .74rem; margin-top: .25rem; letter-spacing: .01em; }
 

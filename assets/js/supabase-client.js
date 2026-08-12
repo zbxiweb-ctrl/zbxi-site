@@ -970,6 +970,14 @@
       }
       return self._adminBidP;
     },
+    // Set which Mentoring lists a brother appears on (upgrade56). ONE verb for both
+    // consoles: the function itself accepts `is_admin() OR officer_can('members.edit')`,
+    // so the admin does not need a separate path and both get the same validation.
+    // Returns the stored array, sorted and de-duplicated by the server.
+    officerSetOpenTo: function (id, arr) {
+      return client.rpc('officer_set_open_to', { p_id: id, p_open_to: arr || [] })
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
     // The caller's seat, derived server-side from his own pinned role/scope.
     myOfficerSeat: function () {
       return client.rpc('my_officer_seat')
