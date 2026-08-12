@@ -973,6 +973,11 @@
         '</select></div>' +
       '</div>' +
       '<div class="field"><label>Description</label><textarea data-f="description">' + esc(e.description) + '</textarea></div>' +
+      // A few days before it happens, this event emails the brothers who RSVP'd. Ticking
+      // this widens that one reminder to everyone whose address we hold — right for a
+      // Reunion, wrong for a chapter meeting, hence off by default (upgrade63).
+      '<div class="field"><label class="pref-box"><input type="checkbox" data-f="remind_all"' + (e.remind_all ? ' checked' : '') + '> 🔔 Remind <b>everyone we can email</b>, not just brothers who RSVP\'d</label>' +
+        '<p class="form-note" style="margin:.4rem 0 0">A reminder goes out a few days beforehand either way. Leave this off unless it is something like the Reunion.</p></div>' +
       '<p class="form-note" style="margin:0 0 .8rem">🔒 The calendar is members-only — every event is visible to signed-in brothers.</p>' +
       '<button class="btn btn--navy" data-save style="width:100%">' + (e.id ? 'Save changes' : 'Create event') + '</button>' +
       '<p class="form-status" data-status></p></div>';
@@ -989,7 +994,8 @@
         ends_at: get('ends_at').value ? new Date(get('ends_at').value).toISOString() : null,
         location: get('location').value.trim() || null,
         category: get('category').value,
-        description: get('description').value.trim() || null
+        description: get('description').value.trim() || null,
+        remind_all: get('remind_all').checked
       };
       if (!row.title || !row.starts_at) { st.className = 'form-status err'; st.textContent = 'Title and start time are required.'; return; }
       st.className = 'form-status'; st.textContent = 'Saving…';

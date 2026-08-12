@@ -497,6 +497,10 @@
         return '<option value="' + c + '"' + (e.category === c ? ' selected' : '') + '>' + (CAT_LABEL[c] || c) + '</option>';
       }).join('') + '</select></div>' +
       '<div class="field"><label>Description (optional)</label><textarea id="evmDesc">' + esc(e.description || '') + '</textarea></div>' +
+      // upgrade63: a reminder goes out a few days before the event to the brothers who
+      // RSVP'd. This widens that one email to everyone whose address we hold — off by
+      // default, because an accidental all-hands for a chapter meeting is 60 emails.
+      '<label class="evm-allday"><input type="checkbox" id="evmRemindAll"' + (e.remind_all ? ' checked' : '') + ' /> 🔔 Remind everyone we can email, not just brothers who RSVP\'d</label>' +
       '<div class="evm-actions">' +
         '<button class="btn btn--navy" id="evmSave">' + (ev ? 'Save changes' : 'Add to calendar') + '</button>' +
         (ev ? '<button class="cal-mini cal-mini--del" id="evmDel">🗑 Delete</button>' : '') +
@@ -533,7 +537,8 @@
         ends_at: (multiDay || (!isAll && t2)) ? new Date(edv + 'T' + (isAll || !t2 ? '23:59' : t2)).toISOString() : null,
         location: m.querySelector('#evmLoc').value.trim() || null,
         category: m.querySelector('#evmCat').value,
-        description: m.querySelector('#evmDesc').value.trim() || null
+        description: m.querySelector('#evmDesc').value.trim() || null,
+        remind_all: m.querySelector('#evmRemindAll').checked
       };
       st.className = 'form-status'; st.textContent = 'Saving…';
       var op = ev ? window.ZBXI.eventUpdate(ev.id, row) : window.ZBXI.eventCreate(row);
