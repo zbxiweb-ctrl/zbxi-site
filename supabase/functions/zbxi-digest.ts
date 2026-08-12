@@ -81,7 +81,8 @@ async function build(adminUserId: string | null) {
   // encodeURIComponent is not optional on `since`: it comes from Postgres as
   // ...+00:00, and a bare + in a query string decodes to a SPACE, which Postgres
   // then rejects (22007). nowISO is toISOString() ...Z form, so it has no +.
-  const [newMembersRaw, events, jobs, photos, classes, notes] = await Promise.all([
+  const [newMembersRaw, events, jobs, photos, classes, notes,
+         helpers, boards, seats, unreachable, fundRows] = await Promise.all([
     db(`brothers?status=eq.verified&user_id=not.is.null&created_at=gt.${encodeURIComponent(since)}&select=full_name,pledge_class,user_id&limit=12`),
     // "Coming up" must include an event that is HAPPENING RIGHT NOW. Filtering on
     // starts_at alone dropped a multi-day event the morning after it began — the
@@ -104,6 +105,18 @@ async function build(adminUserId: string | null) {
     // These are STAMPED as sent by the caller — and only on the real send; see the note
     // where the enqueue happens.
     db(`digest_notes?status=eq.approved&sent_at=is.null&order=created_at.asc&limit=12&select=id,title,body,link`),
+    // Brothers offering help. 71 standing offers sat in the directory that no email
+    // had ever mentioned — the richest unused data on the site.
+    db(`brothers?status=eq.verified&open_to=not.is.null&select=full_name,open_to,occupation,industry`),
+    // Past boards, for the anniversary line. Small table; the arithmetic is below.
+    db(`eboards?select=id,scope,start_sem,start_year`),
+    // Every seat, so an anniversary board can name its officers.
+    db(`brother_titles?board_id=not.is.null&select=board_id,title,sort,brothers(full_name)`),
+    // Brothers with no account and no address — nobody can reach them, and the men
+    // who CAN are reading this email.
+    db(`brothers?status=eq.verified&user_id=is.null&or=(email.is.null,email.eq.)&select=id`),
+    // The fund, for the footer line. Absent/inactive simply omits it.
+    db(`donations?id=eq.1&select=active,handle`),
   ]);
 
   // The webmaster's own admin row isn't a "new brother".
@@ -128,6 +141,65 @@ async function build(adminUserId: string | null) {
   }
   milestones.sort((a, z) => z.age - a.age || a.label.localeCompare(z.label));
   const annis = milestones.slice(0, 6).map((m) => `<b>${esc(m.label)}</b> turns ${m.age}`);
+
+  /* ---- Brothers who can help ----
+     23 open to mentoring, 19 to hiring, 29 to connecting, and not one of them had
+     ever been mentioned in an email. Two names make it a person to write to rather
+     than a statistic; the counts make it worth clicking through. */
+  const openTo = (k: string) => (helpers as any[]).filter((b) => (b.open_to || []).includes(k));
+  const mentors = openTo("mentor"), hirers = openTo("hire"), connectors = openTo("connect");
+  const helpLines: string[] = [];
+  if (mentors.length || hirers.length || connectors.length) {
+    const bits = [
+      mentors.length ? `<b>${mentors.length}</b> open to mentoring` : "",
+      hirers.length ? `<b>${hirers.length}</b> to hiring &amp; referrals` : "",
+      connectors.length ? `<b>${connectors.length}</b> to connecting` : "",
+    ].filter(Boolean).join(" · ");
+    helpLines.push(`${bits} — <a href="${SITE}/mentor.html" style="color:#A07E2D">find a brother</a>`);
+    // Two examples, and only ones with a field worth naming — "Anthony, —" helps nobody.
+    (mentors.length ? mentors : connectors)
+      .filter((b) => b.occupation || b.industry)
+      .slice(0, 2)
+      .forEach((b) => helpLines.push(
+        `${esc(String(b.full_name).split(" ")[0])} — ${esc(b.occupation || b.industry)}`));
+  }
+
+  /* ---- This month in chapter history ----
+     Only fires on a round anniversary, so most months it stays quiet rather than
+     manufacturing an occasion. Boards go back to Fall 2004. */
+  const seatsOf = (id: string) => (seats as any[])
+    .filter((s) => s.board_id === id)
+    .sort((a, z) => (a.sort || 0) - (z.sort || 0));
+  const OFFICERS = ["President", "Vice-President", "Treasurer", "Secretary"];
+  const histLines: string[] = [];
+  // ONE board per anniversary. The import left several single-semester stubs per
+  // year, so without this the section printed "5 years ago" twice naming the same
+  // brother — which reads as a bug rather than as history. Where a year has more
+  // than one board, prefer the one with actual officers, then the fuller one.
+  const byAge = new Map<number, any>();
+  (boards as any[])
+    .map((b) => ({ ...b, age: yr - b.start_year, seats: seatsOf(b.id) }))
+    .filter((b) => b.age > 0 && b.age % 5 === 0 && b.seats.length)
+    .forEach((b) => {
+      const rank = (x: any) =>
+        x.seats.filter((s: any) => OFFICERS.includes(s.title)).length * 100 + x.seats.length;
+      const held = byAge.get(b.age);
+      if (!held || rank(b) > rank(held)) byAge.set(b.age, b);
+    });
+  [...byAge.values()]
+    .sort((a, z) => z.age - a.age)
+    .slice(0, 2)
+    .forEach((b) => {
+      const who = seatsOf(b.id)
+        .map((s) => `${esc(s.brothers?.full_name || "—")} (${esc(s.title)})`)
+        .slice(0, 4).join(", ");
+      histLines.push(
+        `<b>${b.age} years ago</b> — the ${esc(b.start_sem)} ${b.start_year} board: ${who} · ` +
+        `<a href="${SITE}/eboards.html" style="color:#A07E2D">every board</a>`);
+    });
+
+  const missing = (unreachable as any[]).length;
+  const fund = (fundRows as any[])?.[0];
 
   const fmtDate = (s: string, allDay: boolean) => {
     const d = new Date(s);
@@ -173,6 +245,8 @@ async function build(adminUserId: string | null) {
     (photos as any[]).length
       ? sec("📸 The gallery", [`${(photos as any[]).length} new photo${(photos as any[]).length === 1 ? "" : "s"} — <a href="${SITE}/gallery.html" style="color:#A07E2D">take a look</a>`])
       : "",
+    sec("🤝 Brothers who can help", helpLines),
+    sec("📜 This month in chapter history", histLines),
   ].filter(Boolean);
 
   const empty = blocks.length === 0;
@@ -194,10 +268,14 @@ async function build(adminUserId: string | null) {
       <p style="text-align:center;margin:30px 0 6px">
         <a href="${SITE}" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:12px 26px;border-radius:999px;display:inline-block">Open the site →</a>
       </p>
+      ${missing ? `<p style="font:400 13px/1.7 Helvetica,Arial,sans-serif;color:#5b6474;margin:22px 0 0;padding-top:16px;border-top:1px solid #e8dfc6">
+        <b>${missing} brothers aren't here yet.</b> We have no way to reach them — no address, no account.
+        If you know how to get hold of one, reply to this email and tell us. You are the only ones who can.</p>` : ""}
     </td></tr>
     <tr><td style="background:#f6f1e3;padding:16px 28px;text-align:center;border-top:1px solid #e8dfc6">
       <div style="font:400 11px/1.6 Helvetica,Arial;color:#8a8f9c">Once a brother, always a brother.<br>
-        <a href="${unsubUrl}" style="color:#8a8f9c">Unsubscribe from these emails</a></div>
+        ${fund?.active && fund?.handle
+          ? `<a href="${SITE}/donations.html" style="color:#8a8f9c">The alumni fund</a> · ` : ""}<a href="${unsubUrl}" style="color:#8a8f9c">Unsubscribe from these emails</a></div>
     </td></tr>
   </table></td></tr></table></body></html>`;
 
