@@ -1629,10 +1629,17 @@
       var go = wrap.querySelector('[data-go]');
       go.disabled = true;
       st.className = 'form-status'; st.textContent = 'Recording the term…';
-      // Which half we reached, so a failure can say something true rather than
-      // something reassuring. Step 2 failing partway is a real state: some
-      // officers retired, the rest not — and the history is already safe.
-      var archived = false;
+      /* How far we actually got, so a failure says something TRUE rather than
+         something reassuring. There are three real outcomes, not two, because
+         step 1 is 3–10 separate saves with no transaction spanning them:
+           nothing written        → safe to retry
+           a board written, short → must delete that board before retrying,
+                                    or the term lands on the page twice
+           fully archived         → never retry; retire the stragglers by hand
+         Reporting the middle case as "nothing was changed" is how a half-written
+         board becomes two half-written boards. */
+      var archived = false;      // step 1 finished completely
+      var wroteAnything = false; // at least one eboards row exists now
 
       var scopes = ['active', 'alumni'].filter(function (sc) {
         return officers.some(function (b) { return b.role_scope === sc; });
@@ -1648,6 +1655,7 @@
             end_sem: base.end_sem, end_year: base.end_year, note: base.note
           };
           return Z.eboardCreate(row).then(function (made) {
+            wroteAnything = true;   // a board row exists from here on, seats or not
             var seats = officers.filter(function (b) { return b.role_scope === sc; });
             var inner = Promise.resolve();
             seats.forEach(function (b) {
@@ -1688,8 +1696,14 @@
           // the same term, so say that instead of inviting a blind retry.
           ? 'The term WAS recorded on the Executive Boards page, but retiring the officers did not finish — ' + why +
             ' Some may still be sitting. Retire the rest by hand with the Retire buttons above; do NOT run this again or the term will be recorded twice.'
-          : 'Stopped before anyone was retired — ' + why +
-            ' Nothing was changed. Fix this and run it again.';
+          : wroteAnything
+            // The dangerous middle: a board exists but is missing officers, and a
+            // blind retry would leave TWO of them on the page.
+            ? 'Stopped part-way — ' + why +
+              ' Nobody was retired, but a board WAS created and it is probably missing officers. ' +
+              'Open the Executive Boards page, delete that partial board, then run this again.'
+            : 'Stopped before anything was written — ' + why +
+              ' Nothing was changed. Fix this and run it again.';
       });
     };
   }

@@ -30,7 +30,10 @@ returns text[]
 language plpgsql
 volatile
 security definer
-set search_path = public
+-- `public, pg_temp` to match is_admin_brother (upgrade54). Every reference inside is
+-- schema-qualified so this is belt-and-braces, but a SECURITY DEFINER function on this
+-- site pins both, and consistency is what makes an odd one out worth looking at.
+set search_path = public, pg_temp
 as $$
 declare
   n   int;
