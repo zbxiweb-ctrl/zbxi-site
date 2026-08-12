@@ -1861,6 +1861,10 @@ a.ntf__txt:hover { color: var(--gold-deep); }
   border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold);
   box-shadow: 0 8px 22px rgba(0,0,0,.24); transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
 .oc-card:hover { transform: translateY(-2px); border-left-color: var(--gold-bright); box-shadow: 0 12px 28px rgba(0,0,0,.32); }
+/* A tile with something actually waiting on it. Gold edge only — colour alone would
+   be the whole signal, and the count beside it already says what and how many. */
+.oc-card--urgent { border-left-color: var(--gold-bright); background: rgba(200,162,75,.07); }
+.oc-card--urgent .oc-card__meta { color: var(--gold-bright); font-weight: 600; }
 .oc-card:focus-visible { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.28); }
 .oc-card__ic { font-size: 1.7rem; line-height: 1; }
 .oc-card__label { font-weight: 600; font-size: 1.03rem; font-family: var(--display); color: var(--on-navy); }

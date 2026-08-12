@@ -90,6 +90,10 @@
   /* Tabs live in a left sidebar and are sorted A→Z inside each group, so the
      webmaster can always find one by name instead of hunting a pill cloud. */
   var TAB_GROUPS = [
+    // Its own group so the alphabetical sort inside each group cannot bury it.
+    { label: '', tabs: [
+      { id: 'home',      ic: '⌂',  label: 'Overview'   }
+    ]},
     { label: 'Brothers', tabs: [
       { id: 'all',       ic: '🗂', label: 'All Brothers' },
       { id: 'approved',  ic: '✅', label: 'Approved'  },
@@ -127,7 +131,10 @@
   // request you clicked is the thing you land on — not the default Pending tab.
   function tabFromHash() {
     var h = (location.hash || '').replace('#', '');
-    return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'pending';
+    // Opens on the Overview now. It used to drop you straight onto Pending — useful
+    // only on the days something is pending, and silent about the other seventeen
+    // tabs. A deep link still wins, so a bell notification still lands where it meant to.
+    return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'home';
   }
 
   var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, clsScroll: 0, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
@@ -334,6 +341,7 @@
     var srchEl = document.getElementById('adminSearch');
     if (srchEl) srchEl.style.display = (BRO_TABS.indexOf(state.tab) !== -1 || state.tab === 'classes') ? '' : 'none';
     if (state.tab !== 'classes') state.classDrill = null;   // leaving the tab closes any open class
+    if (state.tab === 'home') return renderHomeTab(q);
     if (state.tab === 'tree') return renderTreeTab(q);
     if (state.tab === 'classes') return renderClassesTab(q);
     if (state.tab === 'eboard') return renderEboardTab(q);
@@ -2997,6 +3005,90 @@
     var all = state.data.pending.concat(state.data.verified, state.data.rejected);
     var b = all.filter(function (x) { return x.user_id === uid; })[0];
     return b ? b.full_name : null;
+  }
+
+  /* ---- ⌂ Overview -------------------------------------------------------------
+     The console used to open on Pending — a tab that is empty most days — and said
+     nothing about the other seventeen. The officer console has had exactly this
+     screen since it shipped; the admin console, which has three times the surface,
+     had none.
+
+     Every tile is something WAITING or something worth knowing, and every tile is a
+     link. Counts come from state where loadAll already has them (free) and from a
+     handful of small fetches otherwise; each fetch fails quietly to "Open →" rather
+     than leaving a spinner or breaking the screen. */
+  function renderHomeTab(q) {
+    function tile(tab, ic, label, meta, urgent) {
+      return '<button class="oc-card' + (urgent ? ' oc-card--urgent' : '') + '" data-goto="' + esc(tab) + '">' +
+        '<span class="oc-card__ic">' + ic + '</span>' +
+        '<span class="oc-card__label">' + esc(label) + '</span>' +
+        '<span class="oc-card__meta" data-m="' + esc(tab) + '">' + esc(meta) + '</span>' +
+      '</button>';
+    }
+    var pending = state.data.pending.length;
+    var titles = (state.titleReqs || []).filter(function (r) { return r.status === 'pending'; }).length;
+
+    q.innerHTML =
+      '<p class="admin-hint">Everything that needs you, and where the rest of the site stands. ' +
+      'Click any tile to go straight there.</p>' +
+      '<div class="oc-home">' +
+        tile('pending',   '⏳', 'Waiting to be approved', pending ? pending + ' waiting' : 'All caught up', pending > 0) +
+        tile('titles',    '🎖', 'Title requests',         titles ? titles + ' waiting' : 'None waiting', titles > 0) +
+        tile('suggest',   '💡', 'Suggestions',            '…') +
+        tile('digest',    '📬', 'Digest notes',           '…') +
+        tile('events',    '📅', 'Events',                 '…') +
+        tile('eboard',    '👑', 'Executive Boards',       '…') +
+        tile('unclaimed', '📋', 'Roster names, no account', state.data.unclaimed.length + ' unclaimed') +
+        tile('gallery',   '🖼', 'Gallery',                '…') +
+      '</div>' +
+      '<h3 class="stat-h">The chapter, in numbers</h3>' +
+      '<div class="stat-grid">' +
+        '<div class="stat-card"><b>' + state.data.verified.length + '</b><span>brothers on the roster</span></div>' +
+        '<div class="stat-card"><b>' + state.data.approved.length + '</b><span>with an account</span></div>' +
+        '<div class="stat-card"><b>' + state.data.unclaimed.length + '</b><span>still to claim theirs</span></div>' +
+        '<div class="stat-card"><b>' + Math.round(100 * state.data.approved.length / Math.max(1, state.data.verified.length)) + '%</b><span>of the roster signed up</span></div>' +
+      '</div>' +
+      '<p class="admin-hint" style="margin-top:1rem">The single most valuable thing you can do is ' +
+      '<a href="#" data-goto="invite">invite the brothers who have no account</a> — they see none of this.</p>';
+
+    function meta(tab, txt) {
+      var el = q.querySelector('[data-m="' + tab + '"]');
+      if (el) el.textContent = txt;
+    }
+    Z.suggestionsMine().then(function (rows) {
+      var n = rows.filter(function (s) { return s.status === 'new'; }).length;
+      meta('suggest', n ? n + ' new' : 'Nothing new');
+    })['catch'](function () { meta('suggest', 'Open →'); });
+
+    Z.digestNotesList().then(function (rows) {
+      var d = (rows || []).filter(function (r) { return r.status === 'draft'; }).length;
+      var a = (rows || []).filter(function (r) { return r.status === 'approved' && !r.sent_at; }).length;
+      meta('digest', d ? d + ' waiting for you' : (a ? a + ' queued' : 'Nothing queued'));
+      var el = q.querySelector('[data-goto="digest"]');
+      if (d && el) el.classList.add('oc-card--urgent');
+    })['catch'](function () { meta('digest', 'Open →'); });
+
+    Z.eventsList().then(function (rows) {
+      var n = (rows || []).filter(function (e) { return !window.ZBXIEvent.isPast(e); }).length;
+      meta('events', n ? n + ' upcoming' : 'None upcoming');
+    })['catch'](function () { meta('events', 'Open →'); });
+
+    Z.orphanTitles().then(function (rows) {
+      meta('eboard', rows.length ? rows.length + ' not on a board' : 'All recorded');
+    })['catch'](function () { meta('eboard', 'Open →'); });
+
+    Z.galleryUsage().then(function (u) {
+      meta('gallery', u ? (u.objects || 0) + ' photos · ' + (u.bytes / 1073741824).toFixed(2) + ' GB' : 'Open →');
+    })['catch'](function () { meta('gallery', 'Open →'); });
+
+    // Jump through the real rail button so the highlight, hash and search reset stay honest.
+    q.querySelectorAll('[data-goto]').forEach(function (el) {
+      el.onclick = function (e) {
+        e.preventDefault();
+        var btn = document.querySelector('#tabs [data-tab="' + el.dataset.goto + '"]');
+        if (btn) btn.click();
+      };
+    });
   }
 
   /* ---- 🖼 Gallery ------------------------------------------------------------
