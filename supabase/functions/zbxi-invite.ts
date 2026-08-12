@@ -92,7 +92,60 @@ async function callerCan(req: Request, perm: string): Promise<boolean> {
   return r.ok && (await r.json()) === true;
 }
 
-const body = (name: string | null, link: string) => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
+/* ---- his line, from the chapter records -----------------------------------------
+   The invite asks a man who has not thought about this fraternity in fifteen years to
+   take "your name is already on the tree" on faith. Naming his actual big and his actual
+   littles turns that into the one thing in the message he can check at a glance — and
+   the one thing he might forward to his line.
+
+   Names only, from family_public (verified brothers). No emails, no phones: an invite
+   that reached the wrong address would show a stranger three to eight NAMES, which is a
+   smaller disclosure than the claim token the same email already carries.
+
+   Returns "" when he has neither a big nor a little, so the email is exactly what it was
+   before rather than carrying an empty arrow. */
+async function lineage(brotherId: string): Promise<string> {
+  try {
+    const me = (await db(`family_public?id=eq.${encodeURIComponent(brotherId)}&select=id,full_name,big_id`))?.[0];
+    if (!me) return "";
+
+    const chain: string[] = [];
+    let big = me.big_id
+      ? (await db(`family_public?id=eq.${encodeURIComponent(me.big_id)}&select=id,full_name,big_id`))?.[0]
+      : null;
+    if (big) {
+      const grand = big.big_id
+        ? (await db(`family_public?id=eq.${encodeURIComponent(big.big_id)}&select=full_name`))?.[0]
+        : null;
+      if (grand) chain.push(esc(grand.full_name));
+      chain.push(esc(big.full_name));
+    }
+
+    const littles = (await db(
+      `family_public?big_id=eq.${encodeURIComponent(brotherId)}&select=full_name&order=full_name`,
+    )) || [];
+    if (!chain.length && !littles.length) return "";
+
+    // Six names, then a count. A brother with fourteen littles gets a line he can read
+    // rather than a wall.
+    const shown = littles.slice(0, 6).map((l: any) => esc(l.full_name));
+    const more = littles.length > 6 ? ` +${littles.length - 6} more` : "";
+
+    const parts = chain.concat([`<b style="color:#0A1F44">you</b>`]);
+    const tail = shown.length ? ` → ${shown.join(", ")}${more}` : "";
+
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0">
+      <tr><td style="border-left:3px solid #C8A24B;padding:8px 14px">
+        <div style="font:700 11px Helvetica,Arial;color:#8a8f9c;letter-spacing:.12em;text-transform:uppercase">Your line, from the chapter records</div>
+        <div style="font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657;margin-top:4px">${parts.join(" → ")}${tail}</div>
+      </td></tr></table>`;
+  } catch (_) {
+    // The lineage is a nicety. If the lookup fails, the invite still goes out.
+    return "";
+  }
+}
+
+const body = (name: string | null, link: string, line = "") => `<!doctype html><html><body style="margin:0;background:#f3efe4;padding:24px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FBF8F1;border-radius:14px;overflow:hidden;border:1px solid #e3d9bd">
   <tr><td style="background:#0A1F44;padding:26px 28px;text-align:center">
@@ -109,6 +162,7 @@ const body = (name: string | null, link: string) => `<!doctype html><html><body 
       <b>Your name is already on the tree.</b> Create an account, claim your profile, and you'll be verified by chapter
       leadership — then everything above opens up.
     </p>
+    ${line}
     <p style="text-align:center;margin:28px 0 10px">
       <a href="${link}" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:13px 28px;border-radius:999px;display:inline-block">Claim your profile →</a>
     </p>
@@ -135,11 +189,16 @@ Deno.serve(async (req) => {
     if (!list.length) return new Response(JSON.stringify({ error: "no valid emails" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
     if (list.length > 25) return new Response(JSON.stringify({ error: "max 25 at a time" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
 
-    // Optional: personalise using the roster row this invite is linked to.
+    // Personalise using the roster row this invite is linked to. Both of these are no-ops
+    // without brother_id — and until the Invite tab grew a "pick him off the roster"
+    // picker, NOTHING ever sent one, so this branch had never run in production. Checked:
+    // all four invites ever sent carry brother_id = null.
     let name: string | null = null;
+    let line = "";
     if (brother_id) {
       const b = await db(`brothers?id=eq.${encodeURIComponent(brother_id)}&select=full_name`);
       name = b?.[0]?.full_name?.split(" ")[0] || null;
+      line = await lineage(brother_id);
     }
 
     const results: any[] = [];
@@ -170,7 +229,7 @@ Deno.serve(async (req) => {
       let error: string | null = null;
       try {
         await enqueue("invite", "Your place in the ΖΒΞ family tree is waiting",
-                      body(name, link), [{ email, unsub: null }], await adminEmail());
+                      body(name, link, line), [{ email, unsub: null }], await adminEmail());
       } catch (e) {
         error = String(e).slice(0, 140);
       }

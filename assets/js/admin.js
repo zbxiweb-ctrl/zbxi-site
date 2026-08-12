@@ -1107,6 +1107,18 @@
         '<button class="btn btn--gold" id="invSend">Send invitations</button>' +
         '<p class="form-status" id="invStatus"></p></div>' +
 
+        // Invite ONE brother, by name. This is the only path that tells the email which
+        // brother it is for — and until it existed, nothing ever did: every invite ever
+        // sent carried brother_id = null, so the greeting has always said "Brother,"
+        // and the family line could never render at all.
+        '<div class="acct-block" style="margin-bottom:1.4rem"><h4>🎯 Invite one brother by name</h4>' +
+        '<p class="form-note" style="margin-top:0">Pick him off the roster first and the email greets him by name and shows <b>his own line</b> — his big, and his littles. That is the one thing in it he can check at a glance, and the reason he opens it. ' +
+        state.data.unclaimed.length + ' brothers on the tree have no account yet.</p>' +
+        '<div class="field"><label>Find him on the roster</label><input id="invPick" autocomplete="off" placeholder="Start typing a name…"></div>' +
+        '<div id="invHits"></div>' +
+        '<div id="invOne"></div>' +
+        '<p class="form-status" id="invOneStatus"></p></div>' +
+
         '<h3 class="stat-h">Invitations (' + sent + ' sent · ' + joined + ' joined)</h3>' +
         (rows.length
           ? rows.map(function (r) {
@@ -1121,6 +1133,8 @@
           : '<p class="admin-empty">No invitations sent yet.</p>');
 
       q.innerHTML = html;
+
+      wireInviteOne();
 
       document.getElementById('invSend').onclick = function () {
         var btn = this, st = document.getElementById('invStatus');
@@ -1146,6 +1160,86 @@
       };
 
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">' + esc(String(e)) + '</p>'; });
+  }
+
+  /* Pick a brother off the roster, then invite him. The point of the picker is the
+     brother_id: it is what lets the email greet him by name and print his own line.
+     Shows that line here too, so you can see what he will see before you send. */
+  function lineFor(b) {
+    var byId = {};
+    state.data.verified.forEach(function (x) { byId[x.id] = x; });
+    var big = b.big_id ? byId[b.big_id] : null;
+    var grand = big && big.big_id ? byId[big.big_id] : null;
+    var littles = state.data.verified.filter(function (x) { return x.big_id === b.id; })
+      .map(function (x) { return x.full_name; }).sort();
+    if (!big && !littles.length) return '';
+    var chain = [];
+    if (grand) chain.push(esc(grand.full_name));
+    if (big) chain.push(esc(big.full_name));
+    chain.push('<b>' + esc(b.full_name.split(' ')[0]) + '</b>');
+    var tail = littles.length
+      ? ' → ' + littles.slice(0, 6).map(esc).join(', ') + (littles.length > 6 ? ' +' + (littles.length - 6) + ' more' : '')
+      : '';
+    return '<p class="form-note" style="margin:.5rem 0 0">His line: ' + chain.join(' → ') + tail + '</p>';
+  }
+
+  function wireInviteOne() {
+    var pick = document.getElementById('invPick');
+    var hits = document.getElementById('invHits');
+    var one  = document.getElementById('invOne');
+    var st   = document.getElementById('invOneStatus');
+    if (!pick) return;
+
+    pick.oninput = function () {
+      var q = pick.value.trim().toLowerCase();
+      one.innerHTML = ''; st.textContent = '';
+      if (q.length < 2) { hits.innerHTML = ''; return; }
+      var found = state.data.unclaimed.filter(function (b) {
+        return b.full_name.toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 8);
+      hits.innerHTML = found.length
+        ? found.map(function (b) {
+            return '<button class="btn btn--ghost" style="margin:.2rem .3rem 0 0" data-pickb="' + esc(b.id) + '">' +
+              esc(b.full_name) + (b.pledge_class ? ' · ' + esc(b.pledge_class) : '') + '</button>';
+          }).join('')
+        : '<p class="form-note">Nobody by that name is waiting for an account — he may already have one.</p>';
+      hits.querySelectorAll('[data-pickb]').forEach(function (btn) {
+        btn.onclick = function () {
+          var b = state.data.unclaimed.filter(function (x) { return x.id === btn.dataset.pickb; })[0];
+          if (!b) return;
+          hits.innerHTML = '';
+          pick.value = b.full_name;
+          one.innerHTML =
+            '<div class="admin-row"><div class="admin-row__ph">✉️</div>' +
+            '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b>' +
+            '<span>' + esc(b.pledge_class || '—') + '</span></div></div>' +
+            lineFor(b) +
+            '<div class="field" style="margin-top:.6rem"><label>His email address</label>' +
+            '<input id="invOneEmail" type="email" placeholder="name@example.com"></div>' +
+            '<button class="btn btn--gold" id="invOneSend">Send his invitation</button>';
+          document.getElementById('invOneSend').onclick = function () {
+            var send = this;
+            var email = (document.getElementById('invOneEmail').value || '').trim();
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+              st.className = 'form-status err'; st.textContent = 'That does not look like an email address.'; return;
+            }
+            send.disabled = true; send.textContent = 'Queueing…';
+            st.className = 'form-status'; st.textContent = '';
+            Z.inviteBrothers([email], b.id).then(function (r) {
+              if (r.error) throw new Error(r.error);
+              var bad = (r.results || []).filter(function (x) { return !x.ok; });
+              st.className = bad.length ? 'form-status err' : 'form-status ok';
+              st.textContent = bad.length
+                ? 'Could not queue it: ' + bad[0].error
+                : '✓ Queued for ' + b.full_name.split(' ')[0] + ' — it goes out within the day, and it names his line.';
+              if (!bad.length) { one.innerHTML = ''; pick.value = ''; setTimeout(renderList, 1500); }
+            })['catch'](function (e) {
+              st.className = 'form-status err'; st.textContent = String(e.message || e);
+            })['finally'](function () { send.disabled = false; send.textContent = 'Send his invitation'; });
+          };
+        };
+      });
+    };
   }
 
   /* ---------------- roster additions ---------------- */

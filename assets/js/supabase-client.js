@@ -393,6 +393,14 @@
     upsertProfile: function (row) {
       return this._bust(client.from('brothers').upsert(row, { onConflict: 'user_id' }).select().maybeSingle());
     },
+    // A one-field write to the signed-in brother's OWN row — the profile nudge, and
+    // nothing else. Deliberately an UPDATE rather than upsertProfile's upsert: an upsert
+    // with a partial row would CREATE a near-empty brothers row if his were ever missing,
+    // and a nudge must never be able to mint a profile. .select() so a refusal is visible
+    // instead of a silent 204 that looks like success.
+    profilePatch: function (userId, patch) {
+      return this._bust(client.from('brothers').update(patch).eq('user_id', userId).select());
+    },
     // Admin: list by status (alphabetical by name)
     listByStatus: function (status) {
       var self = this;

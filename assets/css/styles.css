@@ -2109,6 +2109,27 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .ev-rsvp b { color: var(--heading); }
 .ev-rsvp__who { color: var(--muted); font-size: .8rem; width: 100%; }
 
+/* ---- the one-question nudge (upgrade64) ------------------------------------
+   A slim strip under the header, in the page flow — not a floating toast. It
+   pushes the page down by its own height and leaves when answered or dismissed,
+   which is far less rude on a phone than something covering the content. */
+.nudge { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
+  max-width: 1100px; margin: 1rem auto 0; padding: .8rem 1.1rem;
+  background: var(--tint); border: 1.5px solid var(--gold-bright); border-radius: 14px; }
+.nudge__ic { font-size: 1.3rem; line-height: 1; flex: none; }
+.nudge__body { flex: 1 1 240px; min-width: 0; }
+.nudge__ask { display: block; color: var(--heading); font-size: .96rem; }
+.nudge__why { display: block; color: var(--muted); font-size: .8rem; margin-top: .1rem; }
+.nudge__acts { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.nudge__in { padding: .5rem .8rem; border-radius: 10px; font: inherit; font-size: .9rem;
+  border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text); min-width: 190px; }
+.nudge__acts .btn { padding: .5rem 1.1rem; font-size: .85rem; }
+.nudge__no { border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
+  color: var(--muted); text-decoration: underline; }
+.nudge__no:hover { color: var(--heading); }
+.nudge__st { width: 100%; margin: 0; }
+.nudge__st:empty { display: none; }
+
 /* ---- guests + the note (upgrade61) ---------------------------------------- */
 .ev-rsvp__bring { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .8rem; }
 .ev-rsvp__g { border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text);

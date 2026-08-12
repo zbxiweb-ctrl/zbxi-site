@@ -231,6 +231,10 @@
           } else if (state.wantModal || (modal && modal.classList.contains('open'))) {
             openModal(); renderProfileArea();
           }
+          // One question, once — see renderNudge(). Deliberately AFTER the recovery and
+          // modal branches: a brother resetting his password, or already looking at his
+          // profile, must not be asked anything.
+          if (!state.recovery) renderNudge();
         });
       });
     }).catch(function (err) {
@@ -241,6 +245,118 @@
         '<p>We couldn\'t load the members area. Please refresh the page and try again.</p>' +
         '<p class="form-note">' + esc(err && err.message ? err.message : 'Unknown error') + '</p></div>');
     });
+  }
+
+  /* ---------------- the one-question nudge ----------------------------------------
+     Two finished features are starving for data rather than for code: the Worldwide Map
+     plots only brothers who filled in a city (305 of 359 have none), and the Mentoring
+     page lists 25 mentors out of 359. Nobody opens the profile editor to fix that.
+
+     So: ONE question, one field, one tap, on whatever page he is already on. It asks the
+     first thing he has not answered and never asks about anything he has. "Not now" is
+     remembered in the DATABASE (upgrade64), so dismissing it on a laptop keeps it quiet
+     on the phone that evening — the difference between a nudge and a nag.
+
+     Answering writes through the same brothers row the profile form writes, so there is
+     no second save path to keep in step. */
+  var NUDGE_QUIET_DAYS = 60;
+  var NUDGES = [
+    {
+      key: 'city',
+      // Ask only if it's empty. Filling it in IS the dismissal.
+      unanswered: function (p) { return !p.city; },
+      ic: '📍',
+      ask: 'One quick thing — what city are you in?',
+      why: 'It puts you on the Worldwide Map, so brothers passing through can find you.',
+      field: '<input class="nudge__in" id="nudgeCity" maxlength="80" placeholder="e.g. Brooklyn, NY" aria-label="Your current city">',
+      read: function (host) {
+        var v = host.querySelector('#nudgeCity').value.trim();
+        return v ? { city: v } : null;
+      }
+    },
+    {
+      key: 'mentor',
+      unanswered: function (p) { return (p.open_to || []).indexOf('mentor') === -1; },
+      ic: '🎓',
+      ask: 'Would you mentor a younger brother?',
+      why: 'It puts you on the Mentoring page. No obligation — you decide on every request.',
+      // A question with a yes/no answer gets a yes button, not a text box.
+      field: '',
+      yes: 'Yes, add me',
+      read: function (_host, p) {
+        var list = (p.open_to || []).slice();
+        if (list.indexOf('mentor') === -1) list.push('mentor');
+        return { open_to: list };
+      }
+    }
+  ];
+
+  function nudgeDue(p) {
+    if (!p || p.status !== 'verified') return null;      // never to a brother still pending
+    if (p.nudge_dismissed_at) {
+      var since = (Date.now() - new Date(p.nudge_dismissed_at).getTime()) / 86400000;
+      if (since < NUDGE_QUIET_DAYS) return null;
+    }
+    for (var i = 0; i < NUDGES.length; i++) {
+      if (NUDGES[i].unanswered(p)) return NUDGES[i];
+    }
+    return null;                                          // nothing left to ask
+  }
+
+  function renderNudge() {
+    var host = document.getElementById('zbxiNudge');
+    if (host) host.remove();                              // never two
+    var p = state.profile;
+    var n = nudgeDue(p);
+    if (!n) return;
+    var main = document.querySelector('main') || document.body;
+
+    var el = document.createElement('div');
+    el.id = 'zbxiNudge';
+    el.className = 'nudge';
+    el.setAttribute('role', 'status');
+    el.innerHTML =
+      '<span class="nudge__ic" aria-hidden="true">' + n.ic + '</span>' +
+      '<div class="nudge__body">' +
+        '<b class="nudge__ask">' + esc(n.ask) + '</b>' +
+        '<small class="nudge__why">' + esc(n.why) + '</small>' +
+      '</div>' +
+      '<div class="nudge__acts">' + n.field +
+        '<button type="button" class="btn btn--gold nudge__save">' + esc(n.yes || 'Save') + '</button>' +
+        '<button type="button" class="nudge__no">Not now</button>' +
+      '</div>' +
+      '<p class="form-status nudge__st" role="status"></p>';
+    main.insertBefore(el, main.firstChild);
+
+    var st = el.querySelector('.nudge__st');
+    var say = function (msg, bad) { st.className = 'form-status nudge__st' + (bad ? ' err' : ' ok'); st.textContent = msg; };
+
+    el.querySelector('.nudge__save').onclick = function () {
+      var patch = n.read(el, p);
+      if (!patch) { say('Type a city first.', true); return; }
+      var btn = el.querySelector('.nudge__save');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      Z.profilePatch(state.user.id, patch).then(function (r) {
+        if (r && r.error) throw r.error;
+        // Zero rows back means the write was refused without raising — say so rather
+        // than fading out and letting him think it saved.
+        if (!r || !r.data || !r.data.length) throw new Error('That did not save. Try the profile editor.');
+        Object.keys(patch).forEach(function (k) { p[k] = patch[k]; });
+        say('✓ Saved — thank you.');
+        setTimeout(function () { el.remove(); }, 1400);
+      })['catch'](function (err) {
+        btn.disabled = false; btn.textContent = n.yes || 'Save';
+        say((err && err.message) || 'Could not save that.', true);
+      });
+    };
+
+    el.querySelector('.nudge__no').onclick = function () {
+      el.remove();
+      // Fire and forget: he has already seen it go away, and a failed write only means
+      // he is asked again another day.
+      p.nudge_dismissed_at = new Date().toISOString();
+      Z.profilePatch(state.user.id, { nudge_dismissed_at: p.nudge_dismissed_at });
+    };
   }
 
   /* ---------------- member perks grid ---------------- */
