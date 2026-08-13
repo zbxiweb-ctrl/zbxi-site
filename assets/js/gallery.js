@@ -39,6 +39,11 @@
   // brothers, not just the 113 with accounts), and my own roster id — which is what
   // decides whether I may take MY OWN name off a photo.
   var tags = [], roster = [], myBrotherId = null, taggedId = null, decade = 'all';
+  // ?class=<pledge class> — every photo anyone from that class is tagged in.
+  var taggedClass = null;
+  // Not a technical limit: 30 is about how long a brother will watch a progress line
+  // before deciding the site has hung. The per-file 25MB memory guard is the real one.
+  var MAX_BATCH = 30;
   // Standing inside ONE named section (not the sections page, not "All photos").
   function inSection() { return view === 'grid' && curAlbum !== 'all'; }
 
@@ -117,8 +122,8 @@
           '<label class="gupload__drop" id="guDrop">' +
             '<span class="gupload__empty" id="guEmpty">' +
               '<span class="gupload__mark">' + CAM_SVG + '</span>' +
-              '<b>Share a photo with the brotherhood</b>' +
-              '<span class="gupload__hint">JPG, PNG or HEIC · up to 25MB</span>' +
+              '<b>Share photos with the brotherhood</b>' +
+              '<span class="gupload__hint">JPG, PNG or HEIC · up to 25MB each · pick as many as ' + MAX_BATCH + ' at once</span>' +
             '</span>' +
             // alt="" on purpose: the filename sits right below it, and an empty
             // alt means a src-less <img> can never paint alt text in a broken
@@ -127,9 +132,12 @@
             '<span class="gupload__chosen" id="guChosen" hidden>' +
               '<img id="guPrev" class="gupload__prev" alt="">' +
               '<span class="gupload__meta"><b id="guName"></b><span id="guSize"></span></span>' +
-              '<span class="gupload__change">Choose a different photo</span>' +
+              '<span class="gupload__change">Choose different photos</span>' +
             '</span>' +
-            '<input type="file" id="guFile" accept="image/*" hidden></label>' +
+            // A strip of thumbnails for a batch — one preview cannot represent twelve
+            // photos, and "12 files" with no picture is a number you have to trust.
+            '<span class="gupload__strip" id="guStrip" hidden></span>' +
+            '<input type="file" id="guFile" accept="image/*" multiple hidden></label>' +
           // Inside a section the destination is already decided, so the picker
           // asks a question you just answered. State it instead. On "All photos"
           // (and on the sections page) nothing is implied, so it still has to ask.
@@ -140,6 +148,8 @@
             (!inSection() && albums.length ? albumPicker('guAlbum', miscId()) : '') +
             yearPicker('guYear', '') +
             '<input id="guCaption" aria-label="Photo caption" placeholder="Write a caption…" maxlength="300">' +
+            // One caption for the whole batch, and it says so once several are picked.
+            // Forty individual captions is a form, not a composer, and nobody fills it in.
             '<button class="btn btn--gold" type="submit" id="guBtn" disabled>Post</button>' +
           '</div>' +
           '<p class="form-status" id="guStatus" role="status"></p>' +
@@ -212,7 +222,8 @@
     // under is not the answer.
     if (view === 'tagged') {
       var n2 = basePosts().length;
-      return '<div class="gsechead"><h3>Photos of ' + esc(rosterName(taggedId)) + '</h3>' +
+      var who = taggedClass ? taggedClass : rosterName(taggedId);
+      return '<div class="gsechead"><h3>Photos of ' + esc(who) + '</h3>' +
         '<span>' + (n2 === 0 ? 'None yet' : n2 + (n2 === 1 ? ' photo' : ' photos')) + '</span></div>';
     }
     var n = postsIn(curAlbum).length;
@@ -222,9 +233,20 @@
 
   /* The photos this view is about, BEFORE the decade filter. One function so the
      chips count the same set the grid draws. */
+  // Everyone the current 'tagged' view is about: one brother, or a whole pledge class.
+  // The class is resolved from the roster already in memory — no query, and a short URL
+  // instead of twenty ids.
+  function taggedIds() {
+    if (taggedClass) {
+      return roster.filter(function (b) { return (b.pledge_class || '') === taggedClass; })
+                   .map(function (b) { return b.id; });
+    }
+    return taggedId ? [taggedId] : [];
+  }
   function basePosts() {
     if (view === 'tagged') {
-      var mine = tags.filter(function (t) { return t.brother_id === taggedId; })
+      var who = taggedIds();
+      var mine = tags.filter(function (t) { return who.indexOf(t.brother_id) !== -1; })
                      .map(function (t) { return t.post_id; });
       return posts.filter(function (p) { return mine.indexOf(p.id) !== -1; });
     }
@@ -266,8 +288,14 @@
     var base = basePosts();
     var shown = applyDecade(base);
     if (!shown.length) {
+      // The empty state carries the feature. Tagging is days old, so "Photos of my
+      // pledge class" will legitimately be empty for a while — it has to read as an
+      // invitation to tag rather than as a broken page.
       return decadeChipsHtml(base) + '<p class="page-empty">' + (
         decade !== 'all' ? 'No photos from that decade in here yet.'
+        : view === 'tagged' && taggedClass
+          ? esc('No photos of ' + taggedClass + ' tagged yet.') +
+            ' Open a photo, press <b>＋ Tag someone</b>, and everyone you name shows up here.'
         : view === 'tagged' ? 'No photos of him yet — tag him in one and it lands here.'
         : curAlbum === 'all' ? 'No posts yet — be the first to share a memory.'
         : 'No photos in this album yet.') + '</p>';
@@ -294,7 +322,7 @@
     if (back) back.addEventListener('click', function () {
       // Leaving a view clears its filter. Carrying a decade (or one brother) back
       // to the sections page would silently hide photos on the next section opened.
-      view = 'sections'; decade = 'all'; taggedId = null;
+      view = 'sections'; decade = 'all'; taggedId = null; taggedClass = null;
       if (location.search) history.replaceState(null, '', location.pathname);
       renderGrid();
     });
@@ -377,21 +405,52 @@
     function fmtSize(b) {
       return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
     }
-    // Object URLs must be released or every re-pick leaks the previous image.
-    // The plate has two faces — invitation, or the photo you picked — and exactly
+    var stripEl = document.getElementById('guStrip');
+    // Every object URL made here has to be released, or picking a new batch leaks the
+    // last one. `made` is the whole list, including the strip's, so one call clears
+    // all of them rather than just the single preview the old code tracked.
+    var made = [];
+    function releaseUrls() {
+      made.forEach(function (u) { URL.revokeObjectURL(u); });
+      made = [];
+    }
+    function objUrl(f) { var u = URL.createObjectURL(f); made.push(u); return u; }
+
+    // The plate has three faces now — invitation, one photo, or a batch — and exactly
     // one is ever on screen.
-    function showPreview(f) {
-      if (prev.src) URL.revokeObjectURL(prev.src);
-      if (!f) {
-        prev.hidden = true; prev.removeAttribute('src');
-        chosenEl.hidden = true; emptyEl.hidden = false;
+    function showPreview(list) {
+      releaseUrls();
+      prev.removeAttribute('src');
+      stripEl.innerHTML = '';
+      if (!list || !list.length) {
+        prev.hidden = true; chosenEl.hidden = true; stripEl.hidden = true; emptyEl.hidden = false;
         return;
       }
-      prev.src = URL.createObjectURL(f);
-      prev.hidden = false;
-      nameEl.textContent = f.name;
-      sizeEl.textContent = fmtSize(f.size);
-      emptyEl.hidden = true; chosenEl.hidden = false;
+      emptyEl.hidden = true;
+      if (list.length === 1) {
+        stripEl.hidden = true;
+        prev.src = objUrl(list[0]);
+        prev.hidden = false;
+        nameEl.textContent = list[0].name;
+        sizeEl.textContent = fmtSize(list[0].size);
+        chosenEl.hidden = false;
+        return;
+      }
+      // A batch: a contact sheet, not a filename. Twelve thumbnails say what
+      // "12 files selected" cannot.
+      chosenEl.hidden = true;
+      stripEl.hidden = false;
+      var total = list.reduce(function (n, f) { return n + f.size; }, 0);
+      stripEl.innerHTML =
+        '<span class="gupload__stripn"><b>' + list.length + ' photos ready</b>' +
+        '<span>' + fmtSize(total) + ' · one caption, one section and one year for all of them</span>' +
+        '<span class="gupload__change">Choose different photos</span></span>' +
+        '<span class="gupload__thumbs">' +
+          list.slice(0, 12).map(function (f) {
+            return '<img src="' + esc(objUrl(f)) + '" alt="">';
+          }).join('') +
+          (list.length > 12 ? '<span class="gupload__more">+' + (list.length - 12) + '</span>' : '') +
+        '</span>';
     }
     /* No click handler here on purpose. #guDrop is a <label> that WRAPS the file
        input, so the browser already forwards a click on it to that input — and
@@ -409,43 +468,100 @@
        ~25MB (50-80 megapixels) is about where an older phone runs out of room and
        the tab dies. Hence 25, and hence the wording below. */
     var MAX_PICK = 25 * 1024 * 1024;
+    // The files that will actually be posted, after the too-big ones are dropped.
+    var picked = [];
     fileIn.addEventListener('change', function () {
-      var f = fileIn.files[0];
-      if (!f) { showPreview(null); btn.disabled = true; return; }
-      if (f.size > MAX_PICK) {
-        showPreview(null); st.className = 'form-status err';
-        st.textContent = 'That image is too big to process on a phone (max 25MB). Try a smaller version.';
-        btn.disabled = true; return;
+      var all = Array.prototype.slice.call(fileIn.files || []);
+      st.textContent = ''; st.className = 'form-status';
+      if (!all.length) { picked = []; showPreview(null); btn.disabled = true; return; }
+
+      // Drop the oversized ones HERE rather than mid-batch, so the count on screen is
+      // the count that will be posted and nobody watches "12" become 10 at the end.
+      var tooBig = all.filter(function (f) { return f.size > MAX_PICK; });
+      picked = all.filter(function (f) { return f.size <= MAX_PICK; });
+
+      var over = 0;
+      if (picked.length > MAX_BATCH) { over = picked.length - MAX_BATCH; picked = picked.slice(0, MAX_BATCH); }
+
+      var notes = [];
+      if (tooBig.length) {
+        notes.push(tooBig.length === 1
+          ? '1 photo is too big to process on a phone (max 25MB) and was left out'
+          : tooBig.length + ' photos are too big to process on a phone (max 25MB) and were left out');
       }
-      st.textContent = ''; st.className = 'form-status'; showPreview(f); btn.disabled = false;
+      if (over) notes.push('only the first ' + MAX_BATCH + ' are taken — post the rest in a second batch');
+      if (notes.length) { st.className = 'form-status err'; st.textContent = notes.join(' · ') + '.'; }
+
+      showPreview(picked);
+      btn.disabled = !picked.length;
+      btn.textContent = picked.length > 1 ? 'Post ' + picked.length + ' photos' : 'Post';
     });
     form.onsubmit = function (e) {
       e.preventDefault();
-      var f = fileIn.files[0];
-      if (!f) return;
-      btn.disabled = true; btn.textContent = 'Posting…';
-      // Inside a section there is no picker — the photo goes where you are.
+      if (!picked.length) return;
+      btn.disabled = true;
+      // Inside a section there is no picker — the photos go where you are.
       var albumSel = document.getElementById('guAlbum');
       var albumId = inSection() ? curAlbum
                   : (albumSel && albumSel.value ? albumSel.value : null);   // null -> Miscellaneous
       var yearSel = document.getElementById('guYear');
       var takenYear = yearSel && yearSel.value ? parseInt(yearSel.value, 10) : null;
-      Z.downscale(f, 1600).then(function (blob) {
-        return Z.galleryUpload(me.id, blob, 'jpg');
-      }).then(function (path) {
-        return Z.galleryCreate({ author_user: me.id, image_path: path, caption: document.getElementById('guCaption').value.trim() || null, album_id: albumId, taken_year: takenYear });
-      }).then(function (r) {
-        if (r.error) throw r.error;
+      var caption = document.getElementById('guCaption').value.trim() || null;
+      var batch = picked.slice();
+      var done = 0, failed = [];
+
+      /* ONE AT A TIME, on purpose. Each photo is signed for upload individually, and
+         forty parallel round-trips would be a worse citizen for no gain — the browser
+         would queue them anyway. Sequential also means the counter below is honest. */
+      function step(i) {
+        if (i >= batch.length) return finish();
+        var f = batch[i];
+        btn.textContent = batch.length > 1 ? 'Posting ' + (i + 1) + ' of ' + batch.length + '…' : 'Posting…';
+        return Z.downscale(f, 1600)
+          .then(function (blob) { return Z.galleryUpload(me.id, blob, 'jpg'); })
+          .then(function (path) {
+            return Z.galleryCreate({ author_user: me.id, image_path: path, caption: caption,
+                                     album_id: albumId, taken_year: takenYear });
+          })
+          .then(function (r) {
+            if (r.error) throw r.error;
+            done++;
+          })
+          ['catch'](function (err) {
+            // ONE BAD PHOTO MUST NOT SINK THE BATCH. A brother who picked forty
+            // scans is not going to work out which one failed and start again — so
+            // the rest go up and the names of the failures are reported at the end.
+            failed.push(f.name + (err && err.message ? ' (' + err.message + ')' : ''));
+          })
+          .then(function () { return step(i + 1); });
+      }
+
+      function finish() {
         btn.textContent = 'Post';
-        showPreview(null);   // loadAll() rebuilds the uploader; release the URL first
-        // Land on the section it went into, so the photo you just posted is the
-        // thing you see next — not the sections page you started from.
+        if (!done) {
+          st.className = 'form-status err';
+          st.textContent = failed.length === 1
+            ? 'That photo could not be posted: ' + failed[0]
+            : 'None of those photos could be posted. ' + failed[0];
+          btn.disabled = false;
+          return;
+        }
+        if (failed.length) {
+          st.className = 'form-status err';
+          st.textContent = '✓ ' + done + ' posted · ' + failed.length + ' could not be: ' + failed.join('; ');
+        } else if (batch.length > 1) {
+          st.className = 'form-status ok';
+          st.textContent = '✓ All ' + done + ' photos posted.';
+        }
+        picked = [];
+        showPreview(null);   // loadAll() rebuilds the uploader; release the URLs first
+        // Land on the section they went into, so what you just posted is what you see
+        // next — not the sections page you started from.
         curAlbum = albumId || miscId(); view = 'grid';
         return loadAll();
-      }).catch(function (err) {
-        st.className = 'form-status err'; st.textContent = err.message || 'Upload failed.';
-        btn.disabled = false; btn.textContent = 'Post';
-      });
+      }
+
+      step(0);
     };
   }
 
@@ -1182,8 +1298,15 @@
         canAlbums = isAdmin || r[1];
         myBrotherId = (r[2] && r[2].id) || null;
         // ?tagged=<brother id> — "show me every photo he is in", from his profile card.
+        // ?class=<pledge class> — the same question asked of a whole pledge class,
+        // linked from class.html. Read with URLSearchParams so a class containing a
+        // space, an apostrophe or a "·" survives the round trip.
         var t = /[?&]tagged=([0-9a-f-]{36})/i.exec(location.search || '');
         if (t) { taggedId = t[1]; view = 'tagged'; }
+        try {
+          var cls = new URLSearchParams(location.search).get('class');
+          if (cls && cls.trim()) { taggedClass = cls.trim(); taggedId = null; view = 'tagged'; }
+        } catch (e) {}
         if (!root.querySelector('.sk')) root.innerHTML = gallerySkeleton();  // unless already painted above
         loadAll().then(openDeepLink).catch(function () {
           root.innerHTML = '<p class="page-empty">Could not load the gallery. Try refreshing.</p>';

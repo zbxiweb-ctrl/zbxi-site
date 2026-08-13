@@ -401,6 +401,24 @@
     profilePatch: function (userId, patch) {
       return this._bust(client.from('brothers').update(patch).eq('user_id', userId).select());
     },
+    /* ---- "know how to reach him?" (upgrade65) ----
+       A tip about an unreachable brother rides the suggestions queue the webmaster
+       already works — but carries about_brother, which is what turns it from a note
+       he retypes into a task he can act on in one click. The body is written in a
+       fixed order so the console can lift the address back out of it.
+       author_user, body and about_brother are the ONLY three columns a brother may
+       write; status and the webmaster's response are the console's (upgrade65). */
+    contactTip: function (userId, brotherId, name, tip) {
+      var bits = [];
+      if (tip.email) bits.push('email: ' + tip.email);
+      if (tip.phone) bits.push('phone: ' + tip.phone);
+      if (tip.note) bits.push(tip.note);
+      return client.from('suggestions').insert({
+        author_user: userId,
+        about_brother: brotherId,
+        body: '📇 Contact tip for ' + name + ' — ' + bits.join(' · ')
+      }).select();
+    },
     // Admin: list by status (alphabetical by name)
     listByStatus: function (status) {
       var self = this;
@@ -819,6 +837,12 @@
       return client.from('suggestions').update(fields).eq('id', id);
     },
     suggestionDelete: function (id) { return client.from('suggestions').delete().eq('id', id); },
+    // Write a contact tip onto the brother's own roster row — the click that turns a
+    // tip into an invitation. Admin-only at the database (brothers_admin_update), and
+    // .select() so a refusal is visible rather than a silent 204.
+    saveContact: function (brotherId, patch) {
+      return this._bust(client.from('brothers').update(patch).eq('id', brotherId).select());
+    },
 
     /* ---- committees (RLS: members see their own; admin sees all) ---- */
     committeesList: function () {

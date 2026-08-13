@@ -137,7 +137,7 @@
     return ALL_TAB_IDS.indexOf(h) !== -1 ? h : 'home';
   }
 
-  var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, clsScroll: 0, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [] };
+  var state = { tab: tabFromHash(), data: { all: [], pending: [], approved: [], unclaimed: [], verified: [], rejected: [] }, verifiedById: {}, emailById: {}, signupById: {}, classDrill: null, clsScroll: 0, q: '', allNeedsBig: false, events: [], treeLine: null, titleReqs: [], suggestions: [] };
 
   // Active/Alumni logic — same rule the public pages use: a manual `standing`
   // (set here or by the brother in his own profile) wins; otherwise grad year in
@@ -2743,9 +2743,45 @@
     });
   }
 
+  /* ---- contact tips (upgrade65) -------------------------------------------------
+     A suggestion carrying about_brother is a tip about how to reach a man with no
+     account. It gets a header naming him and — when the tip contains something we can
+     recognise — a button that writes it onto his roster row, which is what turns the
+     tip into an invitation you can actually send. */
+  var TIP_EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
+  // Deliberately conservative: 10+ digits with the usual separators. A false positive
+  // here would write junk onto a brother's record, so anything shorter is left for the
+  // webmaster to read and type himself.
+  var TIP_PHONE = /(\+?\d[\d\s().-]{8,}\d)/;
+  function tipTarget(s) {
+    return (state.data.verified || []).filter(function (b) { return b.id === s.about_brother; })[0];
+  }
+  function tipHead(s) {
+    if (!s.about_brother) return '';
+    var b = tipTarget(s);
+    return '<p class="sug-card__tip">📇 <b>Contact tip — ' +
+      esc(b ? b.full_name : 'a brother no longer on the roster') + '</b>' +
+      (b && b.pledge_class ? ' <span>' + esc(b.pledge_class) + '</span>' : '') +
+      (b && b.user_id ? ' <span>· he has since joined</span>' : '') + '</p>';
+  }
+  function tipActions(s) {
+    if (!s.about_brother) return '';
+    var b = tipTarget(s);
+    if (!b || b.user_id) return '';           // gone, or he already made an account
+    var em = TIP_EMAIL.exec(s.body || '');
+    var ph = TIP_PHONE.exec(s.body || '');
+    var bits = [];
+    if (em && !b.email) bits.push('<button class="btn btn--gold" data-tipsave="email" data-tipval="' + esc(em[0]) + '">Save ' + esc(em[0]) + ' to his profile</button>');
+    if (ph && !b.phone) bits.push('<button class="btn btn--ghost" data-tipsave="phone" data-tipval="' + esc(ph[0].trim()) + '">Save that number</button>');
+    if (em && b.email) bits.push('<span class="sug-card__has">He already has an email on file — check it before overwriting.</span>');
+    if (!bits.length) return '';
+    return '<div class="sug-card__tipact">' + bits.join('') + '</div>';
+  }
+
   function renderSuggestTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading suggestions…</p>';
     Z.suggestionsMine().then(function (rows) { // RLS: admin sees all
+      state.suggestions = rows;                // the tip buttons read about_brother back off this
       var groups = { new: [], responded: [], archived: [] };
       rows.forEach(function (s) { (groups[s.status] || groups.new).push(s); });
       setSuggestBadge(groups.new.length);
@@ -2753,8 +2789,10 @@
       function block(title, list, showActions) {
         if (!list.length) return '';
         return '<h3 class="stat-h">' + title + ' (' + list.length + ')</h3>' + list.map(function (s) {
-          return '<div class="sug-card" data-sug="' + s.id + '">' +
+          return '<div class="sug-card' + (s.about_brother ? ' sug-card--tip' : '') + '" data-sug="' + s.id + '">' +
+            tipHead(s) +
             '<p class="sug-card__body">' + esc(s.body) + '</p>' +
+            tipActions(s) +
             '<small>' + stamp(s.created_at) + (s.responded_at ? ' · replied ' + stamp(s.responded_at) : '') + '</small>' +
             (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +
             // Delete is the webmaster's alone — the officer console offers Respond and
@@ -2789,6 +2827,29 @@
         if (arch) arch.onclick = function () {
           Z.suggestionUpdate(id, { status: 'archived' }).then(function () { renderList(); });
         };
+        // One click writes the tip onto his roster row — after which the Invite tab can
+        // reach him, which is the entire point of collecting tips at all.
+        el.querySelectorAll('[data-tipsave]').forEach(function (bt) {
+          bt.onclick = function () {
+            var s = (state.suggestions || []).filter(function (x) { return x.id === id; })[0];
+            if (!s) return;
+            var patch = {};
+            patch[bt.dataset.tipsave] = bt.dataset.tipval;
+            bt.disabled = true; bt.textContent = 'Saving…';
+            Z.saveContact(s.about_brother, patch).then(function (r) {
+              if (r && r.error) throw r.error;
+              // A refusal removes no rows and returns 204 — say so rather than looking saved.
+              if (!r || !r.data || !r.data.length) throw new Error('That did not save.');
+              // Archive the tip in the same motion: it has been acted on, and leaving it
+              // in the New pile means working it twice.
+              return Z.suggestionUpdate(id, { status: 'archived' });
+            }).then(function () { renderList(); })
+              ['catch'](function (err) {
+                bt.disabled = false; bt.textContent = 'Save to his profile';
+                alert((err && err.message) || 'Could not save that.');
+              });
+          };
+        });
         // Z.suggestionDelete has always existed; nothing called it, while two on-screen
         // notes told the reader that deleting "stays with the webmaster". Archive is the
         // everyday action — this is for a suggestion that should not be kept at all.

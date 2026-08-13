@@ -1016,7 +1016,12 @@
       function block(title, list, showActions) {
         if (!list.length) return '';
         return '<h3 class="stat-h">' + title + ' (' + list.length + ')</h3>' + list.map(function (s) {
-          return '<div class="sug-card" data-sug="' + s.id + '">' +
+          // A contact tip (upgrade65) is named as one here too — he works the same queue,
+          // and an unlabelled "📇 Contact tip for…" line reads like an odd suggestion.
+          // He gets no "save to his profile" button: writing a brother's contact details
+          // is members.edit, and this tool is suggestions.respond. The webmaster does that.
+          return '<div class="sug-card' + (s.about_brother ? ' sug-card--tip' : '') + '" data-sug="' + s.id + '">' +
+            (s.about_brother ? '<p class="sug-card__tip">📇 <b>Contact tip</b> <span>the webmaster will add it to the roster</span></p>' : '') +
             '<p class="sug-card__body">' + esc(s.body) + '</p>' +
             '<small>' + stamp(s.created_at) + (s.responded_at ? ' · replied ' + stamp(s.responded_at) : '') + '</small>' +
             (s.response ? '<p class="sug-card__resp">↩ ' + esc(s.response) + '</p>' : '') +

@@ -1275,6 +1275,21 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 /* Chosen state: the plate becomes the photo, so it is obvious the file landed. */
 .gupload__chosen { display: block; }
 .gupload__chosen[hidden] { display: none; }
+
+/* ---- a batch of photos: a contact sheet, not a filename --------------------
+   One preview cannot represent twelve photos, and "12 files selected" is a number
+   you have to take on trust. Twelve thumbnails are the receipt. */
+.gupload__strip { display: block; }
+.gupload__strip[hidden] { display: none; }
+.gupload__stripn { display: block; text-align: center; margin-bottom: .7rem; }
+.gupload__stripn b { display: block; font-size: 1rem; color: var(--heading); }
+.gupload__stripn span { display: block; color: var(--muted); font-size: .82rem; }
+.gupload__thumbs { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: center; }
+.gupload__thumbs img { width: 62px; height: 62px; object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--hairline); }
+.gupload__more { display: inline-flex; align-items: center; justify-content: center;
+  width: 62px; height: 62px; border-radius: 8px; background: var(--tint);
+  border: 1px dashed var(--hairline); color: var(--muted); font-size: .82rem; font-weight: 700; }
 .gupload__prev { display: block; max-width: 100%; max-height: 260px; margin: 0 auto; border-radius: 11px; box-shadow: var(--shadow-sm); }
 .gupload__meta { display: flex; align-items: baseline; justify-content: center; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
 .gupload__meta b { display: inline; font-family: inherit; font-size: .92rem; font-weight: 600; max-width: 60vw;
@@ -2262,6 +2277,29 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .sug-card small { color: var(--muted); font-size: .76rem; }
 .sug-card__resp { background: var(--bg-2); border-left: 3px solid var(--gold); border-radius: 6px; padding: .5rem .8rem; margin: .6rem 0 0; color: var(--text); font-size: .88rem; }
 .sug-card__act { margin-top: .7rem; }
+
+/* ---- a contact tip, not an ordinary suggestion (upgrade65) ----------------- */
+.sug-card--tip { border-left: 3px solid var(--gold); }
+.sug-card__tip { margin: 0 0 .35rem; font-size: .82rem; color: var(--on-dark); }
+.sug-card__tip b { color: var(--gold-bright); }
+.sug-card__tip span { color: var(--muted); font-weight: 400; }
+.sug-card__tipact { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .6rem; }
+.sug-card__tipact .btn { padding: .45rem 1rem; font-size: .82rem; }
+.sug-card__has { color: var(--muted); font-size: .8rem; }
+
+/* ---- "know how to reach him?" on the brother card (upgrade65) -------------- */
+.bm__tipbtn { margin-top: .8rem; }
+.bm__tipbtn[hidden] { display: none; }
+.tipform { margin-top: .8rem; }
+.tipform[hidden] { display: none; }
+.tipform__ask { margin: 0 0 .5rem; color: var(--muted); font-size: .84rem; }
+.tipform__in { width: 100%; margin-bottom: .45rem; padding: .55rem .8rem; border-radius: 10px;
+  border: 1.5px solid var(--hairline); background: var(--surface); color: var(--text); font: inherit; font-size: .9rem; }
+textarea.tipform__in { resize: vertical; }
+.tipform__acts { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.tipform__no { border: 0; background: none; cursor: pointer; font: inherit; font-size: .82rem;
+  color: var(--muted); text-decoration: underline; }
+.tipform__done { margin: 0; color: var(--gold-deep); font-size: .9rem; font-weight: 600; }
 .sug-card__act textarea { width: 100%; min-height: 60px; border: 1.5px solid var(--hairline); border-radius: 8px; padding: .6rem .8rem; font-family: var(--sans); font-size: .88rem; margin-bottom: .5rem; }
 .sug-card__act .btn { padding: .45rem 1rem; font-size: .82rem; margin-right: .4rem; }
 

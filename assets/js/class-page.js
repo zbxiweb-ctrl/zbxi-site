@@ -13,6 +13,7 @@
   var titleEl = document.getElementById('classTitle');
   var statsEl = document.getElementById('classStats');
   var threadBtn = document.getElementById('classThreadBtn');
+  var photosBtn = document.getElementById('classPhotosBtn');
 
   if (!cls || !Z || !Z.configured) {
     grid.innerHTML = '<p class="page-empty">No pledge class specified. Open a brother\'s card and tap his class.</p>';
@@ -65,6 +66,13 @@
       if (!ok) return;
       threadBtn.style.display = '';
       threadBtn.href = 'board.html#compose=' + encodeURIComponent('[' + cls + '] Class thread');
+      // Photos of this class — every photo any of these men is tagged in. Members only,
+      // like the button beside it: the gallery is private, so showing it to a signed-out
+      // visitor would only walk him into a lock screen.
+      if (photosBtn) {
+        photosBtn.style.display = '';
+        photosBtn.href = 'gallery.html?class=' + encodeURIComponent(cls);
+      }
       Z.listVerifiedDetail().then(function (det) {
         var byId = {};
         (det || []).forEach(function (d) { byId[d.id] = d; });

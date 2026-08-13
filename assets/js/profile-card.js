@@ -89,6 +89,57 @@
       (d.quote ? '<p class="bm__quote">“' + esc(d.quote) + '”</p>' : '');
   }
 
+  /* The tip form. Three optional fields, one of them required — deliberately loose.
+     A half-remembered address is worth more than a blank, and the fastest way to get
+     nothing is to reject "he's on LinkedIn, I'll forward it" for not being an email. */
+  function openTipForm(body, b) {
+    var host = body.querySelector('[data-tipform]');
+    var btn = body.querySelector('[data-tip]');
+    if (!host) return;
+    if (!host.hidden) { host.hidden = true; host.innerHTML = ''; if (btn) btn.hidden = false; return; }
+    if (btn) btn.hidden = true;
+    host.hidden = false;
+    host.innerHTML =
+      '<p class="tipform__ask">Anything at all helps — we just need one way to start.</p>' +
+      '<input class="tipform__in" data-tip-email type="email" placeholder="His email, if you have it" autocomplete="off">' +
+      '<input class="tipform__in" data-tip-phone type="tel" placeholder="Or a phone number" autocomplete="off">' +
+      '<textarea class="tipform__in" data-tip-note rows="2" maxlength="300" ' +
+        'placeholder="Or just tell us — “he’s on LinkedIn, I’ll forward it”, “ask his big”"></textarea>' +
+      '<div class="tipform__acts">' +
+        '<button type="button" class="btn btn--gold" data-tip-send>Send it to the webmaster</button>' +
+        '<button type="button" class="tipform__no" data-tip-cancel>Cancel</button>' +
+      '</div><p class="form-status" data-tip-status role="status"></p>';
+
+    var st = host.querySelector('[data-tip-status]');
+    var say = function (m, bad) { st.className = 'form-status' + (bad ? ' err' : ' ok'); st.textContent = m; };
+
+    host.querySelector('[data-tip-cancel]').onclick = function () {
+      host.hidden = true; host.innerHTML = ''; if (btn) btn.hidden = false;
+    };
+    host.querySelector('[data-tip-send]').onclick = function () {
+      var tip = {
+        email: host.querySelector('[data-tip-email]').value.trim(),
+        phone: host.querySelector('[data-tip-phone]').value.trim(),
+        note:  host.querySelector('[data-tip-note]').value.trim()
+      };
+      if (!tip.email && !tip.phone && !tip.note) { say('Fill in any one of these.', true); return; }
+      var send = host.querySelector('[data-tip-send]');
+      send.disabled = true; send.textContent = 'Sending…';
+      window.ZBXI.getUser().then(function (me) {
+        if (!me) throw new Error('Sign in first.');
+        return window.ZBXI.contactTip(me.id, b.id, b.full_name, tip);
+      }).then(function (r) {
+        if (r && r.error) throw r.error;
+        if (!r || !r.data || !r.data.length) throw new Error('That did not send. Try again.');
+        host.innerHTML = '<p class="tipform__done">✓ Thank you — the webmaster has it, and will try to ' +
+          'get ' + esc(String(b.full_name).split(' ')[0]) + ' onto the site.</p>';
+      })['catch'](function (err) {
+        send.disabled = false; send.textContent = 'Send it to the webmaster';
+        say((err && err.message) || 'Could not send that.', true);
+      });
+    };
+  }
+
   /* Open the shared modal for brother b (a family_public row or richer).
      opts: { lineage: html prefix, portal: href to the login portal,
              placeholderData: row (render details directly, no gating) } */
@@ -126,19 +177,35 @@
       var claimCta = lineage +
         '<div class="bm__locked">🌳 <b>Profile unclaimed</b><span>Is this you? Sign in and claim your name to bring this profile to life.</span>' +
         '<a class="btn btn--gold" href="' + portal + '" data-close>Claim your profile</a></div>';
-      var notOnSite = '<div class="bm__locked">🌳 <b>Not on the site yet</b><span>' + esc(b.full_name) +
-        ' is in the family tree from the chapter records but hasn’t created an account yet.</span></div>';
+      // 359 brothers on the roster, 113 with accounts — and that gap caps every other
+      // feature on this site. This is the one screen where a brother is looking straight
+      // at a man nobody can reach, so it is where the question gets asked (upgrade65).
+      var notOnSite = function () {
+        return '<div class="bm__locked">🌳 <b>Not on the site yet</b><span>' + esc(b.full_name) +
+          ' is in the family tree from the chapter records but hasn’t created an account yet.</span>' +
+          '<button type="button" class="btn btn--gold bm__tipbtn" data-tip>✉️ Know how to reach him?</button>' +
+          '</div><div class="tipform" data-tipform hidden></div>';
+      };
+      // Painted more than once — the photo count arrives late — so the wiring lives with
+      // the markup rather than after it, or the button goes dead when the count lands.
+      var paintNotOnSite = function (count) {
+        body.innerHTML = lineage +
+          (count ? photosRow({ id: b.id, photo_count: count }) : '') + notOnSite();
+        var btn = body.querySelector('[data-tip]');
+        if (btn) btn.onclick = function () { openTipForm(body, b); };
+      };
+
       body.innerHTML = lineage + '<p class="bm__loading">…</p>';
       window.ZBXI.getUser().then(function (me) {
         if (!me) { body.innerHTML = claimCta; return; }
-        body.innerHTML = lineage + notOnSite;
+        paintNotOnSite(0);
         // He has no account, so nothing above ran brotherDetail() — but the photo
         // count is the one fact worth having about a man who never signed up: it is
         // the argument for inviting him. anon has no read on gallery_tags at all, so
         // this only ever runs for a signed-in brother.
         if (window.ZBXI.galleryTagCount) {
           window.ZBXI.galleryTagCount(b.id).then(function (n) {
-            if (n) body.innerHTML = lineage + photosRow({ id: b.id, photo_count: n }) + notOnSite;
+            if (n) paintNotOnSite(n);
           })['catch'](function () {});
         }
       }).catch(function () { body.innerHTML = claimCta; });
