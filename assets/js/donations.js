@@ -47,7 +47,37 @@
       'or speak to the alumni president if you would like to contribute now.</p></div>';
   }
 
-  function render(d, roster) {
+  /* Whole dollars, with separators — $3,150. Cents are how the money is STORED (never a
+     float), but "$3,150.00" on a progress bar is noise nobody reads. */
+  function money(cents) {
+    return '$' + Math.round((cents || 0) / 100).toLocaleString('en-US');
+  }
+
+  /* The goal, the bar, and the thank-you (upgrade66).
+     Everything here comes from fund_totals — a view that can only produce the sum, the
+     counts and the names of men who OPTED IN. There is no amount beside any name, and no
+     query against it yields one man's gift. With no goal set, this renders nothing at all
+     and the page looks exactly as it did before. */
+  function progressHtml(d, totals) {
+    if (!d.goal_cents || !totals) return '';
+    var raised = totals.raised_cents || 0;
+    var pct = Math.max(0, Math.min(100, Math.round((raised / d.goal_cents) * 100)));
+    var names = totals.honour_roll || [];
+    var shown = names.slice(0, 12).map(esc).join(' · ');
+    var more = names.length > 12 ? ' · +' + (names.length - 12) + ' more' : '';
+    var givers = totals.giver_count || 0;
+    return '<section class="give-goal">' +
+      (d.goal_label ? '<h2 class="give-h">' + esc(d.goal_label) + '</h2>' : '') +
+      '<div class="give-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<p class="give-bar__n"><b>' + money(raised) + '</b> of ' + money(d.goal_cents) +
+        (givers ? ' · ' + givers + (givers === 1 ? ' brother' : ' brothers') : '') + '</p>' +
+      (shown
+        ? '<p class="give-roll"><span>Thank you</span>' + shown + more + '</p>'
+        : '') +
+    '</section>';
+  }
+
+  function render(d, roster, totals) {
     var handle = cleanHandle(d.handle);
     var supports = (d.supports || []).filter(function (s) { return String(s || '').trim(); });
     var bro = d.brother_id && roster ? roster.filter(function (b) { return b.id === d.brother_id; })[0] : null;
@@ -55,6 +85,7 @@
 
     root.innerHTML =
       (d.blurb ? '<p class="lede give-blurb">' + esc(d.blurb) + '</p>' : '') +
+      progressHtml(d, totals) +
       '<div class="give">' +
 
         (supports.length
@@ -129,11 +160,13 @@
       // No row means RLS refused us, not that the fund is unset.
       if (!d) return lockedOut();
       if (!d.active || !cleanHandle(d.handle)) return notReady();
-      // The roster is only needed to make the president's name clickable, so a
-      // failure there must not stop a brother from being able to give.
-      return Z.listFamilyPublic()
-        .then(function (rows) { render(d, rows || []); })
-        ['catch'](function () { render(d, []); });
+      // The roster is only needed to make the president's name clickable, and the
+      // totals only to draw the progress bar — a failure in either must not stop a
+      // brother from being able to give, which is the one thing this page is for.
+      return Promise.all([
+        Z.listFamilyPublic()['catch'](function () { return []; }),
+        (d.goal_cents && Z.fundTotals ? Z.fundTotals() : Promise.resolve(null))['catch'](function () { return null; })
+      ]).then(function (res) { render(d, res[0] || [], res[1]); });
     });
   })['catch'](function () { lockedOut(); });
 })();

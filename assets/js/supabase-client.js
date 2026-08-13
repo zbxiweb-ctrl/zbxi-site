@@ -880,6 +880,28 @@
     // Stripped unless the box is ticked.
     BACKUP_CONTACT: ['email', 'phone'],
 
+    /* ---- the Alumni Fund (upgrade66) ----
+       fundTotals reads a VIEW that can only ever produce the sum, the counts and the
+       names of men who opted in — a brother cannot get an amount for one person out of
+       it by any query. The individual gift rows are admin-only at both layers. */
+    fundTotals: function () {
+      return client.from('fund_totals').select('*').maybeSingle()
+        .then(function (r) { return r.data || null; });
+    },
+    fundGifts: function () {
+      return client.from('fund_gifts').select('*').order('given_on', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    fundGiftAdd: function (row) {
+      return client.from('fund_gifts').insert(row).select().single();
+    },
+    fundGiftUpdate: function (id, patch) {
+      return client.from('fund_gifts').update(patch).eq('id', id).select();
+    },
+    fundGiftDelete: function (id) {
+      return client.from('fund_gifts').delete().eq('id', id).select();
+    },
+
     // Every positions row in one read, for the backup's "titles held" column. The
     // per-brother version (inside brotherDetail) would be 359 round trips.
     brotherTitlesAll: function () {
@@ -1289,6 +1311,20 @@
           method: 'POST',
           headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
           body: JSON.stringify({ emails: emails, brother_id: brotherId || null })
+        });
+      }).then(function (r) { return r.json(); });
+    },
+    // One thank-you for one recorded gift (upgrade66). Admin-gated in the function; it
+    // returns {ok:false, error} rather than throwing when there is simply nobody to
+    // thank — "no email on file for him" is an ANSWER, not a failure, and the console
+    // shows it as one.
+    sendThanks: function (giftId) {
+      var Z = this;
+      return Z._token().then(function (t) {
+        return fetch(Z._fn('zbxi-thanks'), {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gift_id: giftId })
         });
       }).then(function (r) { return r.json(); });
     },

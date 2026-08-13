@@ -861,6 +861,51 @@
             '“donation” implies they are.</p>' +
         '</div>' +
 
+        // ---- the goal + the gift ledger (upgrade66) ----------------------------
+        // Money still moves through Venmo. This is a record of what arrived, typed in
+        // by hand, so the page can show a bar and say thank you. Nothing here takes a
+        // payment.
+        '<div class="acct-block"><h4>🎯 This year\'s goal</h4>' +
+          '<p class="form-note" style="margin-top:0">Leave the target empty and the page looks exactly as it does now — ' +
+          'no bar, no names. Set one and brothers see how close the chapter is.</p>' +
+          '<div class="form-row">' +
+            '<div class="field"><label>Target <small>(dollars)</small></label>' +
+              '<input id="fundGoal" type="number" min="1" step="1" value="' + (d.goal_cents ? Math.round(d.goal_cents / 100) : '') + '" placeholder="5000"></div>' +
+            '<div class="field"><label>What it is called</label>' +
+              '<input id="fundGoalLabel" maxlength="60" value="' + esc(d.goal_label || '') + '" placeholder="2026 Reunion Fund"></div>' +
+          '</div>' +
+          '<div class="field"><label>Count gifts from <small>(so a new drive starts a fresh bar)</small></label>' +
+            '<input id="fundGoalFrom" type="date" value="' + esc(d.goal_starts_on || '') + '"></div>' +
+        '</div>' +
+
+        '<div class="acct-block"><h4>💵 Record a gift</h4>' +
+          '<p class="form-note" style="margin-top:0">Type gifts in as they land in Venmo. Brothers never see individual ' +
+          'amounts — only the total, and the names of men who said they were happy to be named.</p>' +
+          '<div class="form-row">' +
+            '<div class="field"><label>Amount <small>(dollars)</small></label>' +
+              '<input id="giftAmt" type="number" min="1" step="0.01" placeholder="250"></div>' +
+            '<div class="field"><label>Date received</label>' +
+              '<input id="giftOn" type="date" value="' + new Date().toISOString().slice(0, 10) + '"></div>' +
+          '</div>' +
+          '<div class="field"><label>Which brother <small>(optional — needed to send him a thank-you)</small></label>' +
+            '<select id="giftBro"><option value="">— not linked to a roster name —</option>' +
+              roster.map(function (b) {
+                return '<option value="' + esc(b.id) + '">' + esc(b.full_name) + '</option>';
+              }).join('') + '</select></div>' +
+          '<div class="field"><label>Name on the honour roll <small>(fills in from the brother above)</small></label>' +
+            '<input id="giftName" maxlength="80" placeholder="Joe Occhino"></div>' +
+          '<div class="field"><label class="pref-box"><input type="checkbox" id="giftShow"> ' +
+            'He is happy to be <b>named on the page</b></label>' +
+            '<p class="form-note" style="margin:.3rem 0 0">Off unless he said yes. No amount is ever shown beside a name.</p></div>' +
+          '<div class="field"><label>Private note <small>(only you see this)</small></label>' +
+            '<input id="giftNote" maxlength="200" placeholder="Cheque, posted 4 Aug"></div>' +
+          '<label class="pref-box" style="margin-bottom:.6rem"><input type="checkbox" id="giftThank" checked> ' +
+            'Email him a thank-you now</label>' +
+          '<button class="btn btn--gold" id="giftAdd">Record this gift</button>' +
+          '<p class="form-status" id="giftStatus"></p></div>' +
+
+        '<div class="acct-block"><h4>📜 Gifts recorded</h4><div id="giftList"><p class="admin-empty">Loading…</p></div></div>' +
+
         '<div class="acct-block"><h4>' + (d.active ? '● The page is LIVE' : 'The page is hidden') + '</h4>' +
           '<p class="form-note">It stays hidden until you turn it on, so it can never show brothers an empty place to send money.</p>' +
           '<div style="display:flex;gap:.6rem;flex-wrap:wrap">' +
@@ -868,6 +913,8 @@
             (d.active ? '<button class="btn btn--ghost" id="fundHide">Hide the page</button>' : '') +
           '</div>' +
           '<p class="form-status" id="fundStatus"></p></div>';
+
+      wireGifts(q, roster);
 
       function save(active) {
         var st = document.getElementById('fundStatus');
@@ -883,7 +930,14 @@
           blurb: document.getElementById('fundBlurb').value.trim() || null,
           supports: document.getElementById('fundSupports').value.split('\n')
             .map(function (s) { return s.trim(); }).filter(Boolean),
-          active: active
+          active: active,
+          // Dollars on screen, integer CENTS in the database — money is never a float.
+          goal_cents: (function () {
+            var v = parseFloat(document.getElementById('fundGoal').value);
+            return v > 0 ? Math.round(v * 100) : null;
+          })(),
+          goal_label: document.getElementById('fundGoalLabel').value.trim() || null,
+          goal_starts_on: document.getElementById('fundGoalFrom').value || null
         }).then(function () { renderFundTab(q); })
           ['catch'](function (e) {
             st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
@@ -944,6 +998,110 @@
         });
       });
     });
+  }
+
+  /* ---------------- the gift ledger (upgrade66) --------------------------------------
+     Typed in by hand as money lands in Venmo. Brothers never see a row from this list —
+     only the total and the opt-in names, through a view that cannot produce an amount
+     for one person. */
+  function usd(cents) {
+    return '$' + ((cents || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function wireGifts(q, roster) {
+    var list = document.getElementById('giftList');
+    var add = document.getElementById('giftAdd');
+    var st = document.getElementById('giftStatus');
+    if (!list || !add) return;
+    var say = function (m, bad) { st.className = 'form-status' + (bad ? ' err' : ' ok'); st.textContent = m; };
+
+    // Choosing the brother fills in the honour-roll name, because retyping a name you
+    // just picked off a list is the kind of small friction that stops the ledger being kept.
+    var broSel = document.getElementById('giftBro');
+    var nameIn = document.getElementById('giftName');
+    if (broSel && nameIn) broSel.onchange = function () {
+      var b = roster.filter(function (x) { return x.id === broSel.value; })[0];
+      if (b && !nameIn.value.trim()) nameIn.value = b.full_name;
+    };
+
+    function paint() {
+      Z.fundGifts().then(function (gifts) {
+        if (!gifts.length) {
+          list.innerHTML = '<p class="admin-empty">No gifts recorded yet. The page shows a bar as soon as there is one.</p>';
+          return;
+        }
+        var total = gifts.reduce(function (n, g) { return n + g.amount_cents; }, 0);
+        list.innerHTML = '<p class="form-note" style="margin-top:0"><b>' + usd(total) + '</b> recorded across ' +
+            gifts.length + (gifts.length === 1 ? ' gift' : ' gifts') + '.</p>' +
+          gifts.map(function (g) {
+            return '<div class="admin-row" data-gift="' + esc(g.id) + '">' +
+              '<div class="admin-row__ph">💵</div>' +
+              '<div class="admin-row__info"><b>' + usd(g.amount_cents) +
+                (g.display_name ? ' · ' + esc(g.display_name) : '') +
+                (g.show_name ? ' <span class="tab-count">named</span>' : '') +
+                (g.thanked_at ? ' <span class="tab-count">thanked</span>' : '') + '</b>' +
+                '<span>' + esc(g.given_on) + (g.note ? ' · ' + esc(g.note) : '') + '</span></div>' +
+              '<div class="admin-row__act">' +
+                (g.thanked_at ? '' : btn('giftthank', 'Send thanks', 'ghost')) +
+                btn('giftdel', 'Delete', 'danger') + '</div></div>';
+          }).join('');
+
+        list.querySelectorAll('[data-gift]').forEach(function (el) {
+          var id = el.dataset.gift;
+          each(el, '[data-giftthank]', function () { sendThanks(id, say, paint); });
+          each(el, '[data-giftdel]', function () {
+            if (!confirm('Delete this gift from the record?\n\nThe total on the page will drop by that amount.')) return;
+            Z.fundGiftDelete(id).then(function (r) {
+              if (r.error) { say(r.error.message, true); return; }
+              if (!r.data || !r.data.length) { say('That was not deleted — only the webmaster may.', true); return; }
+              paint();
+            });
+          });
+        });
+      })['catch'](function (e) { list.innerHTML = '<p class="form-status err">' + esc(e.message || 'Could not load gifts.') + '</p>'; });
+    }
+
+    add.onclick = function () {
+      var dollars = parseFloat(document.getElementById('giftAmt').value);
+      if (!(dollars > 0)) { say('How much was the gift?', true); return; }
+      var row = {
+        amount_cents: Math.round(dollars * 100),
+        given_on: document.getElementById('giftOn').value || new Date().toISOString().slice(0, 10),
+        brother_id: document.getElementById('giftBro').value || null,
+        display_name: document.getElementById('giftName').value.trim() || null,
+        show_name: !!document.getElementById('giftShow').checked,
+        note: document.getElementById('giftNote').value.trim() || null
+      };
+      var wantThanks = !!document.getElementById('giftThank').checked;
+      add.disabled = true; say('Recording…');
+      Z.fundGiftAdd(row).then(function (r) {
+        if (r.error) throw r.error;
+        var gift = r.data;
+        document.getElementById('giftAmt').value = '';
+        document.getElementById('giftNote').value = '';
+        document.getElementById('giftName').value = '';
+        document.getElementById('giftShow').checked = false;
+        say('✓ Recorded ' + usd(row.amount_cents) + '.');
+        paint();
+        if (wantThanks) sendThanks(gift.id, say, paint);
+      })['catch'](function (e) { say((e && e.message) || 'Could not record that.', true); })
+        ['finally'](function () { add.disabled = false; });
+    };
+
+    paint();
+  }
+
+  /* The thank-you goes out through the same queue as every other email on this site, so
+     it is paced by the same daily cap. If the gift is not linked to a brother, or he has
+     no address on file, the console SAYS SO rather than failing quietly — the whole point
+     is knowing who still needs thanking. */
+  function sendThanks(giftId, say, done) {
+    say('Sending the thank-you…');
+    Z.sendThanks(giftId).then(function (r) {
+      if (r.ok) { say('✓ Thank-you queued — it goes out with the next batch.'); }
+      else { say(r.error || 'No email on file for him — mark it thanked another way.', true); }
+      if (done) done();
+    })['catch'](function (e) { say((e && e.message) || 'Could not send the thank-you.', true); });
   }
 
   function toLocalInput(ts) {
