@@ -864,6 +864,8 @@
       'gallery_albums', 'gallery_posts', 'gallery_tags', 'gallery_comments', 'gallery_likes',
       'donations', 'digest_notes', 'site_settings',
       'suggestions', 'title_requests', 'invites',
+      'fund_gifts',          // the money ledger. Admin-only at both layers, so a brother's
+                             // dump is unaffected — but it was the ONE table with no backup.
       'officer_grants'
       // officer_seat_overrides is deliberately ABSENT. upgrade58 gave it no grant to any
       // browser role at all, so even the admin's own session gets "permission denied" —
@@ -878,7 +880,10 @@
     // Downloads folder or gets emailed to the next webmaster.
     BACKUP_NEVER: ['token', 'unsubscribe_token'],
     // Stripped unless the box is ticked.
-    BACKUP_CONTACT: ['email', 'phone'],
+    // linkedin is here because a profile URL is a direct way to reach someone, and the
+    // roster CSV has always gated it — the two files disagreeing is how a promise gets
+    // broken quietly. fund_gifts.note is the treasurer's private note about a gift.
+    BACKUP_CONTACT: ['email', 'phone', 'linkedin', 'note'],
 
     /* ---- the Alumni Fund (upgrade66) ----
        fundTotals reads a VIEW that can only ever produce the sum, the counts and the

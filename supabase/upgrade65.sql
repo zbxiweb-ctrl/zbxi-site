@@ -43,6 +43,10 @@ create index if not exists suggestions_about_idx
 -- and created_at are the server's.
 revoke insert, update, delete on public.suggestions from anon;
 revoke insert, update          on public.suggestions from authenticated;
+-- anon's SELECT returns zero rows anyway (sug_own_read needs author_user = auth.uid(), and
+-- anon's is NULL) — but a grant that exists only because nobody revoked it is a grant a
+-- future policy edit can wake up. Added after the security review of 6ede18f flagged it.
+revoke select                  on public.suggestions from anon;
 
 grant insert (author_user, body, about_brother) on public.suggestions to authenticated;
 -- The responder is `authenticated` too — admin is a JWT-email check, not a Postgres role —

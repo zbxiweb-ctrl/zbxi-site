@@ -2225,7 +2225,13 @@
   function bkStamp(kind, ext, withContact) {
     // CONFIDENTIAL in the NAME, not only in a warning on a screen he has already left.
     // This file ends up in a Downloads folder next to holiday photos.
-    return 'zbxi-' + kind + (withContact ? '-CONFIDENTIAL' : '') +
+    //
+    // The FULL COPY is always marked, whatever the contact box says. Unticking removes the
+    // email and phone COLUMNS — it cannot remove an address a brother typed into a
+    // suggestion or a board post, and contact tips put them there by design. Calling that
+    // file "safe to hand around" would be a promise the switch does not keep.
+    var conf = (kind === 'backup') || withContact;
+    return 'zbxi-' + kind + (conf ? '-CONFIDENTIAL' : '') +
       '-' + new Date().toISOString().slice(0, 10) + '.' + ext;
   }
   function bkDownload(name, text, mime) {
@@ -3015,10 +3021,17 @@
   function tipHead(s) {
     if (!s.about_brother) return '';
     var b = tipTarget(s);
+    // WHO SAID SO. A tip is a brother's claim about someone else, not a fact the site
+    // discovered — and the Save button below makes it look authoritative. Without a name
+    // attached, an address that turns out to be wrong cannot be traced to anyone, and
+    // chapter email starts going to a stranger with no way to find out why.
+    var from = (state.data.verified || []).filter(function (x) { return x.user_id === s.author_user; })[0];
     return '<p class="sug-card__tip">📇 <b>Contact tip — ' +
       esc(b ? b.full_name : 'a brother no longer on the roster') + '</b>' +
       (b && b.pledge_class ? ' <span>' + esc(b.pledge_class) + '</span>' : '') +
-      (b && b.user_id ? ' <span>· he has since joined</span>' : '') + '</p>';
+      (b && b.user_id ? ' <span>· he has since joined</span>' : '') +
+      ' <span>· told to us by ' + esc(from ? from.full_name : 'a brother whose account is gone') + '</span>' +
+      '</p>';
   }
   function tipActions(s) {
     if (!s.about_brother) return '';
@@ -3096,9 +3109,11 @@
               if (r && r.error) throw r.error;
               // A refusal removes no rows and returns 204 — say so rather than looking saved.
               if (!r || !r.data || !r.data.length) throw new Error('That did not save.');
-              // Archive the tip in the same motion: it has been acted on, and leaving it
-              // in the New pile means working it twice.
-              return Z.suggestionUpdate(id, { status: 'archived' });
+              // Deliberately NOT archived here. Auto-archiving filed the only record of who
+              // claimed this address away in the same motion that acted on it — so if the
+              // address turns out to be wrong, the trail is already out of sight. He
+              // archives it himself when he is satisfied.
+              return true;
             }).then(function () { renderList(); })
               ['catch'](function (err) {
                 bt.disabled = false; bt.textContent = 'Save to his profile';
@@ -3695,8 +3710,9 @@
         '<label style="color:var(--on-dark);font-size:.82rem;display:inline-flex;align-items:center;gap:.4rem;cursor:pointer">' +
           '<input type="checkbox" id="bkContact" checked> Include email &amp; phone</label> ' +
         '<span style="color:var(--on-dark);font-size:.78rem;opacity:.85">— left ON, because a backup ' +
-        'without contact details cannot rebuild the site. The file says CONFIDENTIAL in its name; ' +
-        'treat it that way. Untick it for a copy you are happy to hand around.</span>' +
+        'without contact details cannot rebuild the site. Unticking removes the email and phone ' +
+        '<b>columns</b> from the spreadsheet — but the full copy still contains board posts and ' +
+        'suggestions, which hold whatever brothers typed, so it stays marked CONFIDENTIAL either way.</span>' +
         '<p class="form-note" style="margin:.7rem 0 0">The <b>photos themselves are not in these files</b> — ' +
         'they live in Cloudflare storage. The full copy lists every one of them so they can be matched ' +
         'back up. Restoring from this needs someone technical: it is a copy you hold, not a one-click undo.</p>' +

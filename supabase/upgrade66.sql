@@ -83,11 +83,24 @@ grant update (goal_cents, goal_label, goal_starts_on) on public.donations to aut
 -- ═══ 3) The totals a brother may see ═════════════════════════════════════════════════
 -- Aggregates only. There is no shape of query against this view that yields one man's gift.
 -- The names are those who opted in, and they carry NO amounts beside them.
+--
+-- ── AND WHY THE TOTAL IS ROUNDED ─────────────────────────────────────────────────────
+-- Found by security review, and it is the interesting one. No single query gets a gift out
+-- of this view — but a brother who reads it on Monday and again on Friday sees the total
+-- rise by exactly one gift, and a new name in the honour roll in the same window tells him
+-- whose it was. Gifts arrive a few a month, one at a time, which makes those windows
+-- CLEANER, not noisier. The men exposed would be exactly the ones who agreed to be NAMED —
+-- they did not agree to have their amount published.
+--
+-- So the published total is rounded to the nearest $100, turning an exact figure into a
+-- band, and gift_count is gone (the page never used it — one more live counter is one more
+-- way to difference the same event). This narrows the channel rather than sealing it:
+-- sealing it means not publishing a live named roll beside a live total at all, which is
+-- the feature. A ±$100 band on a progress bar costs the reader nothing.
 drop view if exists public.fund_totals;
 create view public.fund_totals as
   select
-    coalesce(sum(g.amount_cents), 0)::bigint as raised_cents,
-    count(g.id)::int                         as gift_count,
+    (round(coalesce(sum(g.amount_cents), 0) / 10000.0) * 10000)::bigint as raised_cents,
     count(distinct coalesce(g.brother_id::text, nullif(btrim(g.display_name), ''), g.id::text))::int
                                              as giver_count,
     coalesce(
@@ -175,9 +188,20 @@ begin
   --     list of who gave what.
   select count(*) into n from information_schema.columns
    where table_schema='public' and table_name='fund_totals'
-     and column_name not in ('raised_cents', 'gift_count', 'giver_count', 'honour_roll');
+     and column_name not in ('raised_cents', 'giver_count', 'honour_roll');
   if n <> 0 then
     raise exception 'fund_totals grew % unexpected column(s) — it must stay aggregates + opt-in names', n;
+  end if;
+
+  -- (i) The total stays ROUNDED. Publishing the exact figure beside a live named roll lets
+  --     a brother difference two readings and learn one man's gift to the cent.
+  if pg_get_viewdef('public.fund_totals'::regclass) not ilike '%round(%' then
+    raise exception 'fund_totals publishes an exact total again — two readings would reveal one gift';
+  end if;
+  -- …and gift_count stays gone: it is a second live counter over the same event.
+  if exists (select 1 from information_schema.columns
+              where table_schema='public' and table_name='fund_totals' and column_name='gift_count') then
+    raise exception 'fund_totals grew gift_count back — it makes the total differenceable';
   end if;
 end $$;
 
