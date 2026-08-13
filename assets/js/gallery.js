@@ -389,6 +389,14 @@
     renderBody();
   }
 
+  /* The batch's closing summary, carried ACROSS the reload.
+     Found by running a real batch on the live site: finishing calls loadAll(), which
+     rebuilds the whole composer — including the status line — so "2 posted · 1 could
+     not be" was written and then destroyed a moment later. A brother would have been
+     told nothing at all about the photo that failed. Stashed here, painted by
+     wireUpload() when the fresh composer appears, then cleared. */
+  var afterUploadMsg = null;
+
   /* ---------- upload (canvas-downscale to ≤1600px JPEG) ---------- */
   function wireUpload() {
     var form = document.getElementById('guForm');
@@ -406,6 +414,12 @@
       return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
     }
     var stripEl = document.getElementById('guStrip');
+    // Paint anything the previous batch had to say, now that a fresh status line exists.
+    if (afterUploadMsg) {
+      st.className = 'form-status' + (afterUploadMsg.bad ? ' err' : ' ok');
+      st.textContent = afterUploadMsg.text;
+      afterUploadMsg = null;
+    }
     // Every object URL made here has to be released, or picking a new batch leaks the
     // last one. `made` is the whole list, including the strip's, so one call clears
     // all of them rather than just the single preview the old code tracked.
@@ -546,12 +560,14 @@
           btn.disabled = false;
           return;
         }
+        // Stashed rather than written: loadAll() below rebuilds this very element, so
+        // anything set here is destroyed a moment later. wireUpload() paints it onto the
+        // fresh composer instead.
         if (failed.length) {
-          st.className = 'form-status err';
-          st.textContent = '✓ ' + done + ' posted · ' + failed.length + ' could not be: ' + failed.join('; ');
+          afterUploadMsg = { bad: true,
+            text: '✓ ' + done + ' posted · ' + failed.length + ' could not be: ' + failed.join('; ') };
         } else if (batch.length > 1) {
-          st.className = 'form-status ok';
-          st.textContent = '✓ All ' + done + ' photos posted.';
+          afterUploadMsg = { bad: false, text: '✓ All ' + done + ' photos posted.' };
         }
         picked = [];
         showPreview(null);   // loadAll() rebuilds the uploader; release the URLs first
