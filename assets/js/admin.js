@@ -2059,6 +2059,104 @@
   // controls his own full_name/pledge_class, so prefix a single quote to force it to text.
   // \r is in the quote test too: csvParse treats a bare CR as a row break, so an unquoted
   // one would inject an extra row on the export->import round-trip.
+  /* ---------------- the backup ------------------------------------------------------
+     Two files, because they answer two different questions: one you can open and READ,
+     and one that holds everything a rebuild would need. Both are downloaded straight
+     from the browser — no server, no third party, nothing leaves except to this
+     computer. */
+  function bkStamp(kind, ext, withContact) {
+    // CONFIDENTIAL in the NAME, not only in a warning on a screen he has already left.
+    // This file ends up in a Downloads folder next to holiday photos.
+    return 'zbxi-' + kind + (withContact ? '-CONFIDENTIAL' : '') +
+      '-' + new Date().toISOString().slice(0, 10) + '.' + ext;
+  }
+  function bkDownload(name, text, mime) {
+    var blob = new Blob([text], { type: mime });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function wireBackup() {
+    var st = document.getElementById('bkStatus');
+    var csvBtn = document.getElementById('bkCsv');
+    var jsonBtn = document.getElementById('bkJson');
+    if (!csvBtn || !jsonBtn) return;
+    var want = function () { return !!(document.getElementById('bkContact') || {}).checked; };
+    var say = function (m, bad) { st.className = 'form-status' + (bad ? ' err' : ' ok'); st.textContent = m; };
+
+    /* The readable one: every brother, his line, and his titles — the part that cannot
+       be rebuilt from anything else. csvEsc() is doing real work here: it neutralises a
+       leading = + - @ so a name can never be evaluated as a formula when this opens in
+       Excel (the HIGH finding from the 2026-07-18 review). */
+    csvBtn.onclick = function () {
+      var withContact = want();
+      csvBtn.disabled = true; say('Building the spreadsheet…');
+      Promise.all([Z.listVerifiedDetail(), Z.brotherTitlesAll ? Z.brotherTitlesAll() : Promise.resolve([])])
+        .then(function (res) {
+          var all = state.data.pending.concat(state.data.verified, state.data.rejected);
+          var titles = {};
+          (res[1] || []).forEach(function (t) {
+            (titles[t.brother_id] = titles[t.brother_id] || []).push(t.title + (t.term ? ' (' + t.term + ')' : ''));
+          });
+          var cols = ['full_name', 'pledge_class', 'grad_year', 'big_brother', 'status', 'has_account',
+                      'role', 'role_term', 'titles_held', 'major', 'city', 'hometown', 'occupation',
+                      'company', 'industry', 'skills'];
+          if (withContact) cols = cols.concat(['email', 'phone', 'linkedin']);
+          var lines = [cols.join(',')].concat(all.map(function (b) {
+            return cols.map(function (c) {
+              if (c === 'big_brother') return csvEsc(b.big_id && bigName(b.big_id) || '');
+              if (c === 'has_account') return b.user_id ? 'yes' : 'no';
+              if (c === 'titles_held') return csvEsc((titles[b.id] || []).join(' · '));
+              return csvEsc(b[c]);
+            }).join(',');
+          }));
+          bkDownload(bkStamp('roster-lineage', 'csv', withContact),
+                     '﻿' + lines.join('\n'), 'text/csv;charset=utf-8');
+          say('✓ ' + all.length + ' brothers saved' + (withContact ? ' — with contact details. Keep it somewhere safe.' : ' — without contact details.'));
+        })['catch'](function (e) { say(e.message || 'Could not build the file.', true); })
+        ['finally'](function () { csvBtn.disabled = false; });
+    };
+
+    /* The complete one. Reads as the admin, so RLS is still the gate — it can contain
+       nothing he could not already open in his console. Credential columns
+       (invites.token, unsubscribe_token) are stripped ALWAYS, by the client verb. */
+    jsonBtn.onclick = function () {
+      var withContact = want();
+      jsonBtn.disabled = true; say('Collecting every table… this takes a few seconds.');
+      Z.backupDump(withContact).then(function (dump) {
+        var data = {}, counts = {}, problems = [];
+        dump.forEach(function (d) {
+          data[d.table] = d.rows;
+          counts[d.table] = d.rows.length;
+          if (d.error) problems.push(d.table + ': ' + d.error);
+        });
+        var payload = {
+          zbxi_backup: {
+            taken_at: new Date().toISOString(),
+            taken_by: 'the admin console',
+            site: 'zetabetaxi.com',
+            contact_details_included: withContact,
+            credentials_removed: 'invite tokens and unsubscribe tokens are never included',
+            photos: 'Image files are NOT in this file — they live in Cloudflare R2. ' +
+                    'gallery_posts.image_path is the key of each one.',
+            row_counts: counts,
+            tables_that_failed: problems
+          },
+          data: data
+        };
+        bkDownload(bkStamp('backup', 'json', withContact),
+                   JSON.stringify(payload, null, 2), 'application/json');
+        var total = Object.keys(counts).reduce(function (n, k) { return n + counts[k]; }, 0);
+        say((problems.length ? '⚠ ' : '✓ ') + total + ' rows across ' + Object.keys(counts).length + ' tables saved' +
+            (problems.length ? ' — but some could not be read: ' + problems.join('; ') : '.'), !!problems.length);
+      })['catch'](function (e) { say(e.message || 'Could not build the backup.', true); })
+        ['finally'](function () { jsonBtn.disabled = false; });
+    };
+  }
+
   function csvEsc(v) {
     v = v == null ? '' : String(v);
     if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
@@ -3066,6 +3164,24 @@
       sec('🌳 The tree explorer (what brothers see)', '<p>On the homepage, brothers can drag the tree with a finger or mouse, <b>pinch or scroll to zoom</b>, use the toolbar at the bottom of the tree, and press <b>⛶</b> for a fullscreen view. The dropdown above the tree picks a family line. None of that needs your attention — it just works.</p>') +
       sec('🛡️ Moderate the gallery & board', '<p>Sign in on the main site as admin — you can delete <b>any</b> gallery post, comment, board thread, or reply (delete links appear for you on each item). Brothers can attach photos to threads and react 👍 ❤️ 😂 to replies; deleting a thread or reply removes its photo and reactions with it.</p>') +
       sec('📊 Check engagement', '<p><b>Stats</b> tab: registrations, pending queue, 30-day activity, recent sign-ins, and a full activity log.</p>') +
+      sec('🗄 Back the site up — and what a backup here really is', '<p>' +
+        '<b>Stats → 🗄 Back up everything.</b> Two files land in your Downloads:</p><ul>' +
+        '<li><b>Roster &amp; lineage (spreadsheet)</b> — opens in Excel. Every brother, his pledge class, ' +
+        'grad year, <b>who bigged him</b> and every title he has held. This is the part that cannot be ' +
+        'rebuilt from anything else, and the file to hand the next webmaster.</li>' +
+        '<li><b>Everything (full copy)</b> — one file holding every table that carries chapter history: ' +
+        'the roster and lines, e-boards, awards, events and who RSVP\'d, board threads and replies, ' +
+        'committees, polls, the fund, and a list of every photo.</li></ul>' +
+        '<p><b>Three honest limits, so nothing surprises you later:</b></p><ul>' +
+        '<li><b>The photos are not in it.</b> Images live in Cloudflare storage; the file lists them ' +
+        '(who posted each, its caption, its year, who is tagged) so they can be matched back up.</li>' +
+        '<li><b>It is a copy, not an undo button.</b> Putting it back into a database needs someone ' +
+        'technical. It exists so that the chapter\'s record survives losing an account — which is the ' +
+        'realistic disaster, not a corrupted table.</li>' +
+        '<li><b>Treat the file as confidential</b> when contact details are included — the name says ' +
+        'CONFIDENTIAL for that reason. Invite links and unsubscribe links are never included, because ' +
+        'either one would let whoever held the file act as a brother.</li></ul>' +
+        '<p>A few times a year is plenty, and keep one copy somewhere that is not this laptop.</p>') +
       sec('🔑 Account & handoff basics', '<ul>' +
         '<li>This console only works for the admin email (currently zbxi.web@gmail.com). Handing off = handing over that Google account (see OWNERSHIP.md in the project).</li>' +
         '<li>Brothers who forget passwords use “Forgot your password?” on the site — you never manage their passwords.</li>' +
@@ -3407,6 +3523,27 @@
           '<span style="color:var(--on-dark);font-size:.78rem;opacity:.85">— leave unticked to keep contact details out of the file. ' +
           'With it on, treat the download as confidential and delete it when you\'re done.</span></p>';
 
+      // ---- the backup, which is a different job from the quick export above --------
+      // Thirty-three years of lineage lives in one free-tier database. This is the copy
+      // the chapter physically holds, and the one the next webmaster restores from.
+      html += '<div class="acct-block" style="margin-top:1.6rem"><h4>🗄 Back up everything</h4>' +
+        '<p class="form-note" style="margin-top:0">The roster, the family lines, every e-board, ' +
+        'award, event, board thread and a list of every photo — downloaded to this computer. ' +
+        'Do this a few times a year and keep a copy somewhere that is not this laptop.</p>' +
+        '<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.6rem">' +
+          '<button class="btn btn--gold" id="bkCsv">📄 Roster &amp; lineage (spreadsheet)</button>' +
+          '<button class="btn btn--navy" id="bkJson">💾 Everything (full copy)</button>' +
+        '</div>' +
+        '<label style="color:var(--on-dark);font-size:.82rem;display:inline-flex;align-items:center;gap:.4rem;cursor:pointer">' +
+          '<input type="checkbox" id="bkContact" checked> Include email &amp; phone</label> ' +
+        '<span style="color:var(--on-dark);font-size:.78rem;opacity:.85">— left ON, because a backup ' +
+        'without contact details cannot rebuild the site. The file says CONFIDENTIAL in its name; ' +
+        'treat it that way. Untick it for a copy you are happy to hand around.</span>' +
+        '<p class="form-note" style="margin:.7rem 0 0">The <b>photos themselves are not in these files</b> — ' +
+        'they live in Cloudflare storage. The full copy lists every one of them so they can be matched ' +
+        'back up. Restoring from this needs someone technical: it is a copy you hold, not a one-click undo.</p>' +
+        '<p class="form-status" id="bkStatus"></p></div>';
+
       html += '<h3 class="stat-h">Activity log</h3>';
       html += acts.length ? '<div class="stat-list">' + acts.map(function (a) {
         var d = new Date(a.created_at);
@@ -3415,6 +3552,8 @@
       }).join('') + '</div>' : '<p class="admin-empty">No activity recorded yet.</p>';
 
       q.innerHTML = html;
+
+      wireBackup();
 
       var exp = document.getElementById('exportCsv');
       if (exp) exp.onclick = function () {

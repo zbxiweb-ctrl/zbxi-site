@@ -844,6 +844,65 @@
       return this._bust(client.from('brothers').update(patch).eq('id', brotherId).select());
     },
 
+    /* ---- "download everything" (the backup button) --------------------------------
+       Thirty-three years of lineage lives in one free-tier database whose backups are
+       thin. This is the copy the chapter physically holds.
+
+       It reads AS THE ADMIN, so RLS is still the gate — this cannot return anything he
+       could not already open in his own console. The table list is a fixed literal here,
+       not anything the page can influence.
+
+       DELIBERATELY EXCLUDED: activity_log, notifications, digest_log, email_batches and
+       email_queue. They are operational noise — they would multiply the file size and
+       preserve nothing that cannot be rebuilt. */
+    BACKUP_TABLES: [
+      'brothers', 'brother_titles', 'eboards', 'awards',
+      'events', 'event_rsvps',
+      'forum_threads', 'forum_replies', 'reply_reactions',
+      'committees', 'committee_members',
+      'polls', 'poll_votes',
+      'gallery_albums', 'gallery_posts', 'gallery_tags', 'gallery_comments', 'gallery_likes',
+      'donations', 'digest_notes', 'site_settings',
+      'suggestions', 'title_requests', 'invites',
+      'officer_grants'
+      // officer_seat_overrides is deliberately ABSENT. upgrade58 gave it no grant to any
+      // browser role at all, so even the admin's own session gets "permission denied" —
+      // proven by the first real backup, which reported it. It is one operational row
+      // (the test seat), not chapter history, and a warning that fires on every single
+      // backup is a warning nobody reads by the third time.
+    ],
+    // Stripped from every backup, ALWAYS, whatever the contact-details box says. These
+    // are not contact information — they are bearer credentials. invites.token mints a
+    // CONFIRMED ACCOUNT for whoever holds it, and unsubscribe_token changes a brother's
+    // mail preferences without a login. Neither belongs in a file that lives in a
+    // Downloads folder or gets emailed to the next webmaster.
+    BACKUP_NEVER: ['token', 'unsubscribe_token'],
+    // Stripped unless the box is ticked.
+    BACKUP_CONTACT: ['email', 'phone'],
+
+    // Every positions row in one read, for the backup's "titles held" column. The
+    // per-brother version (inside brotherDetail) would be 359 round trips.
+    brotherTitlesAll: function () {
+      return client.from('brother_titles').select('brother_id,title,term,scope,sort')
+        .order('sort', { ascending: true })
+        .then(function (r) { return r.data || []; });
+    },
+    backupDump: function (withContact) {
+      var self = this;
+      var drop = self.BACKUP_NEVER.concat(withContact ? [] : self.BACKUP_CONTACT);
+      return Promise.all(self.BACKUP_TABLES.map(function (t) {
+        return client.from(t).select('*').then(function (r) {
+          if (r.error) return { table: t, error: r.error.message, rows: [] };
+          var rows = (r.data || []).map(function (row) {
+            var copy = {};
+            Object.keys(row).forEach(function (k) { if (drop.indexOf(k) === -1) copy[k] = row[k]; });
+            return copy;
+          });
+          return { table: t, rows: rows };
+        })['catch'](function (e) { return { table: t, error: String(e), rows: [] }; });
+      }));
+    },
+
     /* ---- committees (RLS: members see their own; admin sees all) ---- */
     committeesList: function () {
       return client.from('committees').select('*').order('name')
