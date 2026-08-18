@@ -14,6 +14,29 @@
   'use strict';
   function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
 
+  /* Active or alumni, by the SAME rule the roster pages use (brothers-page.js) — an
+     explicit standing wins, otherwise derive from the grad year. Duplicated rather than
+     imported because this module loads in two consoles that do not load brothers-page.js;
+     if the rule ever changes, it changes in both. */
+  var _now = new Date();
+  var CUTOFF = _now.getFullYear() + (_now.getMonth() >= 5 ? 1 : 0);
+  function pledgeYear(cls) {
+    if (!cls) return null;
+    var m4 = String(cls).match(/(19|20)\d{2}/);
+    if (m4) return parseInt(m4[0], 10);
+    var m2 = String(cls).match(/'(\d{2})/);
+    if (!m2) return null;
+    var yy = parseInt(m2[1], 10);
+    return yy >= 93 ? 1900 + yy : 2000 + yy;
+  }
+  function isActive(b) {
+    if (b.standing) return b.standing === 'active';
+    var py = pledgeYear(b.pledge_class);
+    var grad = b.grad_year || (py != null ? py + 4 : null);
+    if (grad == null) return false;            // unknown -> alumni, as everywhere else
+    return grad >= CUTOFF;
+  }
+
   function render(q) {
     var Z = window.ZBXI;
     var OPEN_TO = (Z && Z.OPEN_TO) || [];
@@ -79,9 +102,17 @@
             '<span>' + o.icon + ' ' + esc(o.label) + '</span></label>';
         }).join('');
         var meta = [b.pledge_class, b.occupation, b.industry].filter(Boolean).map(esc).join(' · ');
+        // An active brother offering to MENTOR is almost always a mistake — nobody wants a
+        // current undergrad as their career mentor. Flagged, never blocked: a senior who
+        // genuinely wants to help still can, and a brother's own checkbox is his.
+        var act = isActive(b);
+        var badge = '<span class="mtg-standing' + (act ? ' mtg-standing--active' : '') + '">' +
+          (act ? '🎓 active' : '🏛 alumni') + '</span>';
+        var warn = (act && on(b, 'mentor'))
+          ? '<span class="mtg-warn">⚠ an active brother is listed as a mentor</span>' : '';
         return '<div class="admin-row admin-row--mtg" data-r="' + esc(b.id) + '">' +
-          '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b>' +
-            '<span>' + (meta || '—') + '</span>' +
+          '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b> ' + badge +
+            '<span>' + (meta || '—') + '</span>' + warn +
             (locked ? '<span class="admin-row__locked">🔒 Webmaster account — managed by the site administrator</span>' : '') +
           '</div>' +
           '<div class="mtg-toggles">' + chips + '</div>' +

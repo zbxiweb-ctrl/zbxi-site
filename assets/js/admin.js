@@ -103,6 +103,7 @@
     ]},
     { label: 'Site', tabs: [
       { id: 'awards',     ic: '🏅', label: 'Awards'     },
+      { id: 'botm',       ic: '⭐', label: 'Brother of the Month' },
       { id: 'classes',    ic: '🎓', label: 'Pledge Classes' },
       { id: 'committees', ic: '👥', label: 'Committees' },
       { id: 'digest',     ic: '📬', label: 'Digest'     },
@@ -349,6 +350,7 @@
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
     if (state.tab === 'digest') return renderDigestTab(q);
+    if (state.tab === 'botm') return renderBotmTab(q);
     if (state.tab === 'fund') return renderFundTab(q);
     if (state.tab === 'gallery') return renderGalleryTab(q);
     if (state.tab === 'mentoring') return window.ZBXIMentoringTab.render(q);
@@ -816,13 +818,17 @@
     });
   }
 
+  // Brother of the Month lives in botm-tab.js — the officer console renders the
+  // identical tool when spotlight.manage is granted, and one copy means the
+  // ballot-visibility wording cannot drift between the two consoles.
+  function renderBotmTab(q) { window.ZBXIBotmTab.render(q); }
+
   /* ---------------- alumni fund tab ----------------
      The Venmo handle the Donations page sends brothers to. ADMIN ONLY, and
      deliberately so: this field decides where the chapter's money lands, which
      makes it the one power on this site not extended to the alumni president —
      even though the account is his. A redirected payment cannot be undone the way
      a bad roster edit can. He asks; you change it.
-
      The DB enforces it (donations_admin_write); this tab is only where you do it. */
   function renderFundTab(q) {
     q.innerHTML = '<p class="admin-empty">Loading…</p>';
@@ -3173,6 +3179,7 @@
     { key: 'email.send',          label: 'Email the brothers',     desc: 'Compose emails (with attachments) to all brothers, a pledge class, or picked brothers. Unsubscribed brothers are always skipped.', seats: ['alumni_president'] },
     { key: 'gallery.moderate',    label: 'Moderate the gallery',   desc: 'Edit or delete ANY brother\'s gallery photo or comment. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] },
     { key: 'polls.moderate',      label: 'Moderate polls',         desc: 'Edit or delete ANY brother\'s poll on the Board. Every brother can already post and manage his own — this is only for cleaning up someone else\'s.', seats: ['alumni_president'] },
+    { key: 'spotlight.manage',    label: 'Choose Brother of the Month', desc: 'Crown the Brother of the Month — either the winner of the chapter vote or someone he picks himself — and see the ballot: who voted for whom. Brothers only ever see the running percentages, never each other\'s votes, so this switch is what decides who can read the ballot at all. He cannot open or close a month; that happens on its own on the 1st.', seats: ['alumni_president'] },
     { key: 'eboard.manage',       label: 'Record past executive boards', desc: 'Build the chapter\'s history on the Executive Boards page: create a board for a term, put brothers in its four officer seats and its chair positions, merge two half-boards into one, and delete a board. This is HISTORY only — it cannot make anyone an officer today. Today\'s seats are still yours alone, in the 👑 E-Board tab. Every change is logged under his name.', seats: ['alumni_president'] }
   ];
 
@@ -3439,7 +3446,11 @@
     // profile_updated, indistinguishable from a brother editing his own bio.
     record_edited: 'corrected a roster record',
     grant_enabled: 'GAVE an officer a permission', grant_disabled: 'REMOVED an officer permission',
-    title_granted: 'granted a title', title_removed: 'removed a title'
+    title_granted: 'granted a title', title_removed: 'removed a title',
+    // upgrade68: who decided a chapter-wide award. An overturn is the serious one —
+    // it replaced a winner who had already been announced.
+    botm_crowned: 'chose the Brother of the Month',
+    botm_overturned: 'CHANGED the Brother of the Month'
   };
 
   /* The rows you actually open this tab for: anything destructive, and anything
@@ -3448,7 +3459,10 @@
     event_deleted: 1, poll_deleted: 1, album_deleted: 1, member_deleted: 1,
     gallery_post_deleted: 1, grant_enabled: 1, grant_disabled: 1,
     member_approved: 1, member_rejected: 1, status_changed: 1, record_edited: 1,
-    title_granted: 1, title_removed: 1
+    title_granted: 1, title_removed: 1,
+    // Only the OVERTURN is flagged serious: an ordinary crowning is the job being done,
+    // but replacing a winner who was already announced is the one you'd want to spot.
+    botm_overturned: 1
   };
 
   /* auth.uid() is null when a write came from the server (the gallery edge

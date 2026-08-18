@@ -143,6 +143,55 @@
   /* Open the shared modal for brother b (a family_public row or richer).
      opts: { lineage: html prefix, portal: href to the login portal,
              placeholderData: row (render details directly, no gating) } */
+  /* ---- Who is looking at this card? ----
+     Resolved ONCE per page and cached: the roster opens this card dozens of times and
+     this must not be dozens of round trips. UI gating only — the refusal that matters is
+     officer_update_brother's and the brothers RLS, and a hidden button is not a
+     permission. */
+  var _powersP = null;
+  function viewerPowers() {
+    if (_powersP) return _powersP;
+    var Z = window.ZBXI;
+    if (!Z || !Z.getUser) return Promise.resolve({ admin: false, officer: false });
+    _powersP = Promise.all([
+      Z.getUser(),
+      Z.officerCan ? Z.officerCan('members.edit') : Promise.resolve(false)
+    ]).then(function (r) {
+      var me = r[0];
+      return {
+        admin: !!(Z.adminEmail && me && (me.email || '').toLowerCase() === Z.adminEmail),
+        officer: !!r[1]
+      };
+    })['catch'](function () { return { admin: false, officer: false }; });
+    return _powersP;
+  }
+
+  /* The whole point of the feature: fix him where you spotted him, instead of
+     remembering which console tab owns the field. */
+  function maybeEditBar(body, d) {
+    if (!window.ZBXIBrotherEdit) return;      // page did not load the editor
+    // `body` is ONE shared node reused by every card on the page, and the first
+    // viewerPowers() call costs two round trips. Open a second brother inside that
+    // window and the late callback would append a button bound to the FIRST man.
+    // Stamp whose card this is, and check it is still his when we come back.
+    body.dataset.editFor = d.id;
+    viewerPowers().then(function (p) {
+      if (!p.admin && !p.officer) return;
+      if (body.dataset.editFor !== d.id) return;   // a newer card took the node
+      var bar = document.createElement('div');
+      bar.className = 'bm__edit';
+      bar.innerHTML = '<button type="button" class="btn btn--ghost bm__edit-btn">✎ Edit his details</button>';
+      body.appendChild(bar);
+      bar.querySelector('button').onclick = function () {
+        // Close the card first. The card is z-index 1400 and the edit modal is 220, so
+        // leaving it open buries the form behind it — caught by actually opening it.
+        // Closing is also the honest UX: you have stopped reading and started editing.
+        shut();
+        window.ZBXIBrotherEdit.open(d, p);
+      };
+    });
+  }
+
   function open(b, opts) {
     opts = opts || {};
     var m = document.getElementById('brotherModal');
@@ -228,6 +277,8 @@
         if (titleOf(d)) dBits.push(esc(titleOf(d)));
         m.querySelector('[data-f=sub]').innerHTML = dBits.join(' · ');
         if (d.photo_url) av.innerHTML = '<img src="' + esc(d.photo_url) + '" alt="">';
+
+        maybeEditBar(body, d);
 
         // Connect: any registered brother except yourself. Sends an intro
         // request (his 🔔 gets your name + email so he can simply reply).

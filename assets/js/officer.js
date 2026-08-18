@@ -96,6 +96,10 @@
     // Shared composer (email-tab.js); the zbxi-email fn re-checks the grant
     // server-side, so this entry only decides whether the tab is visible.
     { perm: 'email.send',          id: 'email',      ic: '📧', label: 'Email',       render: function (q) { window.ZBXIEmailTab.render(q); } },
+    // Shared with the admin console (botm-tab.js). crown_botm() re-checks the grant in
+    // the database, and botm_votes' RLS decides whether the ballot is readable at all —
+    // this entry only decides whether the tab is visible.
+    { perm: 'spotlight.manage',    id: 'botm',       ic: '⭐', label: 'Brother of the Month', render: function (q) { window.ZBXIBotmTab.render(q); } },
     // Last on the rail on purpose: it is a thing you look something up in, not a
     // job with a queue. Read-only, and the serious actions only. (upgrade46)
     { perm: 'history.view',        id: 'history',    ic: '📜', label: 'History',     render: renderHistoryTab }

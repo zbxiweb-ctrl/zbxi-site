@@ -455,8 +455,13 @@
         ? q.or('pledge_class.is.null,pledge_class.eq.')
         : q.eq('pledge_class', oldCls));
     },
+    // .select('id') so a REFUSAL IS VISIBLE. Without it PostgREST answers an
+    // RLS-denied update with 204 and an empty body, supabase-js resolves
+    // { error: null, data: null }, and the caller cannot tell "wrote the row" from
+    // "wrote nothing" — which had the inline editor reporting "Saved." for a write
+    // the database threw away. Callers that only check r.error still work.
     updateBrother: function (id, fields) {
-      return this._bust(client.from('brothers').update(fields).eq('id', id));
+      return this._bust(client.from('brothers').update(fields).eq('id', id).select('id'));
     },
     // Admin: the same fields on many brothers in one request (CSV import). RLS
     // brothers_admin_update still gates it server-side. Caller chunks the ids —
@@ -905,6 +910,64 @@
     },
     fundGiftDelete: function (id) {
       return client.from('fund_gifts').delete().eq('id', id).select();
+    },
+
+    /* ---- Brother of the Month (upgrade67) ----
+       Same split as the fund: botmTally reads a VIEW of counts and percentages that any
+       brother may see, while botmVoters reads the ballot itself and returns rows only to
+       the admin or an officer holding spotlight.manage. A brother calling botmVoters gets
+       his own vote back and nothing else — that is RLS, not a filter written here.
+
+       Voting goes through the cast_botm_vote RPC rather than an insert, because the four
+       rules (approved brother, cycle open, one per cycle, not yourself) have to hold even
+       if someone calls the API directly. */
+    botmCycle: function () {
+      // The month currently open for voting, if any.
+      return client.from('botm_cycles').select('*')
+        .is('winner_brother', null)
+        .lte('opens_at', new Date().toISOString())
+        .gt('closes_at', new Date().toISOString())
+        .order('period', { ascending: true }).limit(1)
+        .then(function (r) { return (r.data || [])[0] || null; });
+    },
+    botmCurrent: function () {
+      // The brother on the homepage: the most recently crowned, who stays up until
+      // someone replaces him.
+      return client.from('botm_cycles').select('*')
+        .not('winner_brother', 'is', null)
+        .order('period', { ascending: false }).limit(1)
+        .then(function (r) { return (r.data || [])[0] || null; });
+    },
+    botmHistory: function () {
+      return client.from('botm_cycles').select('*')
+        .order('period', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    botmTally: function (cycleId) {
+      return client.from('botm_tally').select('*').eq('cycle_id', cycleId)
+        .order('votes', { ascending: false })
+        .then(function (r) { return r.data || []; });
+    },
+    botmMyVote: function (cycleId) {
+      return client.from('botm_votes').select('brother_id').eq('cycle_id', cycleId)
+        .then(function (r) { return ((r.data || [])[0] || {}).brother_id || null; });
+    },
+    botmVoters: function (cycleId) {
+      // Admin / spotlight.manage only. RLS returns just his own row to anyone else.
+      return client.from('botm_votes').select('voter_user,brother_id,updated_at')
+        .eq('cycle_id', cycleId)
+        .then(function (r) { return r.data || []; });
+    },
+    botmVote: function (brotherId) {
+      return client.rpc('cast_botm_vote', { p_brother: brotherId });
+    },
+    // p_force overturns a month that is ALREADY settled, and the database refuses it for
+    // anyone but the webmaster. Defaulted false so the ordinary button cannot rewrite
+    // history by accident — a settled month is a record, not a draft.
+    botmCrown: function (cycleId, brotherId, force) {
+      return client.rpc('crown_botm', {
+        p_cycle: cycleId, p_brother: brotherId, p_force: !!force
+      });
     },
 
     // Every positions row in one read, for the backup's "titles held" column. The

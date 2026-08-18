@@ -3478,3 +3478,124 @@ body.tree-lock { overflow: hidden; }
 }
 .cls-bulk label { color: var(--gold-bright); font-size: .85rem; font-weight: 600; }
 .cls-bulk .form-note { margin: 0; }
+
+/* ===========================================================================
+   Brother of the Month — the vote for next month (upgrade67)
+   Sits under the spotlight on the homepage, members only. Percentages are live
+   by the owner's decision; the ballot itself is never rendered here.
+   =========================================================================== */
+.botm {
+  max-width: 620px; margin: 0 auto; text-align: left;
+  background: var(--white); border: 1px solid var(--cream-2);
+  border-radius: var(--radius); padding: 1.4rem 1.4rem 1.15rem;
+  box-shadow: var(--shadow-sm);
+}
+.botm__head h3 {
+  font-family: var(--display); font-size: 1.28rem; color: var(--navy);
+  margin: 0 0 .18rem;
+}
+.botm__meta { margin: 0 0 1rem; font-size: .86rem; color: var(--muted); }
+
+.botm__list { display: flex; flex-direction: column; gap: .45rem; }
+
+.botm-row {
+  display: flex; align-items: center; gap: .8rem; width: 100%;
+  padding: .55rem .65rem; border: 1px solid transparent; border-radius: 10px;
+  background: var(--paper); cursor: pointer; text-align: left; font: inherit;
+  transition: border-color .14s, background .14s, transform .14s;
+}
+.botm-row:hover { border-color: var(--gold); transform: translateX(2px); }
+.botm-row:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.botm-row.is-mine { border-color: var(--gold); background: var(--cream); }
+
+.botm-row__pic {
+  width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none;
+  border: 2px solid var(--cream-2);
+}
+.botm-row__pic--none {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy); color: var(--gold-bright);
+  font-family: var(--display); font-size: 1.05rem;
+}
+.botm-row__body { flex: 1; min-width: 0; }
+.botm-row__name {
+  display: block; font-weight: 600; color: var(--navy); font-size: .95rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.botm-row__name em { color: var(--gold-deep); font-style: normal; font-weight: 500; font-size: .84rem; }
+.botm-row__sub { display: block; font-size: .78rem; color: var(--muted); margin-bottom: .3rem; }
+.botm-row__bar { display: block; height: 6px; border-radius: 999px; background: var(--cream-2); overflow: hidden; }
+.botm-row__bar > span { display: block; height: 100%; background: var(--gold); border-radius: 999px; transition: width .3s ease; }
+.botm-row__pct {
+  flex: none; min-width: 46px; text-align: right;
+  font-family: var(--display); font-size: 1.02rem; color: var(--gold-deep); font-weight: 600;
+}
+
+.botm__pick { margin-top: 1rem; }
+.botm__pick label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: .3rem; }
+.botm__pick select {
+  width: 100%; padding: .55rem .6rem; border-radius: 9px;
+  border: 1px solid var(--cream-2); background: var(--paper); color: var(--ink); font: inherit;
+}
+.botm__note { margin: .85rem 0 0; font-size: .8rem; color: var(--muted); }
+
+/* The spotlight card can now feature a brother with no photo — the vote may elect one. */
+.spot-card__photo--none {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--navy); color: var(--gold-bright); font-size: 2.4rem;
+}
+
+@media (max-width: 560px) {
+  .botm { padding: 1.1rem 1rem 1rem; }
+  .botm-row { gap: .6rem; padding: .5rem .45rem; }
+  .botm-row__pic { width: 36px; height: 36px; }
+  .botm-row__pct { min-width: 40px; font-size: .95rem; }
+}
+
+/* Brother of the Month — the admin/officer side. Painted on the console's navy chrome,
+   so every colour here is a theme token: the navy family flips to black in dark mode and
+   a literal hex would render invisible or off-identity. */
+.botm-admin__list { display: flex; flex-direction: column; gap: .5rem; margin-top: .7rem; }
+.botm-admin__row {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .55rem .7rem; border-radius: 10px;
+  background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo));
+  border: 1px solid rgba(200,162,75,.22);
+}
+.botm-admin__name { flex: 0 0 34%; color: var(--on-navy); font-weight: 600; font-size: .92rem; }
+.botm-admin__warn { color: var(--on-navy-3); font-style: normal; font-weight: 400; font-size: .8rem; }
+.botm-admin__bar {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: var(--console-field); overflow: hidden;
+}
+.botm-admin__bar > span { display: block; height: 100%; background: var(--gold); border-radius: 999px; }
+.botm-admin__pct {
+  flex: none; min-width: 82px; text-align: right;
+  color: var(--gold-bright); font-size: .88rem; font-weight: 600;
+}
+@media (max-width: 640px) {
+  .botm-admin__row { flex-wrap: wrap; }
+  .botm-admin__name { flex: 1 1 100%; }
+  .botm-admin__pct { min-width: 70px; }
+}
+
+/* ===========================================================================
+   Edit a brother from his card (upgrade68) — shown only to the admin and to an
+   officer holding members.edit.
+   =========================================================================== */
+.bm__edit { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--cream-2); }
+.bm__edit-btn { width: 100%; }
+
+/* Standing badge + the active-mentor warning in the console's Mentoring tab.
+   Painted on navy chrome, so these are theme tokens — the navy family flips to
+   black in dark mode and a literal hex would go invisible or off-identity. */
+.mtg-standing {
+  display: inline-block; margin-left: .45rem; padding: .1rem .45rem;
+  border-radius: 999px; font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+  background: var(--console-field); color: var(--on-navy-2);
+  border: 1px solid rgba(200,162,75,.22); vertical-align: middle;
+}
+.mtg-standing--active { color: var(--gold-bright); border-color: rgba(200,162,75,.5); }
+.mtg-warn {
+  display: block; margin-top: .3rem; font-size: .78rem; color: var(--gold-bright);
+}

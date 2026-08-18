@@ -140,7 +140,9 @@ async function build(adminUserId: string | null) {
     if (age > 0 && age % 5 === 0) milestones.push({ label: c, age });
   }
   milestones.sort((a, z) => z.age - a.age || a.label.localeCompare(z.label));
-  const annis = milestones.slice(0, 6).map((m) => `<b>${esc(m.label)}</b> turns ${m.age}`);
+  // Left as {label, age} objects rather than pre-baked HTML: tileBlock sets the age
+  // and the class name in different type sizes, so it needs them apart.
+  const annis = milestones.slice(0, 6);
 
   /* ---- Mentoring ----
      25 open to mentoring, 30 to connecting, and not one of them had ever been
@@ -153,14 +155,15 @@ async function build(adminUserId: string | null) {
      it that way. */
   const openTo = (k: string) => (helpers as any[]).filter((b) => (b.open_to || []).includes(k));
   const mentors = openTo("mentor"), mentees = openTo("mentee"), connectors = openTo("connect");
+  // The counts come out as figures for statBlock rather than as a run-on sentence;
+  // the link moved into the block itself so it always sits below the numbers.
+  const helpStats = ([
+    mentors.length ? { n: mentors.length, label: "offering to mentor" } : null,
+    mentees.length ? { n: mentees.length, label: "looking for a mentor" } : null,
+    connectors.length ? { n: connectors.length, label: "open to connecting" } : null,
+  ].filter(Boolean) as { n: number; label: string }[]);
   const helpLines: string[] = [];
-  if (mentors.length || mentees.length || connectors.length) {
-    const bits = [
-      mentors.length ? `<b>${mentors.length}</b> offering to mentor` : "",
-      mentees.length ? `<b>${mentees.length}</b> looking for a mentor` : "",
-      connectors.length ? `<b>${connectors.length}</b> open to connecting` : "",
-    ].filter(Boolean).join(" · ");
-    helpLines.push(`${bits} — <a href="${SITE}/mentoring.html" style="color:#A07E2D">see both lists</a>`);
+  if (helpStats.length) {
     // Two examples, and only ones with a field worth naming — "Anthony, —" helps nobody.
     (mentors.length ? mentors : connectors)
       .filter((b) => b.occupation || b.industry)
@@ -228,34 +231,128 @@ async function build(adminUserId: string | null) {
     return `${start} – ${fmtDate(e.ends_at, e.all_day)}`;
   };
 
+  /* ---- Section chrome ----
+     ONE heading treatment for every section, so the email still reads as a single
+     document — only the BODY changes shape to suit what it is holding. Before this,
+     every block was an <h3> + <ul>, which meant six short anniversaries, a single
+     photo count and a paragraph of prose all wore the same clothes. That sameness is
+     what made it a wall of text, not the amount of content.
+
+     Everything below is tables + inline styles: no flexbox, no grid, no <style>
+     block, no background-image. Outlook renders with Word and drops all four. */
+  const secHead = (title: string) =>
+    `<h3 style="font:700 15px Georgia,serif;color:#0A1F44;margin:26px 0 8px;border-bottom:1px solid #e8dfc6;padding-bottom:6px">${title}</h3>`;
+
+  // A genuine list stays a list — events, jobs and new brothers really are one.
   const sec = (title: string, rows: string[]) =>
     rows.length
-      ? `<h3 style="font:700 15px Georgia,serif;color:#0A1F44;margin:26px 0 8px;border-bottom:1px solid #e8dfc6;padding-bottom:6px">${title}</h3>
-         <ul style="margin:0;padding-left:18px;color:#3d4657;font:400 14px/1.7 Helvetica,Arial,sans-serif">${rows.map((r) => `<li>${r}</li>`).join("")}</ul>`
+      ? secHead(title) +
+        `<ul style="margin:0;padding-left:18px;color:#3d4657;font:400 14px/1.7 Helvetica,Arial,sans-serif">${rows.map((r) => `<li>${r}</li>`).join("")}</ul>`
+      : "";
+
+  // New on the site: a card each. A 300-character bullet is a release note; the
+  // title carries the news and the sentence under it is the whole explanation.
+  const noteBlock = (title: string, rows: { title: string; body: string; link: string }[]) =>
+    rows.length
+      ? secHead(title) + rows.map((n) => {
+          // The console accepts a bare "gallery.html", which is fine on the site and
+          // BROKEN in an inbox — an email has no page to be relative to. Five of the
+          // nine live notes were stored that way. Absolutise anything that isn't a URL.
+          const href = /^https?:\/\//i.test(n.link) ? n.link : `${SITE}/${n.link.replace(/^\/+/, "")}`;
+          const head = n.link
+            ? `<a href="${esc(href)}" style="font:700 15px Georgia,serif;color:#A07E2D;text-decoration:none">${esc(n.title)}</a>`
+            : `<span style="font:700 15px Georgia,serif;color:#0A1F44">${esc(n.title)}</span>`;
+          return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:0 0 13px">${head}` +
+            (n.body ? `<div style="font:400 13.5px/1.6 Helvetica,Arial,sans-serif;color:#5b6474;margin-top:3px">${esc(n.body)}</div>` : "") +
+            `</td></tr></table>`;
+        }).join("")
+      : "";
+
+  // Milestones: the NUMBER is the news, so the number is what gets set large.
+  // Three to a row; short rows are padded with empty cells so the table stays square.
+  const tileBlock = (title: string, items: { label: string; age: number }[]) => {
+    if (!items.length) return "";
+    const cell = (m: { label: string; age: number } | null) => {
+      if (!m) return `<td width="33%" style="padding:0 4px"></td>`;
+      // "Eta · Fall '96" splits over two lines so a long class cannot stretch the tile.
+      const parts = String(m.label).split("·");
+      const name = (parts.shift() || "").trim();
+      const sub = parts.join("·").trim();
+      return `<td width="33%" valign="top" style="padding:0 4px 8px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e8dfc6;border-radius:10px">
+          <tr><td align="center" style="padding:12px 5px 13px">
+            <div style="font:700 27px Georgia,serif;color:#A07E2D;line-height:1">${m.age}</div>
+            <div style="font:700 8px Helvetica,Arial,sans-serif;color:#a9a08a;letter-spacing:.2em;margin-top:3px">YEARS</div>
+            <div style="font:600 12px/1.35 Helvetica,Arial,sans-serif;color:#0A1F44;margin-top:7px">${esc(name)}</div>` +
+            (sub ? `<div style="font:400 11px/1.3 Helvetica,Arial,sans-serif;color:#8a8f9c">${esc(sub)}</div>` : "") +
+          `</td></tr></table></td>`;
+    };
+    const rows: string[] = [];
+    for (let i = 0; i < items.length; i += 3) {
+      rows.push(`<tr>${[items[i], items[i + 1] ?? null, items[i + 2] ?? null].map(cell).join("")}</tr>`);
+    }
+    return secHead(title) +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table>`;
+  };
+
+  // The gallery: one bullet saying "2 new photos" is the blandest line in the email.
+  // The photos themselves cannot come along — they are signed URLs that die after 6h.
+  const bandBlock = (title: string, n: number, href: string) =>
+    secHead(title) +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0A1F44;border-radius:10px">
+      <tr><td style="padding:15px 18px">
+        <span style="font:700 26px Georgia,serif;color:#E8C766;vertical-align:middle">${n}</span>
+        <span style="font:400 14px Helvetica,Arial,sans-serif;color:#dfe6f2;vertical-align:middle">&nbsp;new photo${n === 1 ? "" : "s"} in the archive&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+        <a href="${href}" style="font:700 13px Helvetica,Arial,sans-serif;color:#E8C766;text-decoration:none;vertical-align:middle">take a look &rarr;</a>
+      </td></tr></table>`;
+
+  // Mentoring: counts are the story ("28 offering to mentor" is the reason to click),
+  // so they get set as figures rather than buried in a sentence.
+  const statBlock = (title: string, stats: { n: number; label: string }[], lines: string[], href: string) => {
+    if (!stats.length) return "";
+    const w = Math.floor(100 / stats.length);
+    return secHead(title) +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f1e3;border-radius:10px"><tr>` +
+      stats.map((s) => `<td width="${w}%" align="center" style="padding:13px 6px">
+        <div style="font:700 24px Georgia,serif;color:#A07E2D;line-height:1">${s.n}</div>
+        <div style="font:400 11px/1.4 Helvetica,Arial,sans-serif;color:#5b6474;margin-top:4px">${esc(s.label)}</div>
+      </td>`).join("") +
+      `</tr></table>` +
+      (lines.length
+        ? `<ul style="margin:10px 0 0;padding-left:18px;color:#3d4657;font:400 13.5px/1.65 Helvetica,Arial,sans-serif">${lines.map((r) => `<li>${r}</li>`).join("")}</ul>`
+        : "") +
+      `<p style="margin:9px 0 0;font:400 13px Helvetica,Arial,sans-serif"><a href="${href}" style="color:#A07E2D">See both lists &rarr;</a></p>`;
+  };
+
+  // Chapter history: a different kind of content, so a different texture. Nothing
+  // else in the email is italic serif, which is the point.
+  const quoteBlock = (title: string, rows: string[]) =>
+    rows.length
+      ? secHead(title) + rows.map((r) =>
+          `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:9px"><tr>
+            <td style="border-left:3px solid #C8A24B;padding:3px 0 3px 13px;font:italic 400 14px/1.65 Georgia,serif;color:#3d4657">${r}</td>
+          </tr></table>`).join("")
       : "";
 
   const blocks = [
     // FIRST, deliberately. Everything below is a report of what the chapter did; this is
     // the only section that says what the SITE now does, and it is the reason a brother
     // who skims has to open the email at all.
-    sec("✨ New on the site", (notes as any[]).map((n) => {
-      const head = n.link
-        ? `<a href="${esc(n.link)}" style="color:#A07E2D">${esc(n.title)}</a>`
-        : `<b>${esc(n.title)}</b>`;
-      return head + (n.body ? ` — ${esc(n.body)}` : "");
-    })),
+    noteBlock("✨ New on the site", (notes as any[]).map((n) => ({
+      title: String(n.title || ""), body: String(n.body || ""), link: String(n.link || ""),
+    }))),
     sec("🗓️ Coming up", (events as any[]).map((e) => `<b>${esc(e.title)}</b> — ${fmtWhen(e)}${e.location ? ` · ${esc(e.location)}` : ""}`)),
     sec("💼 New on the Opportunities board", (jobs as any[]).map((t) => `<a href="${SITE}/board.html#thread=${t.id}" style="color:#A07E2D">${esc(t.title)}</a>`)),
     sec("🎉 New brothers on the site", newMembers.map((b) => {
       const cls = b.pledge_class && String(b.pledge_class).toLowerCase() !== "none" ? ` · ${esc(b.pledge_class)}` : "";
       return `${esc(b.full_name)}${cls}`;
     })),
-    sec("🏛️ Milestones", annis),
+    tileBlock("🥂 Raise a glass", annis),
     (photos as any[]).length
-      ? sec("📸 The gallery", [`${(photos as any[]).length} new photo${(photos as any[]).length === 1 ? "" : "s"} — <a href="${SITE}/gallery.html" style="color:#A07E2D">take a look</a>`])
+      ? bandBlock("📸 New in the archive", (photos as any[]).length, `${SITE}/gallery.html`)
       : "",
-    sec("🤝 Mentoring", helpLines),
-    sec("📜 This month in chapter history", histLines),
+    statBlock("🤝 Brothers offering a hand", helpStats, helpLines, `${SITE}/mentoring.html`),
+    quoteBlock("📜 This month in chapter history", histLines),
   ].filter(Boolean);
 
   const empty = blocks.length === 0;
@@ -272,7 +369,7 @@ async function build(adminUserId: string | null) {
     </td></tr>
     <tr><td style="padding:26px 28px">
       <p style="font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657;margin:0 0 6px">Brothers,</p>
-      <p style="font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657;margin:0">Here's what's happened in the brotherhood lately.</p>
+      <p style="font:400 15px/1.7 Helvetica,Arial,sans-serif;color:#3d4657;margin:0">A few things worth knowing since last time.</p>
       ${body}
       <p style="text-align:center;margin:30px 0 6px">
         <a href="${SITE}" style="background:#C8A24B;color:#0A1F44;text-decoration:none;font:700 14px Helvetica,Arial;padding:12px 26px;border-radius:999px;display:inline-block">Open the site →</a>

@@ -147,39 +147,56 @@
     }
   }
 
-  /* ---- Brother of the Month (deterministic monthly rotation) ---- */
+  /* ---- Brother of the Month (upgrade67: chosen, not hashed) ----
+     Until now this hashed the string "2026-8" and took hash % candidateCount over the
+     brothers who had BOTH a photo and a bio — ten men out of 359. Two things were wrong
+     with that beyond the arbitrariness: the count is part of the divisor, so an eleventh
+     brother writing a bio moved every future pick AND silently swapped the current one
+     mid-month; and nothing was recorded, so the same few recurred forever.
+
+     Now: the crowned brother from botm_cycles, who stays up until someone replaces him.
+     The hash survives only as a first-run fallback, so the section is never blank on the
+     day this ships and never again after the first crowning. */
   var spotSec = document.getElementById('spotlight');
   var spotEl = document.getElementById('spotlightCard');
   if (spotSec && spotEl && window.ZBXI && window.ZBXI.configured) {
-    var monthKey = new Date().getFullYear() + '-' + (new Date().getMonth() + 1);
-    var hash = 0;
-    for (var hi = 0; hi < monthKey.length; hi++) hash = (hash * 31 + monthKey.charCodeAt(hi)) >>> 0;
-
     window.ZBXI.amApprovedBrother().then(function (ok) {
       if (ok) {
-        window.ZBXI.listVerifiedDetail().then(function (rows) {
-          var cands = (rows || []).filter(function (b) { return b.user_id && b.photo_url && b.bio; })
-            .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
-          if (!cands.length) return; // section stays hidden until profiles are complete
-          var b = cands[hash % cands.length];
+        Promise.all([
+          window.ZBXI.listVerifiedDetail(),
+          window.ZBXI.botmCurrent()
+        ]).then(function (res) {
+          var rows = res[0] || [], crowned = res[1];
+          var byId = {};
+          rows.forEach(function (b) { byId[b.id] = b; });
+
+          var b = crowned && crowned.winner_brother ? byId[crowned.winner_brother] : null;
+          if (!b) b = legacySpotlightPick(rows);
+          if (!b) return;               // nothing to show at all: leave the section hidden
+
           spotSec.style.display = '';
           var sub = [b.pledge_class, b.grad_year ? 'Class of ' + b.grad_year : null,
                      [b.occupation, b.city].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
-          var excerpt = b.bio.length > 260 ? b.bio.slice(0, 260).replace(/\s+\S*$/, '') + '…' : b.bio;
+          var bio = b.bio || '';
+          var excerpt = bio.length > 260 ? bio.slice(0, 260).replace(/\s+\S*$/, '') + '…' : bio;
           spotEl.innerHTML =
             '<div class="spot-card">' +
-              '<img class="spot-card__photo" src="' + esc(b.photo_url) + '" alt="">' +
+              (b.photo_url
+                ? '<img class="spot-card__photo" src="' + esc(b.photo_url) + '" alt="">'
+                : '<div class="spot-card__photo spot-card__photo--none" aria-hidden="true">🏅</div>') +
               '<div class="spot-card__body">' +
                 '<h3>' + esc(b.full_name) + '</h3>' +
                 '<p class="spot-card__sub">' + esc(sub) + '</p>' +
                 (b.quote ? '<p class="spot-card__quote">“' + esc(b.quote) + '”</p>' : '') +
-                '<p class="spot-card__bio">' + esc(excerpt) + '</p>' +
+                (excerpt ? '<p class="spot-card__bio">' + esc(excerpt) + '</p>' : '') +
                 '<button class="btn btn--navy" id="spotMore">Read his full profile →</button>' +
               '</div></div>';
           var more = document.getElementById('spotMore');
           if (more) more.onclick = function () {
             if (window.BrotherCard) window.BrotherCard.open({ id: b.id, full_name: b.full_name, pledge_class: b.pledge_class, role: b.role, role_term: b.role_term, photo_url: b.photo_url, registered: true }, { portal: '#brothers-portal' });
           };
+
+          buildVotePanel(rows, byId);
         });
       } else {
         // Public teaser (names/details are members-only now)
@@ -188,6 +205,115 @@
           '<span>Every month we spotlight one brother\'s story — where the brotherhood took him. Sign in to read it.</span>' +
           '<a class="btn btn--gold" href="#brothers-portal">Log In / Sign Up</a></div>';
       }
+    });
+  }
+
+  /* The old rotation, kept ONLY for the window between shipping this and the first
+     crowning. Once a winner exists this is never reached again. */
+  function legacySpotlightPick(rows) {
+    var key = new Date().getFullYear() + '-' + (new Date().getMonth() + 1);
+    var hash = 0, i;
+    for (i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    var cands = (rows || []).filter(function (b) { return b.user_id && b.photo_url && b.bio; })
+      .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+    return cands.length ? cands[hash % cands.length] : null;
+  }
+
+  /* ---- The vote for NEXT month ----
+     Sits under the spotlight, members-only, because that is where a brother is already
+     looking at the man who won. Percentages are live by the owner's decision; the ballot
+     itself is never readable here — botm_tally returns counts only, and botm_votes returns
+     a brother his own row and nothing else. */
+  function buildVotePanel(rows, byId) {
+    var host = document.getElementById('botmVote');
+    if (!host) return;
+
+    window.ZBXI.botmCycle().then(function (cycle) {
+      if (!cycle) { host.style.display = 'none'; return; }   // no month open: no panel
+
+      var closes = new Date(cycle.closes_at);
+      var eligible = (rows || []).filter(function (b) { return b.user_id; })
+        .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
+
+      Promise.all([
+        window.ZBXI.botmTally(cycle.id),
+        window.ZBXI.botmMyVote(cycle.id)
+      ]).then(function (res) {
+        var tally = res[0] || [], mine = res[1];
+        var counts = {}, total = 0;
+        tally.forEach(function (t) { counts[t.brother_id] = t; total += t.votes; });
+
+        // Anyone with a vote first (most votes down), then the rest alphabetically — so
+        // the race is readable without hiding the 100+ brothers nobody has picked yet.
+        var ranked = eligible.slice().sort(function (a, z) {
+          var av = (counts[a.id] || {}).votes || 0, zv = (counts[z.id] || {}).votes || 0;
+          if (av !== zv) return zv - av;
+          return a.full_name.localeCompare(z.full_name);
+        });
+        var withVotes = ranked.filter(function (b) { return (counts[b.id] || {}).votes; });
+        var shown = withVotes.length ? withVotes : ranked.slice(0, 6);
+
+        host.style.display = '';
+        host.innerHTML =
+          '<div class="botm">' +
+            '<div class="botm__head">' +
+              '<h3>Who should be next?</h3>' +
+              '<p class="botm__meta">' +
+                esc(total ? total + (total === 1 ? ' brother has voted' : ' brothers have voted') : 'No votes yet — be the first') +
+                ' · closes ' + esc(closes.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })) +
+              '</p>' +
+            '</div>' +
+            '<div class="botm__list">' +
+              shown.map(function (b) { return nomineeRow(b, counts[b.id], mine); }).join('') +
+            '</div>' +
+            '<div class="botm__pick">' +
+              '<label for="botmPick">Vote for someone else</label>' +
+              '<select id="botmPick"><option value="">Choose a brother…</option>' +
+                ranked.map(function (b) {
+                  return '<option value="' + esc(b.id) + '"' + (b.id === mine ? ' selected' : '') + '>' +
+                         esc(b.full_name) + (b.pledge_class ? ' · ' + esc(b.pledge_class) : '') + '</option>';
+                }).join('') +
+              '</select>' +
+            '</div>' +
+            '<p class="botm__note" id="botmNote">Your vote is private — only the webmaster can see who you picked.</p>' +
+          '</div>';
+
+        function nomineeRow(b, t, myPick) {
+          var votes = (t || {}).votes || 0;
+          var pct = (t || {}).pct != null ? Number(t.pct) : 0;
+          var isMine = b.id === myPick;
+          return '<button class="botm-row' + (isMine ? ' is-mine' : '') + '" data-vote="' + esc(b.id) + '" type="button">' +
+            (b.photo_url
+              ? '<img class="botm-row__pic" src="' + esc(b.photo_url) + '" alt="">'
+              : '<span class="botm-row__pic botm-row__pic--none" aria-hidden="true">' + esc((b.full_name || '?').charAt(0)) + '</span>') +
+            '<span class="botm-row__body">' +
+              '<span class="botm-row__name">' + esc(b.full_name) +
+                (isMine ? ' <em>· your pick</em>' : '') + '</span>' +
+              '<span class="botm-row__sub">' + esc(b.pledge_class || '') + '</span>' +
+              '<span class="botm-row__bar"><span style="width:' + pct + '%"></span></span>' +
+            '</span>' +
+            '<span class="botm-row__pct">' + (votes ? pct + '%' : '—') + '</span>' +
+          '</button>';
+        }
+
+        function cast(id) {
+          var note = document.getElementById('botmNote');
+          if (note) note.textContent = 'Saving…';
+          window.ZBXI.botmVote(id).then(function (r) {
+            if (r && r.error) {
+              if (note) note.textContent = r.error.message || 'That vote was refused.';
+              return;
+            }
+            buildVotePanel(rows, byId);      // re-read, so the bar shows the real tally
+          });
+        }
+
+        host.querySelectorAll('[data-vote]').forEach(function (el) {
+          el.onclick = function () { cast(el.getAttribute('data-vote')); };
+        });
+        var sel = document.getElementById('botmPick');
+        if (sel) sel.onchange = function () { if (sel.value) cast(sel.value); };
+      });
     });
   }
 

@@ -50,6 +50,31 @@ The whole site is plain HTML/CSS/JS in this repo — no build step.
 4. **Cloudflare:** hand over the chapter Cloudflare login (it holds both the hosting and the DNS). If they'd rather use their own account, re-connect the GitHub repo to it and repoint the domain.
 5. **Supabase / Resend / Formspree:** all under the chapter account — hand over the login; optionally add them as project members. **Rotate the Resend API key and the Supabase keys on handover**, and remove any GitHub deploy keys under repo Settings → Deploy keys.
 
+## Who is audited, and who is not
+
+**The webmaster is the root of trust, and he is deliberately not audited. Anyone taking over this
+site should know that before they rely on the log.**
+
+The 📜 **History** tab in the admin console records serious actions — deletions, permission changes,
+approvals, roster corrections, and who chose the Brother of the Month. It is genuine and it names
+the person. But:
+
+- **An officer's roster edit appears** in History as "corrected a roster record", under his name.
+- **The webmaster's identical edit does not appear at all.** The database labels an admin edit the
+  same way it labels a brother editing his own bio (`profile_updated`), and the History feed
+  deliberately filters that out — otherwise every profile tweak by all 113 brothers would drown the
+  log.
+
+This is a choice, not an oversight. The webmaster already holds the database keys, so a log he can
+edit proves little; the log exists to hold *delegated* power accountable, which is the officer's.
+
+**What this means in practice:**
+- If you delegate powers to an alumni president, History is a real record of what he did.
+- If you want the webmaster's own actions recorded too, it is a one-line change: drop the
+  `if not public.is_admin()` guard in `officer_update_brother` (upgrade54) so both roles log.
+- **If the chapter ever has more than one person with the admin email, the log cannot tell them
+  apart.** Admin identity on this site is the email address, not the person.
+
 ## Cost reality (for the chapter)
 
 Cloudflare $0 · Supabase $0 · Resend $0 · Formspree $0 · **Domain ≈ $10–12/yr** — the only recurring cost. Compare to vendor quotes of $2,500–4,000.
