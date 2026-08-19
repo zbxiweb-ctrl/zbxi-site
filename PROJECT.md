@@ -9,12 +9,16 @@ url: "https://zetabetaxi.com"
 
 # Zeta Beta Xi (ΖΒΞ) — Fraternity Website
 
-Single-page collegiate marketing site for Zeta Beta Xi, a local fraternity at SUNY Geneseo (founded 1993). Blue & gold, crest-forward, static HTML/CSS/JS.
+Chapter website for Zeta Beta Xi, a local fraternity at SUNY Geneseo (founded 1993). Navy & gold, crest-forward, static HTML/CSS/JS with a Supabase backend: 21 pages, a members' area behind sign-in, and admin + officer consoles. Live at zetabetaxi.com, deployed from `main` to Cloudflare Workers.
 
-**Sections:** Home · About/History · Greek Excellence badges · Brotherhood (flip-card roster) · **Family Tree** (interactive pan/zoom lineage) · **Brother Portal** (Supabase accounts, admin-verified profiles) · Alumni & Giving · Events & Philanthropy · Gallery (lightbox) · Contact (Formspree).
+**Public:** homepage (history, Greek Excellence awards, teasers), privacy, terms, accessibility, 404 · contact via Formspree.
 
-**Members system (v2):** static site + Supabase (auth + Postgres + Storage) via the browser JS client with Row-Level Security. Brothers self-signup → pending → admin approves in `admin.html` → appear in roster + family tree. Each brother's `big_id` builds the tree. Graceful placeholder mode until `assets/js/config.js` is filled. Schema in `supabase/schema.sql`.
+**Members-only** (sign in as an approved brother): active + alumni directories, pledge-class pages, executive-board archive, family tree, gallery, discussion board with polls and a suggestion box, chapter calendar with RSVPs, mentoring, the worldwide map, the alumni fund, notifications and orientation.
 
-**Status:** Live with placeholder content; Formspree (contact) + Supabase (members) not yet wired — see README.md. Research brief: [[2026-07-07-zbxi-fraternity-research]].
+**Consoles:** `admin.html` for the webmaster (verification, events, awards, email, digests, gallery sections, suggestions and more) and `officer.html` for officers, scoped by seat.
 
-**Next:** user creates the Supabase project + runs schema, I drop keys into config.js and redeploy; then real assets/roster.
+**How membership works:** a brother signs up (or claims an invite) → his profile is `pending` → an admin or officer approves him → he appears in the roster and family tree and can reach the members' area. Each brother's `big_id` is what builds the tree. Supabase enforces all of this with row-level security; the browser only ever holds the public anon key.
+
+**Status:** Live at zetabetaxi.com with the real roster (300+ brothers), Supabase and Formspree both wired, optional two-step verification, and a queued email system. Research brief: [[2026-07-07-zbxi-fraternity-research]].
+
+**Deploying:** `git push` to `main` publishes to Cloudflare Workers — there is no staging, so verify locally first. Developer notes live in README.md.

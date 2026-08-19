@@ -1027,7 +1027,31 @@
     } else { setSheet(false); immersive(); }
   }
 
+  var curPost = null;
+
+  /* The viewer used to be a dead end: one photo, then close and hunt for the
+     next one in the grid. Step through the set the grid is actually showing
+     (same album, same decade filter, same order). */
+  function shownPosts() { return applyDecade(basePosts()); }
+  function paintNav() {
+    var list = shownPosts();
+    var i = curPost ? list.map(function (x) { return x.id; }).indexOf(curPost.id) : -1;
+    var prev = modal.querySelector('[data-gprev]'), next = modal.querySelector('[data-gnext]');
+    if (!prev || !next) return;
+    prev.hidden = !(i > 0);
+    next.hidden = !(i > -1 && i < list.length - 1);
+  }
+  function step(delta) {
+    var list = shownPosts();
+    var i = curPost ? list.map(function (x) { return x.id; }).indexOf(curPost.id) : -1;
+    if (i < 0) return;
+    var t = list[i + delta];
+    if (t) openPost(t);
+  }
+
   function openPost(p) {
+    curPost = p;
+    paintNav();
     g('img').src = urls[p.image_path] || '';
     g('img').alt = p.caption || 'Gallery photo';
     g('author').innerHTML = chip(p.author_user);
@@ -1254,12 +1278,26 @@
     modal.classList.remove('gmodal--immersive');
     setSheet(false);
     modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+    curPost = null;
     unlockPage();                                   // give the page its scroll back
   }
   modal.addEventListener('click', function (e) {
     if (e.target === modal || e.target.closest('[data-close]')) closeModal();
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (!modal.classList.contains('open')) return;
+    // Never steal the arrows from someone typing a caption or a comment.
+    var t = e.target;
+    if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+  });
+  (function wireNav() {
+    var prev = modal.querySelector('[data-gprev]'), next = modal.querySelector('[data-gnext]');
+    if (prev) prev.addEventListener('click', function (e) { e.stopPropagation(); step(-1); });
+    if (next) next.addEventListener('click', function (e) { e.stopPropagation(); step(1); });
+  })();
 
   /* ---------- data ---------- */
   function loadAll() {

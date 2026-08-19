@@ -196,9 +196,6 @@
         APPROVED = true;
         render(RAW);
         renderClassIndex();
-        // Hand the hydrated roster to other scripts (e.g. the alumni map).
-        window.ZBXI_MEMBERS = RAW;
-        document.dispatchEvent(new CustomEvent('zbxi:hydrated'));
       });
     });
   }

@@ -89,12 +89,12 @@
       '<button class="btn btn--gold nav__cta nav__login-btn" id="navLoginBtn" aria-haspopup="true" aria-expanded="false">' +
         'Log In / Sign Up <span class="nav__caret">▾</span>' +
       '</button>' +
-      '<div class="nav__menu nav__menu--login" id="navLoginMenu" role="menu">' +
-        '<a href="' + SIGNIN + '" id="navDoLogin" role="menuitem">' +
+      '<div class="nav__menu nav__menu--login" id="navLoginMenu" aria-label="Sign in options">' +
+        '<a href="' + SIGNIN + '" id="navDoLogin">' +
           '<span class="nav__login-ic">🔑</span>' +
           '<span class="nav__login-txt"><b>Log in</b><small>Already have an account</small></span>' +
         '</a>' +
-        '<a href="' + SIGNUP + '" id="navDoSignup" role="menuitem">' +
+        '<a href="' + SIGNUP + '" id="navDoSignup">' +
           '<span class="nav__login-ic">✍️</span>' +
           '<span class="nav__login-txt"><b>Create account</b><small>New brother sign-up</small></span>' +
         '</a>' +
@@ -112,7 +112,11 @@
       menu.classList.contains('open') ? close() : open();
     });
     document.addEventListener('click', function (e) { if (!el.contains(e.target)) close(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !menu.classList.contains('open')) return;
+      close();
+      btn.focus();   // don't strand focus on <body> after closing
+    });
     document.addEventListener('zbxi:menu', function (e) { if (e.detail !== 'login') close(); });
 
     // On the homepage, open the inline auth card directly (no navigation).
@@ -147,17 +151,17 @@
         (isAdmin ? '<span class="admin-badge">ADMIN</span>' : '') +
         '<span class="nav__caret">▾</span>' +
       '</button>' +
-      '<div class="nav__menu" id="navMenu" role="menu">' +
+      '<div class="nav__menu" id="navMenu" aria-label="Your account">' +
         '<div class="nav__menu-head">' +
           '<span class="nav__menu-av">' + avatar + '</span>' +
           '<div class="nav__menu-id"><b>' + esc(name) + '</b><span>' + esc(user.email || '') + '</span>' +
             (isAdmin ? '<span class="role-pill role-pill--admin">★ Admin</span>' : '<span class="role-pill">Brother of ΖΒΞ</span>') +
           '</div>' +
         '</div>' +
-        '<a href="' + MYPROFILE + '" id="navAccount2" role="menuitem"><i>⚙</i> Account</a>' +
-        '<a href="' + MYPROFILE + '" id="navMyProfile" role="menuitem"><i>👤</i> Brother Profile</a>' +
-        '<a href="welcome.html" role="menuitem"><i>🎉</i> Orientation</a>' +
-        '<a href="notifications.html" role="menuitem"><i>🔔</i> Notifications</a>' +
+        '<a href="' + MYPROFILE + '" id="navAccount2"><i>⚙</i> Account</a>' +
+        '<a href="' + MYPROFILE + '" id="navMyProfile"><i>👤</i> Brother Profile</a>' +
+        '<a href="welcome.html"><i>🎉</i> Orientation</a>' +
+        '<a href="notifications.html"><i>🔔</i> Notifications</a>' +
         '<div class="nav__menu-divider"></div>' +
         // Starts COLLAPSED, and remembers what you chose.
         //
@@ -179,12 +183,12 @@
         '</button>' +
         '<div class="nav__sub' + (subOpen ? ' open' : '') + '" id="navBrothersSub">' +
           BROTHERS_ONLY.map(function (m) {
-            return '<a href="' + m.href + '" role="menuitem"><i>' + m.ic + '</i> ' + m.label + '</a>';
+            return '<a href="' + m.href + '"><i>' + m.ic + '</i> ' + m.label + '</a>';
           }).join('') +
         '</div>' +
-        (isAdmin ? '<div class="nav__menu-divider"></div><a href="admin.html" role="menuitem" class="nav__menu-admin"><i>⚙</i> Admin Console <span class="nav__menu-badge" id="navPendingBadge" style="display:none"></span><em>→</em></a>' : '') +
+        (isAdmin ? '<div class="nav__menu-divider"></div><a href="admin.html" class="nav__menu-admin"><i>⚙</i> Admin Console <span class="nav__menu-badge" id="navPendingBadge" style="display:none"></span><em>→</em></a>' : '') +
         '<div class="nav__menu-divider"></div>' +
-        '<button type="button" id="navSignOut" role="menuitem" class="nav__menu-signout"><i>↦</i> Sign out</button>' +
+        '<button type="button" id="navSignOut" class="nav__menu-signout"><i>↦</i> Sign out</button>' +
       '</div>';
 
     // Admin: surface how many brothers are waiting for approval
@@ -236,7 +240,11 @@
       menu.classList.contains('open') ? close() : open();
     });
     document.addEventListener('click', function (e) { if (!el.contains(e.target)) close(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !menu.classList.contains('open')) return;
+      close();
+      btn.focus();   // don't strand focus on <body> after closing
+    });
     document.addEventListener('zbxi:menu', function (e) { if (e.detail !== 'account') close(); });
     // Let the in-page anchors close the menu naturally
     menu.querySelectorAll('a[href^="#"]').forEach(function (a) { a.addEventListener('click', close); });

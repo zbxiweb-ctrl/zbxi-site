@@ -164,10 +164,10 @@
   }
 
   /* ---- request a mentor: state a field + goal, up to 5 matching alumni get a 🔔 ---- */
-  var INDUSTRIES = ['Finance & Banking', 'Technology & Software', 'Healthcare & Medicine',
-    'Law & Government', 'Engineering', 'Education', 'Marketing & Media',
-    'Sales & Business Dev', 'Real Estate & Construction', 'Science & Research',
-    'Arts & Entertainment', 'Military & Public Service', 'Other'];
+  // The request dropdown is the canonical list minus 'Student': a student is a
+  // field to BE mentored in, not one to ask for a career mentor in. Everything
+  // else about a Student profile still displays and searches normally.
+  var INDUSTRIES = Z.INDUSTRIES.filter(function (i) { return i !== 'Student'; });
 
   function wireMentorRequest() {
     var btn = document.getElementById('mentorReqBtn');

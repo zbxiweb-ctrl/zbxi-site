@@ -917,10 +917,10 @@
 
     // Networking: industry picklist (fixed values so "brothers in your field"
     // matching works) + "open to" flags that power Connect/mentoring.
-    var INDUSTRIES = ['Finance & Banking', 'Technology & Software', 'Healthcare & Medicine',
-      'Law & Government', 'Engineering', 'Education', 'Marketing & Media',
-      'Sales & Business Dev', 'Real Estate & Construction', 'Science & Research',
-      'Arts & Entertainment', 'Military & Public Service', 'Student', 'Other'];
+    // One canonical list (ZBXI.INDUSTRIES) — this and the mentoring page had
+    // already drifted apart by an entry, which silently made 'Student' profiles
+    // unreachable by any request anyone could send.
+    var INDUSTRIES = Z.INDUSTRIES;
     var indOpts = ['<option value="">— pick your field —</option>'].concat(
       INDUSTRIES.map(function (i) { return '<option' + (pr.industry === i ? ' selected' : '') + '>' + i + '</option>'; })
     ).join('');
