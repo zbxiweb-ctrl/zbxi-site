@@ -7,7 +7,7 @@
   if (!root) return;
   var Z = window.ZBXI;
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   function when(ts) {
     var d = new Date(ts), diff = (Date.now() - d.getTime()) / 1000;
     if (diff < 3600) return Math.max(1, Math.round(diff / 60)) + 'm ago';
@@ -103,7 +103,7 @@
   // Shared by the composer (defaults to Miscellaneous) and the inline post editor
   // (defaults to the post's own section), so the two controls stay identical.
   function albumPicker(id, selId) {
-    return '<select class="zselect gupload__album" id="' + id + '" aria-label="Album">' +
+    return '<select class="zselect gupload__album" id="' + id + '" aria-label="Section">' +
       albums.map(function (a) {
         return '<option value="' + esc(a.id) + '"' + (a.id === selId ? ' selected' : '') + '>' + esc(a.name) + '</option>';
       }).join('') + '</select>';
@@ -223,11 +223,11 @@
     if (view === 'tagged') {
       var n2 = basePosts().length;
       var who = taggedClass ? taggedClass : rosterName(taggedId);
-      return '<div class="gsechead"><h3>Photos of ' + esc(who) + '</h3>' +
+      return '<div class="gsechead"><h2>Photos of ' + esc(who) + '</h2>' +
         '<span>' + (n2 === 0 ? 'None yet' : n2 + (n2 === 1 ? ' photo' : ' photos')) + '</span></div>';
     }
     var n = postsIn(curAlbum).length;
-    return '<div class="gsechead"><h3>' + esc(curSecName()) + '</h3>' +
+    return '<div class="gsechead"><h2>' + esc(curSecName()) + '</h2>' +
       '<span>' + (n === 0 ? 'No photos yet' : n + (n === 1 ? ' photo' : ' photos')) + '</span></div>';
   }
 
@@ -267,7 +267,8 @@
     if (!ds.length || ds.length + (undated ? 1 : 0) < 2) return '';
     ds.sort(function (a, b) { return b - a; });
     var chip = function (val, label, n) {
-      return '<button class="gdec' + (decade === val ? ' on' : '') + '" data-dec="' + val + '">' +
+      return '<button class="gdec' + (decade === val ? ' on' : '') + '" data-dec="' + val + '"' +
+        ' aria-pressed="' + (decade === val) + '">' +
         label + ' <i>' + n + '</i></button>';
     };
     var html = chip('all', 'All', base.length);
@@ -298,7 +299,7 @@
             ' Open a photo, press <b>＋ Tag someone</b>, and everyone you name shows up here.'
         : view === 'tagged' ? 'No photos of him yet — tag him in one and it lands here.'
         : curAlbum === 'all' ? 'No posts yet — be the first to share a memory.'
-        : 'No photos in this album yet.') + '</p>';
+        : 'No photos in this section yet.') + '</p>';
     }
     return decadeChipsHtml(base) + '<div class="ggrid">' + shown.map(function (p) {
       var u = urls[p.image_path];

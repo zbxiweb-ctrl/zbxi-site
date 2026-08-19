@@ -11,7 +11,7 @@
 
   // Escape user-controlled data before it goes into popup HTML (brother names,
   // city labels). Matches the esc() helper every other file in this site uses.
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   var GEO_KEY = 'zbxi_geo_v1';
   var started = false;

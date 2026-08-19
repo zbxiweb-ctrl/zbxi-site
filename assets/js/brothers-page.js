@@ -24,7 +24,7 @@
   function ebKey(role) { return String(role || '').trim().toLowerCase().replace(/\s+/g, '-'); }
   function isEboardTitle(role) { return EBOARD_ORDER.indexOf(ebKey(role)) !== -1; }
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   function initials(name) { return window.BrotherCard ? window.BrotherCard.initials(name) : 'ΖΒΞ'; }
 
   // Academic cutoff: after May, this year's class has graduated.
@@ -160,7 +160,7 @@
     EB = all.filter(function (b) { return b.role && b.role_scope === MODE && isEboardTitle(b.role); }).sort(ebOrder);
     LIST = side.slice().sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
 
-    if (countEl) countEl.textContent = side.length + (MODE === 'active' ? ' active brothers' : ' alumni brothers');
+    if (countEl) countEl.textContent = side.length + ' ' + (MODE === 'active' ? 'active' : 'alumni') + (side.length === 1 ? ' brother' : ' brothers');
     if (eboardEl) {
       eboardEl.innerHTML = EB.length ? EB.map(eboardCard).join('')
         : '<p class="page-empty">E-board positions will appear here once assigned' + (MODE === 'active' ? '.' : ' for the alumni board.') + '</p>';

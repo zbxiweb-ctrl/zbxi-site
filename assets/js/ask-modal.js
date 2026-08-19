@@ -13,7 +13,7 @@
         — single button; cb?() fires once the notice is dismissed (any path). */
 (function () {
   'use strict';
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   // Dialog bodies carried \n line breaks in the native calls they replace — keep them.
   function bodyHtml(s) { return esc(s).replace(/\n/g, '<br>'); }
 

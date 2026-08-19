@@ -20,7 +20,7 @@
   // Where the current render goes: the section card (auth) or the popup body.
   var target = card || mbody;
   function h(html) { target.innerHTML = html; }
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   // Name matching for the two anti-duplicate guards (claim search + create guard).
   // claimNorm collapses a name to bare letters/digits so apostrophe style, spaces

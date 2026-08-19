@@ -11,7 +11,7 @@
    1st, and crowns the vote leader itself (coin flip on a tie) if nobody got round to it. */
 (function () {
   'use strict';
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   /* ---------------- Brother of the Month (upgrade67) ----------------
      Replaces a hash of the current date. This tab is the only place the ballot is

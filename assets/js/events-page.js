@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   var calWrap = document.getElementById('calWrap');
   if (!calWrap) return;
@@ -350,7 +350,8 @@
           // cluttered. Separate class from --has, which drives cursor + hover.
           (chipped.length ? ' cal-cell--dot' : '') +
           (selDay === day ? ' cal-cell--sel' : '') +
-          '"' + (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
+          '"' + (selDay === day ? ' aria-current="date"' : '') +
+          (canClick ? ' data-day="' + day + '"' : ' disabled') + '>' +
           '<span class="cal-cell__n">' + day + '</span>' +
           // Reserve the height the banner overlay occupies so chips sit below it.
           // Height comes from --lanes in CSS so it tracks the mobile breakpoint.
@@ -387,7 +388,7 @@
     var evs = evsOn(date);
     var box = document.getElementById('calDetail');
     if (!box) return;
-    var html = '<h4>' + date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + '</h4>';
+    var html = '<h3>' + date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + '</h3>';
     html += evs.map(function (e) {
       return '<div class="cal-detail__ev"><span class="event__tag">' + (CAT_LABEL[e.category] || esc(e.category)) + '</span>' +
         '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' +
@@ -403,9 +404,9 @@
     wireAdmin(box, date);
     if (changed && scroll) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     // reflect selection ring without a full re-render
-    document.querySelectorAll('#calMain .cal-cell--sel').forEach(function (c) { c.classList.remove('cal-cell--sel'); });
+    document.querySelectorAll('#calMain .cal-cell--sel').forEach(function (c) { c.classList.remove('cal-cell--sel'); c.removeAttribute('aria-current'); });
     var cell = document.querySelector('#calMain .cal-cell[data-day="' + day + '"]');
-    if (cell) cell.classList.add('cal-cell--sel');
+    if (cell) { cell.classList.add('cal-cell--sel'); cell.setAttribute('aria-current', 'date'); }
   }
 
   function renderRail() {
@@ -414,13 +415,13 @@
     var upcoming = EV_ALL.filter(function (e) { return evEnd(e).getTime() > Date.now(); })
       .sort(function (a, z) { return new Date(a.starts_at) - new Date(z.starts_at); })
       .slice(0, 4);
-    var html = '<h3 class="cal-rail__h">⚡ Up Next</h3>';
+    var html = '<h2 class="cal-rail__h">⚡ Up Next</h2>';
     if (!upcoming.length) {
       html += '<p class="cal-rail__none">No upcoming events yet' + (CAN_MANAGE ? ' — add the first one below.' : ' — check back soon.') + '</p>';
     } else {
       html += upcoming.map(function (e) {
         var d = new Date(e.starts_at);
-        return '<article class="unx" data-goto="' + e.starts_at + '">' +
+        return '<article class="unx" tabindex="0" role="button" data-goto="' + e.starts_at + '">' +
           '<div class="unx__date"><b>' + d.getDate() + '</b><span>' + d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase() + '</span></div>' +
           '<div class="unx__body"><span class="unx__cat unx__cat--' + esc(e.category) + '">' + (CAT_LABEL[e.category] || esc(e.category)) + '</span>' +
           '<b>' + esc(e.title) + '</b><small>' + evTime(e) + evLoc(e) + '</small>' + rsvpBar(e) + '</div></article>';
@@ -431,6 +432,11 @@
     rail.innerHTML = html;
     wireRsvps(rail);
     rail.querySelectorAll('.unx[data-goto]').forEach(function (card) {
+      card.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target !== card) return;   // let a nested control have its own keys
+        e.preventDefault(); card.click();
+      });
       card.addEventListener('click', function (e) {
         if (e.target.closest('.ev-rsvp') || e.target.closest('a')) return;
         var d = new Date(card.dataset.goto);

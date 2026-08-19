@@ -34,7 +34,7 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setNav(false); });
   }
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   /* ---- Gallery teaser: latest posts for approved brothers, CTA otherwise ---- */
   var teaser = document.getElementById('galleryTeaser');

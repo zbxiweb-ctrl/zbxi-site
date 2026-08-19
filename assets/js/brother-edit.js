@@ -23,7 +23,7 @@
    the database's. */
 (function () {
   'use strict';
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   /* powers: { admin: bool, officer: bool }. Resolved by profile-card.js and passed in, so
      this module never has to guess and the two callers cannot disagree about it. */

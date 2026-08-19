@@ -12,7 +12,7 @@
    record is refused for an officer by the same guard as everywhere else (upgrade54). */
 (function () {
   'use strict';
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   /* Active or alumni, by the SAME rule the roster pages use (brothers-page.js) — an
      explicit standing wins, otherwise derive from the grad year. Duplicated rather than

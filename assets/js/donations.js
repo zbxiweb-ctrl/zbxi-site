@@ -21,11 +21,7 @@
   if (!root) return;
   var Z = window.ZBXI;
 
-  function esc(s) {
-    return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-    });
-  }
+  var esc = ZBXIUtil.esc;
 
   // Venmo handles are letters, digits, dashes and underscores. Stripping anything
   // else means a handle typed with a stray @ or a pasted full URL still produces a

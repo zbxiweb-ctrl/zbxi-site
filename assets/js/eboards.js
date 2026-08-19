@@ -111,11 +111,7 @@
   var BOARDS = [], SEATS = [], ROSTER = [], BY_ID = {};
   var canEdit = false, scopeF = '', curId = null;
 
-  function esc(s) {
-    return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-    });
-  }
+  var esc = ZBXIUtil.esc;
   function initials(name) { return window.BrotherCard ? window.BrotherCard.initials(name) : 'ΖΒΞ'; }
   function isOfficer(title) { return OFFICERS.indexOf(title) !== -1; }
 

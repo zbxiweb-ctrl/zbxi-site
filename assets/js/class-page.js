@@ -7,7 +7,7 @@
   if (!grid) return;
   var Z = window.ZBXI;
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
 
   var cls = new URLSearchParams(location.search).get('c') || '';
   var titleEl = document.getElementById('classTitle');
@@ -57,7 +57,7 @@
     LIST = rows.filter(function (b) { return (b.pledge_class || '') === cls; })
       .sort(function (a, z) { return a.full_name.localeCompare(z.full_name); });
     var grads = LIST.map(function (b) { return b.grad_year; }).filter(Boolean);
-    statsEl.textContent = LIST.length + ' brothers crossed in this class' +
+    statsEl.textContent = LIST.length + (LIST.length === 1 ? ' brother crossed in this class' : ' brothers crossed in this class') +
       (grads.length ? ' · grads ' + Math.min.apply(null, grads) + '–' + Math.max.apply(null, grads) : '') + '.';
     render();
 

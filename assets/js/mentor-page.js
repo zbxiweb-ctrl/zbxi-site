@@ -19,7 +19,7 @@
   var Z = window.ZBXI;
   if (!gate || !sec || !Z || !Z.configured) return;
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   function initials(name) { return window.BrotherCard ? window.BrotherCard.initials(name) : 'ΖΒΞ'; }
 
   function uniqueSorted(vals) {
@@ -189,7 +189,12 @@
         '<p class="form-status" id="mrStatus"></p></div>';
       m.classList.add('open');
       m.setAttribute('aria-hidden', 'false');
-      function close() { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); }
+      function close() {
+        m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+        document.removeEventListener('keydown', onEsc);
+      }
+      function onEsc(x) { if (x.key === 'Escape') close(); }
+      document.addEventListener('keydown', onEsc);
       m.querySelector('[data-mr]').onclick = close;
       m.addEventListener('click', function (x) { if (x.target === m) close(); });
 

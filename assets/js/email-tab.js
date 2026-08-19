@@ -6,7 +6,7 @@
    skipped. Attachments: up to 4 files, 4 MB total, sent base64. */
 (function () {
   'use strict';
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   var MAX_FILES = 4, MAX_BYTES = 4 * 1024 * 1024;
 
   function render(q) {
