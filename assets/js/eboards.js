@@ -609,8 +609,10 @@
     return;
   }
 
-  Z.amApprovedBrother().then(function (ok) {
-    if (!ok) return lockedOut();
+  Z.approvalState().then(function (state) {
+    // 'error' means the database was unreachable, not that he isn't a brother.
+    if (state === 'error') return ZBXIUtil.loadError(root, 'the executive boards');
+    if (state !== 'approved') return lockedOut();
     return Z.listFamilyPublic().then(function (rows) {
       ROSTER = rows || [];
       if (!ROSTER.length) return lockedOut();
@@ -640,5 +642,5 @@
         })['catch'](function () { /* photos are a nicety; the page already works */ });
       });
     });
-  })['catch'](function () { lockedOut(); });
+  })['catch'](function () { ZBXIUtil.loadError(root, 'the executive boards'); });
 })();

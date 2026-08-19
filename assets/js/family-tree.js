@@ -609,7 +609,13 @@
       window.ZBXI.listFamilyPublic().then(function (rows) {
         if (rows && rows.length) start(rows, false);
         else start(PLACEHOLDER, true);
-      }).catch(function () { start(PLACEHOLDER, true); });
+      }).catch(function () {
+        // Only a genuine anon/empty result earns the labelled demo tree; a
+        // failed request must say so instead of inventing a fake lineage.
+        var vp = document.getElementById('treeViewport') || document.getElementById('treeCanvas');
+        if (vp && window.ZBXIUtil) ZBXIUtil.loadError(vp, 'the family tree');
+        else start(PLACEHOLDER, true);
+      });
     } else {
       start(PLACEHOLDER, true);
     }

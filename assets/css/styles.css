@@ -25,7 +25,15 @@
   --wrap: 1160px;
   --shadow: 0 18px 50px rgba(10, 31, 68, 0.16);
   --shadow-sm: 0 6px 18px rgba(10, 31, 68, 0.10);
+  --shadow-md: 0 12px 32px rgba(10, 31, 68, 0.13);
+  /* One red for text/borders, one for solid fills that carry white text. */
+  --danger:    #b4342b;
+  --danger-bg: #b4342b;
   --radius: 14px;
+  --radius-sm: 10px;
+  /* Tell the browser which way the page leans, so date pickers, checkboxes,
+     select popups and UA scrollbars stop rendering light on the dark theme. */
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -108,7 +116,7 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
 }
 .title-req span { display: block; margin-top: .2rem; color: var(--muted); font-size: .8rem; }
 .title-req--wait { border-color: rgba(200,162,75,.5); }
-.title-req--no { border-color: rgba(180,52,43,.4); background: rgba(180,52,43,.07); color: #b4342b; }
+.title-req--no { border-color: rgba(180,52,43,.4); background: rgba(180,52,43,.07); color: var(--danger); }
 .title-req-open { margin-top: .5rem; }
 .title-req-open > summary {
   cursor: pointer; font-weight: 600; font-size: .88rem; color: var(--gold-deep);
@@ -140,11 +148,11 @@ input[type="password"]::placeholder { color: var(--muted); letter-spacing: norma
   margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 12px;
   background: rgba(180,52,43,.08); border: 1px solid rgba(180,52,43,.35);
 }
-.danger-confirm p { margin: 0 0 .5rem; color: #b4342b; }
+.danger-confirm p { margin: 0 0 .5rem; color: var(--danger); }
 .danger-confirm ul { margin: 0 0 .9rem; padding-left: 1.1rem; color: var(--text); font-size: .9rem; line-height: 1.7; }
 .danger-confirm .field { margin-bottom: .8rem; }
 .danger-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
-.btn--danger { background: #b4342b; color: #fff; }
+.btn--danger { background: var(--danger-bg); color: #fff; }
 .btn--danger:hover:not(:disabled) { background: #9a2b23; transform: translateY(-2px); }
 .btn--danger:disabled { opacity: .45; cursor: not-allowed; }
 
@@ -211,10 +219,41 @@ p { margin: 0 0 1em; }
 .btn--gold:hover { box-shadow: 0 14px 30px rgba(200,162,75,.5); transform: translateY(-2px); }
 /* Soft gold fill so the secondary button reads as a solid pill, not a washed
    outline; hover still fills solid gold. */
-.btn--ghost { border-color: var(--gold); color: var(--gold-bright); background: rgba(200,162,75,.12); }
+.btn--ghost { border-color: var(--gold); color: var(--gold-deep); background: rgba(200,162,75,.12); }
 .btn--ghost:hover { background: var(--gold); color: var(--navy-deep); }
+/* Most ghost buttons live on CREAM cards — modals, the notifications page, the
+   gallery manager — where the bright gold read at 1.38:1. The base is therefore
+   the deep gold (5.0:1 on cream); the bright gold is restored below for the
+   handful of places the pill genuinely sits on navy. */
+.hero .btn--ghost,
+.section--navy .btn--ghost,
+.navy-body .btn--ghost,
+.admin-body .btn--ghost { color: var(--gold-bright); }
 .btn--navy { background: var(--navy); color: var(--on-navy); }
 .btn--navy:hover { background: var(--navy-2); transform: translateY(-2px); }
+
+/* Brand-gold focus ring for everything without a bespoke one. :where() has zero
+   specificity, so the hand-tuned rings further down still win. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+/* Windows High Contrast throws away box-shadow, and several controls here use a
+   shadow ring as their only focus cue — re-assert a real outline for those. */
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible,
+  .field input:focus, .field select:focus, .field textarea:focus,
+  .admin-search:focus, .ask-input:focus, .zselect:focus, .oc-card:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+/* One disabled treatment: opacity ran .4-.75 with the cursor alternating. */
+.btn:disabled, .btn[disabled],
+button:disabled, select:disabled, input:disabled, textarea:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 
 /* ---------- Header / nav ---------- */
 .nav {
@@ -399,6 +438,10 @@ p { margin: 0 0 1em; }
   animation: heroCrestIn 1s cubic-bezier(.2,.7,.2,1) both;
 }
 @keyframes heroCrestIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+/* The .fx class is only on <html> when the visitor has NOT asked for less motion. */
+html:not(.fx) .hero__crest-img, html:not(.fx) .hero__crest { animation: none !important; }
+html:not(.fx) .tree-node--pulse { animation: none !important; }
+html:not(.fx) .nav__menu, html:not(.fx) .acct__menu { animation: none !important; }
 .hero__text { text-align: left; }
 .hero__kicker { font-size: .82rem; letter-spacing: .32em; text-transform: uppercase; color: var(--gold-bright); font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,.6); margin: 0 0 .4rem; }
 .hero h1 { font-size: clamp(2.6rem, 6vw, 5rem); line-height: 1.02; margin: .2rem 0 0; text-shadow: 0 4px 24px rgba(0,0,0,.6), 0 1px 3px rgba(0,0,0,.85); }
@@ -495,7 +538,7 @@ p { margin: 0 0 1em; }
 .form-note { font-size: .8rem; color: var(--muted); margin-top: .4rem; }
 .form-status { margin-top: 1rem; font-weight: 600; display: none; }
 .form-status.ok { display: block; color: #1c7a41; }
-.form-status.err { display: block; color: #b4342b; }
+.form-status.err { display: block; color: var(--danger); }
 .btn[disabled] { opacity: .6; cursor: default; }
 
 /* ---------- Alumni ---------- */
@@ -715,7 +758,7 @@ p { margin: 0 0 1em; }
    the absolutely-pinned img (below) is what keeps the photo a true circle. */
 .bro-card__av { position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--navy-2); color: var(--on-dark); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: .95rem; }
 .bro-card--live .bro-card__av { background: var(--navy); color: var(--gold-bright); }
-.bro-card__dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold-bright); border: 2px solid var(--white); }
+.bro-card__dot { position: absolute; right: -2px; bottom: -2px; width: 12px; height: 12px; border-radius: 50%; background: var(--gold-bright); border: 2px solid var(--surface); }
 .bro-card__meta { min-width: 0; }
 .bro-card__meta b { display: block; color: var(--heading); font-family: var(--display); font-size: 1.02rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bro-card__meta small { color: var(--muted); font-size: .76rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -759,7 +802,7 @@ p { margin: 0 0 1em; }
 .claim-row span { color: var(--muted); font-size: .8rem; flex: none; }
 
 /* ---------- Real crest badge (white-background art framed on navy) ---------- */
-.crest-badge { background: var(--surface); border-radius: 10px; padding: 3px; border: 1.5px solid var(--gold); box-shadow: 0 5px 16px rgba(0,0,0,.3); object-fit: contain; }
+.crest-badge { background: #fff; border-radius: 10px; padding: 3px; border: 1.5px solid var(--gold); box-shadow: 0 5px 16px rgba(0,0,0,.3); object-fit: contain; }
 .brand .crest-badge { border-radius: 8px; padding: 2px; }
 .footer .crest-badge { border-radius: 14px; padding: 6px; }
 
@@ -1142,7 +1185,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    and it used to be invisible from here. */
 .pos-board { display: block; font-size: .74rem; margin-top: .12rem; color: var(--gold-deep); }
 .pos-board--none { color: var(--muted); opacity: .8; }
-.pos-del { background: none; border: none; color: #b4342b; cursor: pointer; font-size: 1.05rem; line-height: 1; padding: .1rem .35rem; }
+.pos-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.05rem; line-height: 1; padding: .1rem .35rem; }
 .pos-del:hover { color: #d0433a; }
 .pos-add { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .2rem; }
 .pos-add .pos-in, .pos-add select { padding: .5rem .7rem; border-radius: 9px; border: 1px solid rgba(200,162,75,.4);
@@ -1213,8 +1256,8 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .acct-block { background: var(--surface); border: 1px solid var(--hairline); border-radius: 12px; padding: 1.2rem 1.3rem; margin-bottom: 1.2rem; }
 .acct-block h4 { margin: 0 0 .8rem; color: var(--heading); font-family: var(--display); font-size: 1.1rem; }
 .acct-block--danger { border-color: #e8c9c9; }
-.btn--ghost-danger { background: none; border: 1.5px solid #b54848; color: #b54848; }
-.btn--ghost-danger:hover { background: #b54848; color: #fff; }
+.btn--ghost-danger { background: none; border: 1.5px solid var(--danger); color: var(--danger); }
+.btn--ghost-danger:hover { background: var(--danger-bg); color: #fff; }
 .form-note.center { text-align: center; }
 .form-note a { color: var(--gold-deep); text-decoration: underline; }
 
@@ -1473,7 +1516,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .glike { border: 0; background: none; cursor: pointer; font-size: 1.05rem; color: var(--heading); font-weight: 600; }
 .glike.on { color: #c0392b; }
 .gdate { color: var(--muted); font-size: .82rem; }
-.gdelete { margin-left: auto; border: 0; background: none; color: #b54848; cursor: pointer; font-size: .82rem; text-decoration: underline; }
+.gdelete { margin-left: auto; border: 0; background: none; color: var(--danger); cursor: pointer; font-size: .82rem; text-decoration: underline; }
 /* Edit + Delete sit together at the right end of the action row: the auto margin
    moves to whichever comes first, so Delete drops its own when Edit is showing.
    Edit stays neutral — only the destructive action reads red. */
@@ -1495,7 +1538,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .gtag__name:hover { color: var(--gold-deep); text-decoration: underline; }
 .gtag__x { border: 0; background: none; cursor: pointer; color: var(--muted);
   font-size: .72rem; line-height: 1; padding: .3rem .45rem; border-radius: 999px; }
-.gtag__x:hover { color: #b54848; }
+.gtag__x:hover { color: var(--danger); }
 .gtag--add { border-style: dashed; color: var(--muted); cursor: pointer; font: inherit;
   font-size: .8rem; font-weight: 600; padding: .28rem .8rem; background: none; }
 .gtag--add:hover { color: var(--gold-deep); border-color: var(--gold-bright); }
@@ -1571,13 +1614,13 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .gcomment__x { flex: none; border: 0; background: none; cursor: pointer;
   padding: 0 .1rem; line-height: 1; font-size: .8rem; color: var(--muted);
   opacity: .35; transition: opacity .15s, color .15s; }
-.gcomment:hover .gcomment__x, .gcomment__x:focus-visible { opacity: 1; color: #b54848; }
+.gcomment:hover .gcomment__x, .gcomment__x:focus-visible { opacity: 1; color: var(--danger); }
 /* A touch screen has no hover to reveal it, so there it simply stays visible. */
 @media (hover: none) { .gcomment__x { opacity: .7; } }
 
 .gcomments__note, .gcomments__empty, .gcomments__err {
   color: var(--muted); font-size: .88rem; margin: .8rem 0; }
-.gcomments__err { color: #b4342b; }
+.gcomments__err { color: var(--danger); }
 .gcomments__retry { border: 0; background: none; padding: 0; cursor: pointer;
   font: inherit; font-weight: 700; color: var(--gold-deep); text-decoration: underline; }
 
@@ -1627,7 +1670,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .thread-view { background: var(--surface); border-radius: var(--radius); padding: 1.6rem 1.8rem; box-shadow: var(--shadow-sm); max-width: 820px; }
 .thread-view h2 { color: var(--heading); font-family: var(--display); margin: 0 0 .5rem; }
 .thread-view__meta { color: var(--muted); font-size: .86rem; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
-.thread-view__meta a { color: #b54848; text-decoration: underline; }
+.thread-view__meta a { color: var(--danger); text-decoration: underline; }
 .thread-view__body { color: var(--text); margin: 1.1rem 0 1.4rem; line-height: 1.7; }
 
 /* ---------- Notification bell ---------- */
@@ -1941,8 +1984,8 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .treeed-row__act { display: flex; gap: .35rem; flex: none; }
 .treeed-row__act button { border: 1px solid var(--hairline); background: var(--bg); color: var(--heading); font-size: .74rem; font-weight: 600; border-radius: 7px; padding: .3rem .6rem; cursor: pointer; transition: all .12s; }
 .treeed-row__act button:hover { border-color: var(--gold-deep); background: var(--surface); }
-.treeed-row__act button.danger { color: #b54848; }
-.treeed-row__act button.danger:hover { border-color: #b54848; }
+.treeed-row__act button.danger { color: var(--danger); }
+.treeed-row__act button.danger:hover { border-color: var(--danger); }
 .treeed-help p { margin-bottom: .8rem; font-size: .93rem; color: var(--text); }
 
 /* ---------- Public tree: search, family menu, pulse, path ---------- */
@@ -2029,7 +2072,9 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .cal-chip--philanthropy, .cal-band--philanthropy { background: #2c6e2c; }
 .cal-chip--reunion, .cal-band--reunion { background: #7a4a9e; }
 .cal-chip--meeting, .cal-band--meeting { background: #12305F; }
-.cal-chip--social, .cal-band--social { background: #9A7628; }
+/* #9A7628 is the OLD gold-deep, retired for failing AA; white on it is 4.20:1.
+   Hardcoded rather than var(--gold-deep) because that token flips bright in dark. */
+.cal-chip--social, .cal-band--social { background: #7d5f1e; }
 .cal-more { font-size: .64rem; color: var(--muted); }
 .cal-detail { margin-top: 1.1rem; }
 .cal-detail h4 { color: var(--heading); font-family: var(--display); margin: 0 0 .6rem; }
@@ -2218,7 +2263,11 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 
 /* ---------- Alumni map ---------- */
 .alumni-map { position: relative; z-index: 0; isolation: isolate; height: 420px; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); background: var(--bg-2); } /* isolate keeps Leaflet's internal z-indexes (controls=1000) from escaping over the nav/modals */
-.alumni-map .leaflet-popup-content a { color: var(--gold-deep); text-decoration: underline; display: inline-block; padding: .1rem 0; }
+/* The Leaflet popup is white in BOTH themes, so this link cannot use
+   --gold-deep — that token goes bright in dark and read at 2.33:1 there. */
+.alumni-map .leaflet-popup-content a { color: #7d5f1e; text-decoration: underline; display: inline-block; padding: .1rem 0; }
+/* Raster OSM tiles are a bright rectangle in the middle of the black theme. */
+:root[data-theme="dark"] .alumni-map .leaflet-tile { filter: brightness(.72) invert(1) hue-rotate(180deg) saturate(.75); }
 /* fullscreen map: fills the viewport, above the nav but below brother cards (1400) */
 .alumni-map--full { position: fixed !important; inset: 0; z-index: 1300; height: 100dvh !important; width: 100vw; border-radius: 0; box-shadow: none; }
 /* fullscreen toggle button (a Leaflet control) */
@@ -2258,12 +2307,12 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .poll-opt__label { position: relative; font-weight: 600; color: var(--heading); font-size: .92rem; }
 .poll-opt__n { position: relative; color: var(--muted); font-size: .8rem; flex: none; }
 .poll-card__meta { color: var(--muted); font-size: .82rem; margin-top: .5rem; }
-.poll-card__meta a { color: #b54848; text-decoration: underline; }
+.poll-card__meta a { color: var(--danger); text-decoration: underline; }
 /* "edit" is not destructive — only "delete" should read as danger red. */
-.poll-card__meta a[data-editpoll] { color: var(--gold-deep, #A07E2D); }
-.poll-closed { color: #b54848; }
+.poll-card__meta a[data-editpoll] { color: var(--gold-deep); }
+.poll-closed { color: var(--danger); }
 /* Marks a poll you wrote, so "edit / delete" next to it is self-explanatory. */
-.poll-mine { color: var(--gold-deep, #A07E2D); font-weight: 700; }
+.poll-mine { color: var(--gold-deep); font-weight: 700; }
 
 /* ---------- Board: committee tabs + suggestion box ---------- */
 .sug-box { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1.4rem; }
@@ -2764,7 +2813,7 @@ input, select, textarea { background: var(--surface-2); }
 .tree-hintchip {
   position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
   writing-mode: vertical-rl;
-  background: rgba(var(--chrome),.85); color: #e8d9ac; font-size: .78rem;
+  background: rgba(var(--chrome),.85); color: var(--on-navy-2); font-size: .78rem;
   padding: 1.1rem .45rem; border-radius: 999px; border: 1px solid rgba(200,162,75,.35);
   pointer-events: none; z-index: 9; white-space: nowrap; max-height: calc(100% - 24px);
   overflow: hidden; text-overflow: ellipsis; transition: opacity .6s;
@@ -2805,7 +2854,7 @@ body.tree-lock { overflow: hidden; }
   margin: 1.4rem auto .2rem; padding: .75rem 2.8rem .75rem 1.2rem;
   border: 1.5px solid var(--gold); background-color: var(--paper);
   border-radius: 999px; cursor: pointer; box-shadow: var(--shadow-sm);
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23A07E2D' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23C8A24B' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 1.1rem center;
 }
 .fam-select:hover { border-color: var(--gold-deep); }
@@ -2862,8 +2911,8 @@ body.tree-lock { overflow: hidden; }
 .cal-adminrow { display: flex; gap: .5rem; margin-top: .6rem; }
 .cal-mini { border: 1.5px solid var(--navy-2); background: var(--surface-2); color: var(--heading); border-radius: 999px; padding: .3rem .9rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
 .cal-mini:hover { border-color: var(--gold-deep); }
-.cal-mini--del { border-color: #c0392b55; color: #b03a2e; }
-.cal-mini--del:hover { border-color: #b03a2e; background: #fdf0ee; }
+.cal-mini--del { border-color: #c0392b55; color: var(--danger); }
+.cal-mini--del:hover { border-color: var(--danger); background: #fdf0ee; }
 
 .evm-allday { display: flex; align-items: center; gap: .5rem; color: var(--heading); font-size: .92rem; font-weight: 600; margin: .2rem 0 .8rem; cursor: pointer; }
 .evm-allday input { width: auto; }
@@ -3291,6 +3340,9 @@ body.tree-lock { overflow: hidden; }
   --tint:      rgba(200,162,75,.12);
   --shadow:    0 20px 55px rgba(0,0,0,.75);
   --shadow-sm: 0 8px 22px rgba(0,0,0,.6);
+  --shadow-md: 0 14px 38px rgba(0,0,0,.68);
+  --danger:    #e58a80;   /* the light-mode reds read 2.8-3.5:1 on black — this is 7.2:1 */
+  --danger-bg: #b4342b;   /* fills keep the deep red so white text on them still passes */
   --scroll-track: #14110a;   /* near-black channel in dark mode; thumb stays gold */
   /* on-navy family -> gold text on the now-black navy surfaces */
   --on-navy:   #ecdcaa;
@@ -3300,13 +3352,22 @@ body.tree-lock { overflow: hidden; }
   --console-card-lo: #101010;
   --console-field:   #191919;
   --console-panel:   #1a1712;  /* subtly-warm lifted dark; ≈ old #151515 so dark barely shifts */
+  color-scheme: dark;
 }
 :root[data-theme="dark"] body { background: var(--bg); color: var(--text); }
 
 /* hard-coded surfaces the tokens can't reach */
 :root[data-theme="dark"] input,
 :root[data-theme="dark"] select,
-:root[data-theme="dark"] textarea { color: var(--text); border-color: var(--hairline); background: var(--surface-2); }
+:root[data-theme="dark"] textarea {
+  color: var(--text);
+  /* M8: the .24 hairline read at 1.46:1 — a control's only boundary needs 3:1. */
+  border-color: rgba(200,162,75,.45);
+  /* background-color, NOT the shorthand: the shorthand also resets
+     background-image, which silently deleted the chevron on every
+     appearance:none select (.fam-select, .zselect) in dark mode. */
+  background-color: var(--surface-2);
+}
 :root[data-theme="dark"] .nav__links a { color: var(--on-dark); }
 :root[data-theme="dark"] .nav__menu { background: #0d0d0d; border-color: rgba(200,162,75,.4); }
 :root[data-theme="dark"] .nav__menu a, :root[data-theme="dark"] .nav__menu button { color: var(--on-dark); }
@@ -3352,7 +3413,8 @@ body.tree-lock { overflow: hidden; }
 :root[data-theme="dark"] .ev-toggle button,
 :root[data-theme="dark"] .ev-rsvp__btn,
 :root[data-theme="dark"] .tree-controls button,
-:root[data-theme="dark"] .tree-node { border-color: rgba(200,162,75,.35); }
+:root[data-theme="dark"] .tree-node,
+:root[data-theme="dark"] .btn--navy { border-color: rgba(200,162,75,.35); }
 :root[data-theme="dark"] .tree-links path { stroke: var(--gold); opacity: .85; }
 :root[data-theme="dark"] .cal-chip--meeting { background: #2a2410; }
 :root[data-theme="dark"] .gmodal, :root[data-theme="dark"] .pmodal,
@@ -3486,12 +3548,12 @@ body.tree-lock { overflow: hidden; }
    =========================================================================== */
 .botm {
   max-width: 620px; margin: 0 auto; text-align: left;
-  background: var(--white); border: 1px solid var(--cream-2);
+  background: var(--surface); border: 1px solid var(--hairline);
   border-radius: var(--radius); padding: 1.4rem 1.4rem 1.15rem;
   box-shadow: var(--shadow-sm);
 }
 .botm__head h3 {
-  font-family: var(--display); font-size: 1.28rem; color: var(--navy);
+  font-family: var(--display); font-size: 1.28rem; color: var(--heading);
   margin: 0 0 .18rem;
 }
 .botm__meta { margin: 0 0 1rem; font-size: .86rem; color: var(--muted); }
@@ -3501,16 +3563,16 @@ body.tree-lock { overflow: hidden; }
 .botm-row {
   display: flex; align-items: center; gap: .8rem; width: 100%;
   padding: .55rem .65rem; border: 1px solid transparent; border-radius: 10px;
-  background: var(--paper); cursor: pointer; text-align: left; font: inherit;
+  background: var(--surface-2); cursor: pointer; text-align: left; font: inherit;
   transition: border-color .14s, background .14s, transform .14s;
 }
 .botm-row:hover { border-color: var(--gold); transform: translateX(2px); }
 .botm-row:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.botm-row.is-mine { border-color: var(--gold); background: var(--cream); }
+.botm-row.is-mine { border-color: var(--gold); background: var(--tint); }
 
 .botm-row__pic {
   width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none;
-  border: 2px solid var(--cream-2);
+  border: 2px solid var(--hairline);
 }
 .botm-row__pic--none {
   display: flex; align-items: center; justify-content: center;
@@ -3519,12 +3581,12 @@ body.tree-lock { overflow: hidden; }
 }
 .botm-row__body { flex: 1; min-width: 0; }
 .botm-row__name {
-  display: block; font-weight: 600; color: var(--navy); font-size: .95rem;
+  display: block; font-weight: 600; color: var(--heading); font-size: .95rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .botm-row__name em { color: var(--gold-deep); font-style: normal; font-weight: 500; font-size: .84rem; }
 .botm-row__sub { display: block; font-size: .78rem; color: var(--muted); margin-bottom: .3rem; }
-.botm-row__bar { display: block; height: 6px; border-radius: 999px; background: var(--cream-2); overflow: hidden; }
+.botm-row__bar { display: block; height: 6px; border-radius: 999px; background: var(--hairline); overflow: hidden; }
 .botm-row__bar > span { display: block; height: 100%; background: var(--gold); border-radius: 999px; transition: width .3s ease; }
 .botm-row__pct {
   flex: none; min-width: 46px; text-align: right;
@@ -3535,7 +3597,7 @@ body.tree-lock { overflow: hidden; }
 .botm__pick label { display: block; font-size: .82rem; color: var(--muted); margin-bottom: .3rem; }
 .botm__pick select {
   width: 100%; padding: .55rem .6rem; border-radius: 9px;
-  border: 1px solid var(--cream-2); background: var(--paper); color: var(--ink); font: inherit;
+  border: 1px solid var(--hairline); background: var(--surface-2); color: var(--text); font: inherit;
 }
 .botm__note { margin: .85rem 0 0; font-size: .8rem; color: var(--muted); }
 
@@ -3583,7 +3645,7 @@ body.tree-lock { overflow: hidden; }
    Edit a brother from his card (upgrade68) — shown only to the admin and to an
    officer holding members.edit.
    =========================================================================== */
-.bm__edit { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--cream-2); }
+.bm__edit { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--hairline); }
 .bm__edit-btn { width: 100%; }
 
 /* Standing badge + the active-mentor warning in the console's Mentoring tab.

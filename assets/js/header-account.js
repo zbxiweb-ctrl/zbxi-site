@@ -38,12 +38,31 @@
      login-flow leftovers. Without this the browser restores the old scroll spot
      (or jumps to #brothers-portal) and the brother lands mid-page instead of at
      the top of the site he just signed into. */
+  /* A gate sent us here with ?next=<page>; honour it so the brother lands back
+     where he was. Only a bare same-site page name passes — anything carrying a
+     scheme, a host or a leading slash is ignored rather than followed, so this
+     can never be used to bounce someone off-site. */
+  function nextTarget() {
+    try {
+      var raw = new URL(location.href).searchParams.get('next');
+      if (!raw) return null;
+      return /^[a-z0-9-]+(\.html)?(\?[a-z0-9_=&%.-]*)?$/i.test(raw) ? raw : null;
+    } catch (e) { return null; }
+  }
+
   function reloadClean() {
     try {
+      var nx = nextTarget();
+      if (nx) {
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        location.replace(nx);
+        return;
+      }
       var u = new URL(location.href);
       u.hash = '';
       u.searchParams.delete('auth');
       u.searchParams.delete('invite');
+      u.searchParams.delete('next');
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
       location.replace(u.toString());
     } catch (e) { location.reload(); }
@@ -62,8 +81,10 @@
     // Gold CTA that opens a small dropdown: Log in / Create account. On the
     // homepage each choice jumps the inline auth card straight to that mode; on
     // subpages it routes to index.html?auth=…#brothers-portal (portal.js reads it).
-    var SIGNIN = (onIndex ? '' : 'index.html?auth=signin') + '#brothers-portal';
-    var SIGNUP = (onIndex ? '' : 'index.html?auth=signup') + '#brothers-portal';
+    // Off the homepage these carry ?next=<this page>, so signing in returns the
+    // brother to the page he was actually trying to read.
+    var SIGNIN = onIndex ? '#brothers-portal' : ZBXIUtil.signInHref('signin');
+    var SIGNUP = onIndex ? '#brothers-portal' : ZBXIUtil.signInHref('signup');
     el.innerHTML =
       '<button class="btn btn--gold nav__cta nav__login-btn" id="navLoginBtn" aria-haspopup="true" aria-expanded="false">' +
         'Log In / Sign Up <span class="nav__caret">▾</span>' +

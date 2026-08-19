@@ -251,7 +251,7 @@
     window.ZBXI.listFamilyPublic().then(function (rows) {
       if (rows && rows.length) { RAW = rows; render(RAW); hydrate(); }
       else lockedRoster(); // anon gets an empty result — names are members-only
-    }).catch(function () { lockedRoster(); });
+    }).catch(function () { ZBXIUtil.loadError(gridEl, 'the brotherhood roster'); });
   } else {
     gridEl.innerHTML = '<p class="page-empty">Members area is being set up — check back soon.</p>';
   }

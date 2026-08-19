@@ -75,6 +75,13 @@
   function rsvpBar(e) {
     if (!CAN_RSVP) return '';
     var rs = rsvpsFor(e.id);
+    // A past event's headcount is history: show it, but stop taking answers.
+    // isPast keys on the END of the event, so a multi-day formal stays open
+    // for its whole run.
+    if (EVW && EVW.isPast && EVW.isPast(e)) {
+      return '<div class="ev-rsvp ev-rsvp--past"><span class="ev-rsvp__n">' + headcount(rs) + '</span>' +
+        '<small class="ev-rsvp__who">This event has passed.</small></div>';
+    }
     var mine = myRsvp(e.id);
     var names = rs.map(function (r) {
       var m = RSVP_DIR[r.user_id];
@@ -579,8 +586,9 @@
   if (!(window.ZBXI && window.ZBXI.configured)) {
     lockedCal();
   } else {
-    window.ZBXI.amApprovedBrother().then(function (ok) {
-      if (!ok) { lockedCal(); return; }
+    window.ZBXI.approvalState().then(function (state) {
+      if (state === 'error') { ZBXIUtil.loadError(calWrap, 'the chapter calendar'); return; }
+      if (state !== 'approved') { lockedCal(); return; }
       Promise.all([window.ZBXI.getUser(), window.ZBXI.eventsList(), window.ZBXI.rsvpList(), window.ZBXI.memberDirectory(),
         window.ZBXI.officerCan ? window.ZBXI.officerCan('events.manage') : Promise.resolve(false)]).then(function (res) {
         ME = res[0];

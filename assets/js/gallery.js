@@ -1283,7 +1283,13 @@
     var m = /[#&]p=([0-9a-f-]{36})/i.exec(location.hash || '');
     if (!m) return;
     var p = posts.filter(function (x) { return x.id.toLowerCase() === m[1].toLowerCase(); })[0];
-    if (!p) return;
+    // The photo is gone — deleted by its owner, or the section was cleared.
+    // Following a bell link and landing on the front door with no explanation
+    // reads as a broken site, so say what happened.
+    if (!p) {
+      if (window.ZBXIAsk) ZBXIAsk.alert({ title: 'Photo not found', body: 'That photo has been removed.' });
+      return;
+    }
     // Land in the section the photo lives in, so closing the viewer leaves the
     // brother somewhere that makes sense rather than on the front door.
     if (view !== 'tagged') { curAlbum = albumOf(p) || 'all'; view = 'grid'; renderGrid(); }
@@ -1300,8 +1306,9 @@
     if (!u) { locked('Members only', true); return; }
     isAdmin = Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail;
     canMod = isAdmin;
-    Z.amApprovedBrother().then(function (ok) {
-      if (!ok) { locked('Awaiting verification', false); return; }
+    Z.approvalState().then(function (state) {
+      if (state === 'error') { ZBXIUtil.loadError(root, 'the gallery'); return; }
+      if (state !== 'approved') { locked('Awaiting verification', false); return; }
       canPost = true;   // being an approved brother IS the permission (upgrade41)
       Promise.all([
         Z.officerCan ? Z.officerCan('gallery.moderate') : Promise.resolve(false),

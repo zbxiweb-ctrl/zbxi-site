@@ -18,8 +18,11 @@
   }
 
   gate.innerHTML = '<p class="page-empty">Loading…</p>';
-  Z.amApprovedBrother().then(function (ok) {
-    if (!ok) { lock(); return; }
+  Z.approvalState().then(function (state) {
+    // The data fetch below already says "couldn't load"; the AUTH check used to
+    // fall back to the sign-in lock instead, which lied to a signed-in brother.
+    if (state === 'error') { ZBXIUtil.loadError(gate, 'the map'); return; }
+    if (state !== 'approved') { lock(); return; }
     Z.listVerifiedDetail().then(function (rows) {
       gate.innerHTML = '';
       window.ZBXI_MEMBERS = rows || [];
@@ -31,5 +34,5 @@
     }).catch(function () {
       gate.innerHTML = '<p class="page-empty">The map couldn\'t load right now.</p>';
     });
-  }).catch(lock);
+  }).catch(function () { ZBXIUtil.loadError(gate, 'the map'); });
 })();

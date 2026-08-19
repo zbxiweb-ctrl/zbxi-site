@@ -82,6 +82,17 @@
       return null;
     },
 
+    /* ---- the industry picklist — the one definition -------------------------
+       Here for exactly the reason OPEN_TO is. It was typed out twice — the
+       profile form and the Request-a-mentor dropdown — and the two copies had
+       already drifted by one entry, so a brother who picked 'Student' on his
+       profile could not be reached by any request anyone was able to send.
+       Fixed values, because "brothers in your field" matches on the string. */
+    INDUSTRIES: ['Finance & Banking', 'Technology & Software', 'Healthcare & Medicine',
+      'Law & Government', 'Engineering', 'Education', 'Marketing & Media',
+      'Sales & Business Dev', 'Real Estate & Construction', 'Science & Research',
+      'Arts & Entertainment', 'Military & Public Service', 'Student', 'Other'],
+
     /* ---- password-recovery latch (see the block above) ---- */
     // True from the moment a reset link lands until the password is actually
     // changed — survives the hash scrub AND a full page reload.
@@ -172,7 +183,6 @@
        owes a 2FA code (a verified factor exists but hasn't been used yet).
        MFA challenge/verify are NOT the password endpoint, so Turnstile captcha
        does not apply to them. */
-    mfaListFactors: function () { return client.auth.mfa.listFactors(); },
     mfaVerifiedTotp: function () {
       return client.auth.mfa.listFactors().then(function (r) {
         var list = (r.data && (r.data.totp || r.data.all)) || [];
@@ -369,19 +379,34 @@
         return self._signPhotos(d);
       });
     },
-    // Is the currently signed-in user an approved (verified) brother? (cached)
-    amApprovedBrother: function () {
-      if (!configured) return Promise.resolve(false);
-      if (this._approvedCache !== undefined) return Promise.resolve(this._approvedCache);
+    /* Is the currently signed-in user an approved (verified) brother? (cached)
+
+       TWO methods on purpose. A page that draws a "Members only" lock has to be
+       able to tell a refusal from a failure, so approvalState() answers with one
+       of 'approved' / 'no' / 'error' — telling a signed-in brother he is not one
+       because his wifi dropped is the bug this exists to prevent. Callers that
+       merely decide whether to show member extras have no gate to get wrong and
+       are right to read an error as a no, so amApprovedBrother() stays and hands
+       them the plain boolean it always did.
+
+       The answer is remembered for the page's life, but NEVER on the error path:
+       a retry has to be able to succeed. */
+    approvalState: function () {
+      if (!configured) return Promise.resolve('no');
+      if (this._approvedCache !== undefined) return Promise.resolve(this._approvedCache ? 'approved' : 'no');
       var self = this;
       return this.getUser().then(function (u) {
-        if (!u) { self._approvedCache = false; return false; }
+        if (!u) { self._approvedCache = false; return 'no'; }
         // The admin always counts as an approved viewer.
-        if (self.adminEmail && (u.email || '').toLowerCase() === self.adminEmail) { self._approvedCache = true; return true; }
+        if (self.adminEmail && (u.email || '').toLowerCase() === self.adminEmail) { self._approvedCache = true; return 'approved'; }
         return self.myProfile(u.id).then(function (p) {
-          self._approvedCache = !!(p && p.status === 'verified'); return self._approvedCache;
+          self._approvedCache = !!(p && p.status === 'verified');
+          return self._approvedCache ? 'approved' : 'no';
         });
-      }).catch(function () { return false; });
+      })['catch'](function () { return 'error'; });
+    },
+    amApprovedBrother: function () {
+      return this.approvalState().then(function (state) { return state === 'approved'; });
     },
     // The signed-in user's own row (may be pending)
     myProfile: function (userId) {
@@ -904,9 +929,6 @@
     },
     fundGiftAdd: function (row) {
       return client.from('fund_gifts').insert(row).select().single();
-    },
-    fundGiftUpdate: function (id, patch) {
-      return client.from('fund_gifts').update(patch).eq('id', id).select();
     },
     fundGiftDelete: function (id) {
       return client.from('fund_gifts').delete().eq('id', id).select();

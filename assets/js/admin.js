@@ -12,7 +12,7 @@
     return;
   }
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   function initials(name) { return String(name || '').replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(-2).map(function (s) { return s[0]; }).join('').toUpperCase() || 'ΖΒΞ'; }
 
   /* ---------------- auth gate ---------------- */
@@ -146,15 +146,7 @@
   // or is inferred from the pledge class year + 4.
   var _now = new Date();
   var CUTOFF = _now.getFullYear() + (_now.getMonth() >= 5 ? 1 : 0);
-  function pledgeYear(cls) {
-    if (!cls) return null;
-    var m4 = cls.match(/(19|20)\d{2}/);
-    if (m4) return parseInt(m4[0], 10);
-    var m2 = cls.match(/'(\d{2})/);
-    if (!m2) return null;
-    var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
-  }
+  var pledgeYear = ZBXIUtil.pledgeYear;
   function statusChip(b) {
     var grad = b.grad_year || (pledgeYear(b.pledge_class) != null ? pledgeYear(b.pledge_class) + 4 : null);
     var isActive = b.standing ? b.standing === 'active' : (grad != null && grad >= CUTOFF);
@@ -191,7 +183,11 @@
                   var count = (BRO_TABS.indexOf(t.id) !== -1 || t.count)
                     ? '<span class="tab-count" data-count="' + t.id + '"' + (t.count ? ' style="display:none"' : '') + '>' + (t.count ? '' : '…') + '</span>'
                     : '';
-                  return '<button data-tab="' + t.id + '" class="admin-navbtn ' + (state.tab === t.id ? 'on' : '') + '">' +
+                  // The gold highlight is a colour; aria-current is the same fact
+                  // said out loud, so a screen reader knows which section is open.
+                  var here = state.tab === t.id;
+                  return '<button data-tab="' + t.id + '" class="admin-navbtn ' + (here ? 'on' : '') + '"' +
+                    (here ? ' aria-current="page"' : '') + '>' +
                     '<i>' + t.ic + '</i><span>' + esc(t.label) + '</span>' + count + '</button>';
                 }).join('') +
               '</div>';
@@ -214,7 +210,10 @@
 
     var side = root.querySelector('.admin-side');
     var burger = document.getElementById('sideBurger');
-    burger.onclick = function () { side.classList.toggle('open'); };
+    burger.setAttribute('aria-expanded', 'false');
+    burger.onclick = function () {
+      burger.setAttribute('aria-expanded', String(side.classList.toggle('open')));
+    };
 
     document.getElementById('tabs').querySelectorAll('[data-tab]').forEach(function (b) {
       b.onclick = function () {
@@ -222,6 +221,7 @@
         state.q = ''; clearSearchBox();                    // a search is per-tab; don't carry it across
         history.replaceState(null, '', '#' + state.tab);   // keeps deep-links honest + shareable
         side.classList.remove('open');                     // close the drawer on phones
+        burger.setAttribute('aria-expanded', 'false');
         slimMasthead();                                    // ceremony on entry, efficiency once working
         syncTabs(); renderList();
       };
@@ -231,6 +231,7 @@
       var t = tabFromHash();
       if (t === state.tab) return;
       state.tab = t; state.q = ''; clearSearchBox(); side.classList.remove('open'); slimMasthead(); syncTabs(); renderList();
+      burger.setAttribute('aria-expanded', 'false');
     });
     var srch = document.getElementById('adminSearch');
     srch.oninput = function () { state.q = srch.value.toLowerCase(); renderList(); };
@@ -248,7 +249,9 @@
 
   function syncTabs() {
     document.querySelectorAll('#tabs [data-tab]').forEach(function (b) {
-      b.classList.toggle('on', b.dataset.tab === state.tab);
+      var here = b.dataset.tab === state.tab;
+      b.classList.toggle('on', here);
+      if (here) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     // Mirror the open section into the page heading (the sidebar is the nav now).
     var t = ALL_TAB_IDS.indexOf(state.tab) !== -1
@@ -322,7 +325,7 @@
   // a family card — so a missing big isn't a blank field, it's a fake family line
   // on a page brothers actually read. The 1993 founders ARE roots, legitimately;
   // flagging them would be 13 permanent false alarms in the worklist.
-  // classYear (not pledgeYear) because it is the null-safe one of the two.
+  // classYear and pledgeYear are the same shared parse; either name reads fine here.
   function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
 
   // Instant scroll. html{scroll-behavior:smooth} is site-wide and animates every
@@ -994,6 +997,28 @@
       }).join('') : '<p class="admin-empty">No events yet — add the first one.</p>';
 
       q.innerHTML = annCard + '<p style="margin:0 0 1rem"><button class="btn btn--gold" id="evNew">+ New event</button></p>' + list;
+
+      // The banner card used to render its buttons and wire nothing to them, so the
+      // only way to change the live banner was raw SQL — on a console whose whole
+      // promise is buttons, never code. Same shape as the fund tab's Save / Hide.
+      function saveAnn(active) {
+        var st = document.getElementById('annStatus');
+        var text = document.getElementById('annText').value.trim();
+        var link = document.getElementById('annLink').value.trim();
+        if (active && !text) {
+          st.className = 'form-status err'; st.textContent = 'Type a message before the banner can go up.'; return;
+        }
+        st.className = 'form-status'; st.textContent = 'Saving…';
+        Z.setSetting('announcement', { text: text, link: link || null, active: active })
+          .then(function (r) { if (r && r.error) throw r.error; renderEventsTab(q); })
+          ['catch'](function (e) {
+            st.className = 'form-status err'; st.textContent = (e && e.message) || 'That did not save.';
+          });
+      }
+      document.getElementById('annShow').onclick = function () { saveAnn(true); };
+      var annHide = document.getElementById('annHide');
+      if (annHide) annHide.onclick = function () { saveAnn(false); };
+
       document.getElementById('evNew').onclick = function () { openEventEdit(null); };
 
       q.querySelectorAll('[data-ev]').forEach(function (el) {
@@ -2123,17 +2148,9 @@
   var SEASON_ORD = { Spring: 1, Summer: 2, Fall: 3, Winter: 4 };
   var CLASS_CANON = /^[A-Z][A-Za-z]*( [A-Za-z]+)* · (Spring|Summer|Fall|Winter) ('\d{2}|(?:19|20)\d{2})$/;
 
-  // Mirrors pledgeYear() in brothers-page.js — the roster splits Active/Alumni on
-  // this same parse, which is exactly why a malformed class misfiles a brother.
-  function classYear(cls) {
-    var s = String(cls || '');
-    var m4 = s.match(/(19|20)\d{2}/);
-    if (m4) return parseInt(m4[0], 10);
-    var m2 = s.match(/'(\d{2})/);
-    if (!m2) return null;
-    var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
-  }
+  // The roster splits Active/Alumni on this same parse, which is exactly why a
+  // malformed class misfiles a brother — so both names share one implementation.
+  var classYear = ZBXIUtil.pledgeYear;
   function classSeason(cls) {
     var m = String(cls || '').match(/(Spring|Summer|Fall|Winter)/i);
     return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : null;

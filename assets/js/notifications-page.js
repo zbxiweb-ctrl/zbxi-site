@@ -12,7 +12,7 @@
   function locked(msg, body, needSignin) {
     root.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔔 <b>' + msg + '</b>' +
       '<span>' + body + '</span>' +
-      (needSignin ? '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a>' : '') +
+      (needSignin ? '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref('signin') + '">Log In / Sign Up</a>' : '') +
       '</div>';
   }
 
@@ -22,7 +22,7 @@
   }
 
   var N = window.ZBXINotify;
-  var esc = N.esc;
+  var esc = ZBXIUtil.esc;
   var me = null, rows = [];
 
   /* ---------- day grouping ---------- */
@@ -200,10 +200,23 @@
     var m = /[#&]n=([0-9a-f-]+)/i.exec(location.hash);
     if (!m) return;
     var el = document.getElementById('n-' + m[1]);
-    if (!el) return;
+    // The row is gone — dismissed here, cleared from another tab, or aged out of
+    // the 90-day window. Tapping a bell link and having the page do absolutely
+    // nothing reads as a broken link, so say what happened.
+    if (!el) { notifyGone(); return; }
     el.scrollIntoView({ block: 'center' });
     el.classList.add('ntf__row--flash');
     setTimeout(function () { el.classList.remove('ntf__row--flash'); }, 2200);
+  }
+
+  function notifyGone() {
+    var box = root.querySelector('.ntf');
+    if (!box || document.getElementById('notifGone')) return;
+    var p = document.createElement('p');
+    p.className = 'ntf__note';
+    p.id = 'notifGone';
+    p.textContent = 'That notification is no longer available.';
+    box.insertBefore(p, box.firstChild);
   }
 
   Z.getUser().then(function (u) {

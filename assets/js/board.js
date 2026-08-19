@@ -374,7 +374,7 @@
         '<p><b>Gold = new.</b> A gold dot or count means there\'s activity you haven\'t seen yet. It clears when you open the thread.</p>' +
         '<p><b>🗳️ Polls.</b> Vote once per poll; you can change your vote until it closes.</p>' +
         '<p><b>🔒 Locked spaces</b> are private committee rooms — you only see the ones you belong to.</p>' +
-        '<p><b>💡 Suggestion box</b> (bottom of the page) goes straight to the webmaster — you\'ll get a 🔔 when he responds.</p>' +
+        '<p><b>💡 Suggestion box</b> (bottom of the page) goes straight to chapter leadership — you\'ll get a 🔔 when they respond.</p>' +
         '</div></div>';
       document.body.appendChild(wrap);
       wrap.addEventListener('click', function (e) { if (e.target === wrap || e.target.closest('[data-x]')) wrap.remove(); });
@@ -564,7 +564,7 @@
     state.thread = null;
     root.innerHTML = '<div class="board-main">' +
         bhead('bspaceBack', 'All spaces',
-          '<div class="gsechead"><h3>💡 Suggestion box</h3><span>Straight to the webmaster</span></div>') +
+          '<div class="gsechead"><h3>💡 Suggestion box</h3><span>Straight to chapter leadership</span></div>') +
         suggestionCard() +
       '</div>';
     wireTabs();
@@ -575,7 +575,7 @@
   var MY_SUGS = null;
   function suggestionCard() {
     return '<div class="sug-box" id="sugBox">' +
-      '<div class="sug-box__head"><b>💡 Suggestion box</b><span>Tell the webmaster what would make this site better.</span></div>' +
+      '<div class="sug-box__head"><b>💡 Suggestion box</b><span>Tell chapter leadership what would make this site better.</span></div>' +
       '<form class="gcompose" id="sugForm"><input id="sugInput" placeholder="Your idea…" maxlength="600"><button class="btn btn--navy" type="submit">Send</button></form>' +
       '<div id="sugMine"></div></div>';
   }
@@ -907,14 +907,20 @@
     if (Z.officerCan) {
       Z.officerCan('polls.moderate').then(function (can) { canModPolls = isAdmin || !!can; });
     }
-    Z.amApprovedBrother().then(function (ok) {
-      if (!ok) { locked('Awaiting verification', false); return; }
+    Z.approvalState().then(function (state) {
+      // Keep the genuine "pending" message for a real refusal; a failed request
+      // must never tell a verified brother he is awaiting verification.
+      if (state === 'error') { ZBXIUtil.loadError(root, 'the board'); return; }
+      if (state !== 'approved') { locked('Awaiting verification', false); return; }
       if (!root.querySelector('.sk')) root.innerHTML = boardSkeleton();  // unless already painted below
       loadAll().then(function () {
         // Deep links: #thread=<id> (notifications), #compose=<title> (class pages)
         var m = location.hash.match(/thread=([\w-]+)/);
         var t = m && threads.filter(function (x) { return x.id === m[1]; })[0];
         if (t) { renderThread(t); return; }
+        // A thread id was asked for and no longer exists: fall back to the
+        // spaces list, but explain why rather than silently ignoring the link.
+        if (m && window.ZBXIAsk) ZBXIAsk.alert({ title: 'Thread not found', body: 'That thread has been removed.' });
         var cm = location.hash.match(/compose=([^&]+)/);
         if (cm) {
           var title = decodeURIComponent(cm[1]);

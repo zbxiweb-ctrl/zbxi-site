@@ -22,9 +22,9 @@
   var Z = window.ZBXI;
   var root = document.getElementById('officerRoot');
   if (!root) return;
-  if (!Z || !Z.configured) { root.innerHTML = '<div class="admin-msg"><h2>Not configured</h2><p>The site backend isn’t reachable right now.</p></div>'; return; }
+  if (!Z || !Z.configured) { root.innerHTML = '<div class="admin-msg"><h1>Not configured</h1><p>The site backend isn’t reachable right now.</p></div>'; return; }
 
-  function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+  var esc = ZBXIUtil.esc;
   // "Jul 3, 2026 · 2:14 PM" — compact date + time for console rows.
   function stamp(ts) {
     if (!ts) return '';
@@ -44,20 +44,11 @@
      class into a permanent 12-item false alarm, which is exactly what the first
      version of this card did.
 
-     classYear + needsBig are lifted verbatim from admin.js (which has had the
-     rule right since it was written) rather than re-derived, so the two consoles
-     can never disagree about what "needs a big" means. */
-  function classYear(cls) {
-    var s = String(cls || '');
-    var m4 = s.match(/(19|20)\d{2}/);
-    if (m4) return parseInt(m4[0], 10);
-    var m2 = s.match(/'(\d{2})/);
-    if (!m2) return null;
-    var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
-  }
-  function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
-  function msg(title, body) { return '<div class="admin-msg"><h2>' + esc(title) + '</h2><p>' + body + '</p></div>'; }
+     needsBig follows the rule admin.js has had right since it was written,
+     over the shared pledge-year reader, so the two consoles can never disagree
+     about what "needs a big" means. */
+  function needsBig(b) { return !b.big_id && (ZBXIUtil.pledgeYear(b.pledge_class) || 9999) > 1993; }
+  function msg(title, body) { return '<div class="admin-msg"><h1>' + esc(title) + '</h1><p>' + body + '</p></div>'; }
 
   // The Core tools, in the order they appear in the rail. `perm` is the grant
   // key; `render` is this console's own copy of the editor. Approvals leads —
@@ -117,7 +108,7 @@
       '</div>';
   }
 
-  var state = { seat: null, seatLabel: '', grants: {}, tools: [], tab: null, events: [], verified: [] };
+  var state = { seat: null, seatLabel: '', isAdmin: false, grants: {}, tools: [], tab: null, events: [], verified: [] };
 
   /* ---------------- boot ---------------- */
   Z.getUser().then(function (u) {
@@ -130,6 +121,17 @@
       state.myName = (dir[u.id] && dir[u.id].full_name) || (u.email || '').split('@')[0];
       state.seatLabel = state.seat === 'alumni_president' ? 'Alumni President' : '';
       grants.forEach(function (g) { if (g.seat === state.seat && g.enabled) state.grants[g.permission] = true; });
+      /* The webmaster holds the whole console. He is the man an officer asks when
+         something here doesn't behave, and until now the gate sent him to the "ask
+         the webmaster to set your title" card — i.e. to himself. This grants him
+         nothing new: every verb behind these tools already reads is_admin() OR
+         officer_can(...), so the database has always let him through and only this
+         screen did not. */
+      if (Z.adminEmail && (u.email || '').toLowerCase() === Z.adminEmail) {
+        state.isAdmin = true;
+        if (!state.seat) { state.seat = 'admin'; state.seatLabel = 'Webmaster'; }
+        TOOLS.forEach(function (t) { state.grants[t.perm] = true; });
+      }
       state.tools = TOOLS.filter(function (t) { return state.grants[t.perm]; });
       renderConsole();
     });
@@ -177,7 +179,10 @@
         '<div class="admin-main">' +
           '<div class="admin-head">' +
             '<div><h2 id="officerTitle">Chapter Tools</h2>' +
-            '<span class="admin-head__sub">Signed in as ' + esc(state.seatLabel) + ' — you can only see the tools the webmaster has enabled for you.</span></div>' +
+            '<span class="admin-head__sub">Signed in as ' + esc(state.seatLabel) + ' — ' +
+            (state.isAdmin
+              ? 'you hold every tool here. An officer sees only the ones you have switched on for him.'
+              : 'you can only see the tools the webmaster has enabled for you.') + '</span></div>' +
           '</div>' +
           '<div id="q">Loading…</div>' +
         '</div>' +
@@ -348,7 +353,7 @@
     // a count it cannot get, and "…" would just look like something failed to load.
     if (have.albums) setMeta('albums', 'On the gallery page →');
     if (have.polls) setMeta('polls', 'On the Board →');
-    if (have.eboards) setMeta('eboards', 'On the boards page →');
+    if (have.eboards) setMeta('eboards', 'On the Executive Boards page →');
   }
 
   /* ================= APPROVALS (upgrade44) =================================

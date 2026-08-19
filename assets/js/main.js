@@ -47,8 +47,9 @@
     if (!(window.ZBXI && window.ZBXI.configured)) {
       teaserCta('The private gallery opens with the members area.');
     } else {
-      window.ZBXI.amApprovedBrother().then(function (ok) {
-        if (!ok) { teaserCta('Sign in as a verified brother to see photos shared by the brotherhood.'); return; }
+      window.ZBXI.approvalState().then(function (state) {
+        if (state === 'error') { teaserCta('The gallery couldn’t load right now — try refreshing.'); return; }
+        if (state !== 'approved') { teaserCta('Sign in as a verified brother to see photos shared by the brotherhood.'); return; }
         window.ZBXI.galleryList().then(function (posts) {
           posts = (posts || []).slice(0, 6);
           if (!posts.length) { teaserCta('No posts yet — be the first to share a memory.'); return; }
@@ -111,8 +112,8 @@
     if (!(window.ZBXI && window.ZBXI.configured)) {
       homeTeasersLocked();
     } else {
-      window.ZBXI.amApprovedBrother().then(function (ok) {
-        if (!ok) { homeTeasersLocked(); return; }
+      window.ZBXI.approvalState().then(function (state) {
+        if (state !== 'approved') { homeTeasersLocked(); return; }
         window.ZBXI.listVerifiedDetail().then(function (rows) {
           rows = rows || [];
           var mentors = rows.filter(function (b) { return (b.open_to || []).indexOf('mentor') !== -1; });

@@ -51,7 +51,6 @@
     btn.type = 'button';
     btn.className = 'pw-peek';
     btn.innerHTML = ROOSTER;                     // SVG, not the 🐓 emoji — see note above
-    btn.tabIndex = -1;                           // don't trap keyboard users tabbing through the form
     btn.setAttribute('aria-label', 'Hold to show password');
     btn.title = 'Hold to show password';
     wrap.appendChild(btn);
@@ -63,6 +62,14 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
       btn.addEventListener(ev, hide);
     });
+    // The keyboard half of "hold it". The button is a real tab stop and stays
+    // type="button", so Space/Enter reveal the password without ever submitting
+    // the form around it; preventDefault also stops Space scrolling the page.
+    // Key repeat just re-runs show(), which is harmless.
+    function isHold(e) { return e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter'; }
+    btn.addEventListener('keydown', function (e) { if (isHold(e)) show(e); });
+    btn.addEventListener('keyup', function (e) { if (isHold(e)) hide(); });
+    btn.addEventListener('blur', hide);          // tabbing onward re-hides it
     window.addEventListener('blur', hide);       // never leave a password exposed on tab-away
   }
 

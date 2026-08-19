@@ -248,12 +248,13 @@
   }
 
   gate.innerHTML = '<p class="page-empty">Loading…</p>';
-  Z.amApprovedBrother().then(function (ok) {
-    if (!ok) { lock(); return; }
+  Z.approvalState().then(function (state) {
+    if (state === 'error') { ZBXIUtil.loadError(gate, 'the mentoring lists'); return; }
+    if (state !== 'approved') { lock(); return; }
     Z.listVerifiedDetail().then(function (rows) {
       renderFinder(rows);
     }).catch(function () {
       gate.innerHTML = '<p class="page-empty">The Mentoring lists couldn\'t load right now.</p>';
     });
-  }).catch(lock);
+  }).catch(function () { ZBXIUtil.loadError(gate, 'the mentoring lists'); });
 })();

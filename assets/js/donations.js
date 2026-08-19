@@ -154,8 +154,9 @@
     return;
   }
 
-  Z.amApprovedBrother().then(function (ok) {
-    if (!ok) return lockedOut();
+  Z.approvalState().then(function (state) {
+    if (state === 'error') return ZBXIUtil.loadError(root, 'the alumni fund');
+    if (state !== 'approved') return lockedOut();
     return Z.donationsGet().then(function (d) {
       // No row means RLS refused us, not that the fund is unset.
       if (!d) return lockedOut();
@@ -168,5 +169,5 @@
         (d.goal_cents && Z.fundTotals ? Z.fundTotals() : Promise.resolve(null))['catch'](function () { return null; })
       ]).then(function (res) { render(d, res[0] || [], res[1]); });
     });
-  })['catch'](function () { lockedOut(); });
+  })['catch'](function () { ZBXIUtil.loadError(root, 'the alumni fund'); });
 })();

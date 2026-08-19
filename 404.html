@@ -10,8 +10,9 @@
   <script>try{var _t=localStorage.getItem("zbxi-theme")||"light";document.documentElement.dataset.theme=_t;}catch(e){}</script>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
-<body class="page-body" style="background:var(--navy-deep)">
-  <main style="min-height:100svh;display:grid;place-items:center;text-align:center;padding:2rem">
+<body class="page-body navy-body" style="background:var(--navy-deep)">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <main id="main" tabindex="-1" style="min-height:100svh;display:grid;place-items:center;text-align:center;padding:2rem">
     <div>
       <img src="assets/img/blue-crest.webp" width="832" height="1248" alt="Zeta Beta Xi crest" style="width:min(240px,60vw);margin:0 auto 1.5rem;filter:drop-shadow(0 14px 34px rgba(0,0,0,.5));mix-blend-mode:screen" />
       <p class="eyebrow" style="color:var(--gold-bright)">404 · Page not found</p>
@@ -25,7 +26,8 @@
       </div>
     </div>
   </main>
-  <script src="/assets/js/theme-toggle.js"></script>
-  <script src="/assets/js/a11y.js"></script>
+  <script defer src="/assets/js/zbxi-util.js"></script>
+  <script defer src="/assets/js/theme-toggle.js"></script>
+  <script defer src="/assets/js/a11y.js"></script>
 </body>
 </html>

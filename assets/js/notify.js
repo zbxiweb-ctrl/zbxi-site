@@ -39,7 +39,7 @@
       case 'suggestion':  return { ic: '💡', text: '<b>' + esc(p.actor || 'A brother') + '</b> dropped a suggestion: “' + esc(p.text || '') + '”', href: 'admin.html#suggest' };
       // deep-link straight to the queue — landing on the default tab made the request look missing
       case 'title_request': return { ic: '🏅', text: '<b>' + esc(p.actor || 'A brother') + '</b> requested the title <b>' + esc(p.title || '') + ' · ' + esc(p.term || '') + '</b>', href: 'admin.html#titles' };
-      case 'suggestion_reply': return { ic: '💡', text: 'The webmaster replied to your suggestion: “' + esc(p.text || '') + '”', href: 'board.html' };
+      case 'suggestion_reply': return { ic: '💡', text: 'Chapter leadership replied to your suggestion: “' + esc(p.text || '') + '”', href: 'board.html' };
       // These two used to be bare mailto: links. On a machine with no mail
       // handler registered a mailto: click does literally nothing — which is
       // exactly the "tap to email him back does nothing" report. Both now land
@@ -62,6 +62,10 @@
   function badge() {
     var b = wrap && wrap.querySelector('.bell__badge');
     if (!b) return;
+    // The button's aria-label REPLACES its contents for a screen reader, so the
+    // count has to be spoken here or it is never announced at all.
+    var btn = wrap.querySelector('.bell__btn');
+    if (btn) btn.setAttribute('aria-label', unread ? 'Notifications, ' + unread + ' unread' : 'Notifications, none unread');
     b.style.display = unread ? '' : 'none';
     b.textContent = unread > 9 ? '9+' : unread;
   }
@@ -100,7 +104,7 @@
     wrap.className = 'bell';
     wrap.id = 'notifBell';
     wrap.innerHTML =
-      '<button class="bell__btn" aria-label="Notifications">🔔<span class="bell__badge" style="display:none"></span></button>' +
+      '<button class="bell__btn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">🔔<span class="bell__badge" style="display:none"></span></button>' +
       '<div class="bell__menu"><div class="bell__head">Notifications</div><div class="bell__list"></div>' +
       '<a class="bell__all" href="notifications.html">See all notifications →</a></div>';
     // Nav order must read: 🔔 bell → 🌙 theme toggle → profile chip. header-account.js
