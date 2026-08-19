@@ -351,11 +351,15 @@
 
     root.querySelector('[data-delboard]').onclick = function () {
       var n = seatsOf(b.id).length;
-      if (!confirm('Delete the ' + termLabel(b) + ' board?' +
-          (n ? '\n\nThe ' + n + ' position' + (n === 1 ? '' : 's') +
-               ' on it stay on the brothers\' records — they just stop belonging to a board.' : ''))) return;
-      st.className = 'form-status'; st.textContent = 'Deleting…';
-      Z.eboardDelete(b.id).then(function () { load().then(renderList); })['catch'](fail);
+      ZBXIAsk.confirm({
+        title: 'Delete the ' + termLabel(b) + ' board?',
+        body: n ? 'The ' + n + ' position' + (n === 1 ? '' : 's') +
+              ' on it stay on the brothers’ records — they just stop belonging to a board.' : '',
+        ok: 'Delete board', danger: true
+      }, function () {
+        st.className = 'form-status'; st.textContent = 'Deleting…';
+        Z.eboardDelete(b.id).then(function () { load().then(renderList); })['catch'](fail);
+      });
     };
 
     root.querySelectorAll('[data-delseat]').forEach(function (a) {
@@ -363,10 +367,15 @@
         e.preventDefault();
         var seat = SEATS.filter(function (s) { return s.id === a.dataset.delseat; })[0];
         var bro = seat && broOf(seat);
-        if (!seat || !confirm('Remove ' + (bro ? bro.full_name : 'this brother') + ' as ' +
-            seat.title + '?\n\nThis deletes the position from his record too.')) return;
-        st.className = 'form-status'; st.textContent = 'Removing…';
-        Z.eboardSeatRemove(seat.id).then(done)['catch'](fail);
+        if (!seat) return;
+        ZBXIAsk.confirm({
+          title: 'Remove ' + (bro ? bro.full_name : 'this brother') + ' as ' + seat.title + '?',
+          body: 'This deletes the position from his record too.',
+          ok: 'Remove', danger: true
+        }, function () {
+          st.className = 'form-status'; st.textContent = 'Removing…';
+          Z.eboardSeatRemove(seat.id).then(done)['catch'](fail);
+        });
       };
     });
   }

@@ -431,12 +431,12 @@
 
     h(resetNote + banner +
       '<div class="portal-tabs">' +
-        '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin">Log in</button>' +
-        '<button class="' + (signup ? 'on' : '') + '" data-tab="signup">Sign up</button>' +
+        '<button class="' + (!signup ? 'on' : '') + '" data-tab="signin" aria-pressed="' + (!signup) + '">Log in</button>' +
+        '<button class="' + (signup ? 'on' : '') + '" data-tab="signup" aria-pressed="' + (!!signup) + '">Create account</button>' +
       '</div>' +
       '<form id="authForm" novalidate>' +
-        '<div class="field"><label>Email</label><input type="email" name="email" required' + emailVal + '></div>' +
-        '<div class="field"><label>Password</label><input type="password" name="password" minlength="8" required placeholder="8+ characters"' + (inv ? ' autofocus' : '') + '></div>' +
+        '<div class="field"><label>Email</label><input type="email" name="email" autocomplete="email" required' + emailVal + '></div>' +
+        '<div class="field"><label>Password</label><input type="password" name="password" autocomplete="' + (signup ? 'new-password' : 'current-password') + '" minlength="8" required placeholder="8+ characters"' + (inv ? ' autofocus' : '') + '></div>' +
         (signup && inv ? '' : '<div class="ts-holder" id="tsAuth"></div>') +   // invited claim is token-gated; no visible captcha
         '<button class="btn btn--navy" style="width:100%" type="submit">' + (signup ? 'Create account' : 'Log in') + '</button>' +
         '<p class="form-status" id="authStatus" role="status"></p>' +
@@ -649,11 +649,11 @@
       if (factor) {
         // ON: to turn it off, prove possession of the authenticator with a live code.
         box.innerHTML =
-          '<p class="mfa-on">✅ Two-factor is <b>on</b>. You\'ll enter a code from your authenticator app each time you log in.</p>' +
+          '<p class="mfa-on">✅ Two-step verification is <b>on</b>. You\'ll enter a code from your authenticator app each time you log in.</p>' +
           '<form id="mfaOffForm" novalidate>' +
             '<div class="field"><label>Enter a current code to turn it off</label>' +
               '<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456"></div>' +
-            '<button class="btn btn--ghost-danger" type="submit">Turn off two-factor</button>' +
+            '<button class="btn btn--ghost-danger" type="submit">Turn off two-step verification</button>' +
             '<p class="form-status" id="mfaOffStatus" role="status"></p>' +
           '</form>' +
           '<p class="form-note" style="margin:.6rem 0 0">Lost your authenticator? Ask the webmaster to reset it for you.</p>';
@@ -676,12 +676,12 @@
         // OFF: offer set-up.
         box.innerHTML =
           '<p class="form-note">Add a second step at login with an authenticator app (Google Authenticator, Authy, 1Password, and the like). Even if someone learns your password, they can\'t get in without your phone.</p>' +
-          '<button class="btn btn--navy" id="mfaSetupBtn" type="button">Set up two-factor</button>' +
+          '<button class="btn btn--navy" id="mfaSetupBtn" type="button">Set up two-step verification</button>' +
           '<p class="form-status" id="mfaSetupStatus" role="status"></p>';
         box.querySelector('#mfaSetupBtn').onclick = function () { startMfaEnroll(box); };
       }
     }).catch(function () {
-      box.innerHTML = '<p class="form-status err">Could not load two-factor settings — refresh and try again.</p>';
+      box.innerHTML = '<p class="form-status err">Could not load two-step verification settings — refresh and try again.</p>';
     });
   }
 
@@ -692,12 +692,12 @@
       var d = r.data || {}, factorId = d.id, qr = d.totp && d.totp.qr_code, secret = d.totp && d.totp.secret;
       box.innerHTML =
         '<p class="form-note"><b>1.</b> Scan this with your authenticator app (or type the key by hand), then <b>2.</b> enter the 6-digit code it shows.</p>' +
-        (qr ? '<div class="mfa-qr"><img alt="Two-factor QR code" src="' + esc(qr) + '"></div>' : '') +
+        (qr ? '<div class="mfa-qr"><img alt="Two-step verification QR code" src="' + esc(qr) + '"></div>' : '') +
         (secret ? '<p class="mfa-secret">Manual key: <code>' + esc(secret) + '</code></p>' : '') +
         '<form id="mfaEnrollForm" novalidate>' +
           '<div class="field"><label>6-digit code</label>' +
             '<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="123456" autofocus></div>' +
-          '<button class="btn btn--navy" type="submit">Turn on two-factor</button> ' +
+          '<button class="btn btn--navy" type="submit">Turn on two-step verification</button> ' +
           '<button class="btn btn--ghost" id="mfaEnrollCancel" type="button">Cancel</button>' +
           '<p class="form-status" id="mfaEnrollStatus" role="status"></p>' +
         '</form>';
@@ -711,7 +711,7 @@
           if (r2.error) { st.className = 'form-status err'; st.textContent = 'That code isn\'t right — check the app and try again.'; btn.disabled = false; return; }
           renderTwoFactor(box);
         }).catch(function (err) {
-          st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not turn on two-factor.'; btn.disabled = false;
+          st.className = 'form-status err'; st.textContent = (err && err.message) || 'Could not turn on two-step verification.'; btn.disabled = false;
         });
       };
     }).catch(function (err) {
@@ -1288,7 +1288,7 @@
           '<button class="btn btn--navy" type="submit">Update password</button>' +
           '<p class="form-status" id="pwStatus" role="status"></p>' +
         '</form></div>' +
-      '<div class="acct-block"><h4>🔐 Two-factor authentication</h4>' +
+      '<div class="acct-block"><h4>🔐 Two-step verification</h4>' +
         '<div id="mfa2fa"><p class="form-note">Checking…</p></div></div>' +
       '<div class="acct-block acct-block--danger"><h4>Family tree link</h4>' +
         (inTree

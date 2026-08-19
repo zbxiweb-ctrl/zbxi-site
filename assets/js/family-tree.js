@@ -402,6 +402,43 @@
     if (e.key === 'Escape' && shell && shell.classList.contains('tree-shell--full')) setFull(false);
   });
 
+  /* Keyboard access to the canvas.
+
+     Tab already moves between brothers, because every node is a real button —
+     but the canvas moves by CSS transform inside a fixed-height viewport, and
+     the browser cannot scroll a transform to follow focus. So focus kept
+     walking off-screen with nothing visibly happening. Two fixes: pull a
+     newly-focused node into view, and let the arrows pan the canvas directly. */
+  viewport.addEventListener('focusin', function (e) {
+    var el = e.target && e.target.closest ? e.target.closest('.tree-node') : null;
+    if (!el || !currentLayout) return;
+    var n = currentLayout.byId[el.getAttribute('data-id')];
+    if (!n) return;
+    var vw = viewport.clientWidth, vh = viewport.clientHeight, pad = 28;
+    var x = n._x * scale + tx, y = n._y * scale + ty;
+    var w = NODE_W * scale, h = NODE_H * scale;
+    var nx = tx, ny = ty;
+    if (x < pad) nx = tx + (pad - x);
+    else if (x + w > vw - pad) nx = tx - (x + w - (vw - pad));
+    if (y < pad) ny = ty + (pad - y);
+    else if (y + h > vh - pad) ny = ty - (y + h - (vh - pad));
+    if (nx !== tx || ny !== ty) { tx = nx; ty = ny; applySmooth(); }
+  });
+
+  viewport.setAttribute('tabindex', '0');
+  viewport.setAttribute('aria-label', 'Family tree canvas — arrow keys pan, Tab moves between brothers');
+  viewport.addEventListener('keydown', function (e) {
+    var step = e.shiftKey ? 240 : 80;
+    var d = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+    if (!d) return;
+    // Don't hijack the arrows while someone is typing in the search box.
+    if (e.target && e.target.closest && e.target.closest('input, select, textarea')) return;
+    e.preventDefault();
+    hideHint();
+    tx += d[0]; ty += d[1];
+    apply();
+  });
+
   /* ---------- family (branch) selector: one line at a time ---------- */
   function expandSubtree(id) {
     var n = byId[id];

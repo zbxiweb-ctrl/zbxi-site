@@ -153,8 +153,15 @@
           if (c.error) { say('⚠ ' + c.error, true); throw new Error('handled'); }
           if (!c.recipients) { say('⚠ No recipients for that selection.', true); throw new Error('handled'); }
           var note = c.skipped_optout ? ' (' + c.skipped_optout + ' unsubscribed brother' + (c.skipped_optout === 1 ? '' : 's') + ' will be skipped)' : '';
-          if (!confirm('Send “' + p.subject + '” to ' + c.recipients + ' brother' + (c.recipients === 1 ? '' : 's') + note + '?')) throw new Error('handled');
-          return Z.sendEmail(p).then(function (r) { return r.json(); });
+          // The branded dialog is promise-wrapped so the chain below is unchanged:
+          // cancelling rejects with the same 'handled' sentinel the guards above use.
+          return new Promise(function (resolve, reject) {
+            ZBXIAsk.confirm({
+              title: 'Send “' + p.subject + '”?',
+              body: 'It goes to ' + c.recipients + ' brother' + (c.recipients === 1 ? '' : 's') + note + '.',
+              ok: 'Send it'
+            }, resolve, function () { reject(new Error('handled')); });
+          }).then(function () { return Z.sendEmail(p).then(function (r) { return r.json(); }); });
         }).then(function (j) {
           if (!j) return;
           // Still queued rather than blasted, but no longer a multi-day trickle:

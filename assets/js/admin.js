@@ -438,17 +438,20 @@
           afterChange();
         });
       });
-      each(el, '[data-reject]',  function () { if (confirm('Reject this profile?')) setStatus(id, 'rejected'); });
-      each(el, '[data-revoke]',  function () { if (confirm('Move this brother back to Pending?')) setStatus(id, 'pending'); });
+      each(el, '[data-reject]',  function () { ZBXIAsk.confirm({ title: 'Reject this profile?', body: 'He stays locked out. Nothing is deleted — you can restore him later.', ok: 'Reject', danger: true }, function () { setStatus(id, 'rejected'); }); });
+      each(el, '[data-revoke]',  function () { ZBXIAsk.confirm({ title: 'Move this brother back to Pending?', body: 'He loses access to the members area until he is approved again.', ok: 'Move to Pending', danger: true }, function () { setStatus(id, 'pending'); }); });
       each(el, '[data-restore]', function () { setStatus(id, 'pending'); });
       each(el, '[data-edit]',    function () { openEdit(find()); });
       // big_id is ON DELETE SET NULL, so deleting a big silently makes each of his
       // littles his own root on the family tree. Say so before it happens.
       each(el, '[data-delete]',  function () {
         var kids = (state.data.all || []).filter(function (x) { return x.big_id === id; }).length;
-        if (confirm('Permanently delete ' + (find().full_name) + '? This cannot be undone.' +
-          (kids ? '\n\n⚠️ ' + kids + ' brother' + (kids === 1 ? '' : 's') +
-                  ' will lose their big and each become their own family line on the tree.' : ''))) del(id);
+        ZBXIAsk.confirm({
+          title: 'Permanently delete ' + (find().full_name) + '?',
+          body: 'This cannot be undone.' + (kids ? ' ⚠️ ' + kids + ' brother' + (kids === 1 ? '' : 's') +
+                ' will lose their big and each become their own family line on the tree.' : ''),
+          ok: 'Delete for good', danger: true
+        }, function () { del(id); });
       });
     });
   }
@@ -482,7 +485,7 @@
   function setStatus(id, status) { Z.setStatus(id, status).then(afterChange); }
   function del(id) { Z.deleteBrother(id).then(afterChange); }
   function afterChange(r) {
-    if (r && r.error) { alert(r.error.message); return; }
+    if (r && r.error) { ZBXIAsk.alert({ title: 'Could not save that', body: r.error.message }); return; }
     loadAll();
   }
 
@@ -601,9 +604,14 @@
         box.querySelectorAll('[data-pos]').forEach(function (el) {
           el.querySelector('[data-del]').onclick = function () {
             var bn = el.getAttribute('data-board');
-            if (bn && !confirm('This position is part of ' + bn + ' on the Executive Boards page.\n\n' +
-                               'Removing it here takes him off that board too, and there is no undo.\n\nRemove it?')) return;
-            Z.brotherTitleDelete(el.dataset.pos).then(renderPositions);
+            var delPos = function () { Z.brotherTitleDelete(el.dataset.pos).then(renderPositions); };
+            // Only worth a warning when the position belongs to an archived board.
+            if (!bn) { delPos(); return; }
+            ZBXIAsk.confirm({
+              title: 'Remove this position?',
+              body: 'It is part of ' + bn + ' on the Executive Boards page. Removing it here takes him off that board too, and there is no undo.',
+              ok: 'Remove', danger: true
+            }, delPos);
           };
         });
 
@@ -735,23 +743,28 @@
 
       function runDigest(test, btn) {
         var st = document.getElementById('digStatus');
-        if (!test && !confirm('Send the digest to EVERY brother with an account?\n\nSend yourself a test first if you haven\'t.')) return;
-        btn.disabled = true; var label = btn.textContent; btn.textContent = test ? 'Sending…' : 'Queueing…';
-        st.className = 'form-status'; st.textContent = '';
-        Z.digestSend(test).then(function (r) {
-          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
-          if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
-          st.className = 'form-status ok';
-          // Still queued rather than blasted, but the old "about 60 a day, finishes
-          // in N days" copy is no longer true: bulk moved to its own provider with a
-          // 300/day ceiling and the drain now takes 120 per tick, so the whole roster
-          // clears on the next quarter-hour.
-          st.textContent = test
-            ? '✓ Digest sent to your inbox.'
-            : '✓ Queued for ' + r.queued + ' brother' + (r.queued === 1 ? '' : 's') +
-              ' — they go out within about 15 minutes. You can close this page.';
-        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
-          .finally(function () { btn.disabled = false; btn.textContent = label; });
+        var doSend = function () {
+          btn.disabled = true; var label = btn.textContent; btn.textContent = test ? 'Sending…' : 'Queueing…';
+          st.className = 'form-status'; st.textContent = '';
+          Z.digestSend(test).then(function (r) {
+            if (r.error) { st.className = 'form-status err'; st.textContent = r.error; return; }
+            if (r.errors && r.errors.length) { st.className = 'form-status err'; st.textContent = '⚠ ' + r.errors.join(' · '); return; }
+            st.className = 'form-status ok';
+            // Still queued rather than blasted, but the old "about 60 a day, finishes
+            // in N days" copy is no longer true: bulk moved to its own provider with a
+            // 300/day ceiling and the drain now takes 120 per tick, so the whole roster
+            // clears on the next quarter-hour.
+            st.textContent = test
+              ? '✓ Digest sent to your inbox.'
+              : '✓ Queued for ' + r.queued + ' brother' + (r.queued === 1 ? '' : 's') +
+                ' — they go out within about 15 minutes. You can close this page.';
+          }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
+            .finally(function () { btn.disabled = false; btn.textContent = label; });
+        };
+        // A test send goes only to the webmaster, so it needs no confirmation.
+        if (test) { doSend(); return; }
+        ZBXIAsk.confirm({ title: 'Send the digest to every brother with an account?',
+          body: 'Send yourself a test first if you have not.', ok: 'Send to everyone', danger: true }, doSend);
       }
       document.getElementById('digTest').onclick = function () { runDigest(true, this); };
       document.getElementById('digSend').onclick = function () { runDigest(false, this); };
@@ -782,7 +795,7 @@
     q.querySelectorAll('[data-dnok]').forEach(function (b) {
       b.onclick = function () {
         Z.digestNoteUpdate(b.dataset.dnok, { status: 'approved' }).then(after)
-          ['catch'](function (err) { alert((err && err.message) || 'Could not approve it.'); });
+          ['catch'](function (err) { ZBXIAsk.alert({ title: 'Could not approve', body: (err && err.message) || 'Could not approve it.' }); });
       };
     });
 
@@ -814,9 +827,10 @@
     q.querySelectorAll('[data-dndel]').forEach(function (a) {
       a.onclick = function (e) {
         e.preventDefault();
-        if (!confirm('Remove this from the next digest?')) return;
-        Z.digestNoteDelete(a.dataset.dndel).then(after)
-          ['catch'](function (err) { alert((err && err.message) || 'Could not remove it.'); });
+        ZBXIAsk.confirm({ title: 'Remove this from the next digest?', ok: 'Remove', danger: true }, function () {
+          Z.digestNoteDelete(a.dataset.dndel).then(after)
+            ['catch'](function (err) { ZBXIAsk.alert({ title: 'Could not remove', body: (err && err.message) || 'Could not remove it.' }); });
+        });
       };
     });
   }
@@ -1025,7 +1039,8 @@
         var ev = state.events.filter(function (x) { return x.id === el.dataset.ev; })[0];
         each(el, '[data-evedit]', function () { openEventEdit(ev); });
         each(el, '[data-evdel]', function () {
-          if (confirm('Delete "' + ev.title + '"?')) Z.eventDelete(ev.id).then(function () { renderList(); });
+          ZBXIAsk.confirm({ title: 'Delete “' + ev.title + '”?', body: 'The event and its RSVPs are removed from the calendar.', ok: 'Delete', danger: true },
+            function () { Z.eventDelete(ev.id).then(function () { renderList(); }); });
         });
       });
     });
@@ -1081,11 +1096,13 @@
           var id = el.dataset.gift;
           each(el, '[data-giftthank]', function () { sendThanks(id, say, paint); });
           each(el, '[data-giftdel]', function () {
-            if (!confirm('Delete this gift from the record?\n\nThe total on the page will drop by that amount.')) return;
-            Z.fundGiftDelete(id).then(function (r) {
-              if (r.error) { say(r.error.message, true); return; }
-              if (!r.data || !r.data.length) { say('That was not deleted — only the webmaster may.', true); return; }
-              paint();
+            ZBXIAsk.confirm({ title: 'Delete this gift from the record?',
+              body: 'The total on the page will drop by that amount.', ok: 'Delete', danger: true }, function () {
+              Z.fundGiftDelete(id).then(function (r) {
+                if (r.error) { say(r.error.message, true); return; }
+                if (!r.data || !r.data.length) { say('That was not deleted — only the webmaster may.', true); return; }
+                paint();
+              });
             });
           });
         });
@@ -1232,7 +1249,8 @@
         var a = rows.filter(function (x) { return x.id === el.dataset.aw; })[0];
         each(el, '[data-awedit]', function () { openAwardEdit(a); });
         each(el, '[data-awdel]', function () {
-          if (confirm('Delete "' + a.title + '" from the homepage?')) Z.awardDelete(a.id).then(function () { renderList(); });
+          ZBXIAsk.confirm({ title: 'Delete “' + a.title + '”?', body: 'It stops showing in Recognized Excellence on the homepage.', ok: 'Delete', danger: true },
+            function () { Z.awardDelete(a.id).then(function () { renderList(); }); });
         });
       });
     });
@@ -1331,21 +1349,25 @@
         if (!emails.length) { st.className = 'form-status err'; st.textContent = 'Paste at least one email address.'; return; }
         if (emails.length > 25) { st.className = 'form-status err'; st.textContent = 'Send at most 25 at a time.'; return; }
         var dupes = emails.filter(function (e) { var i = invited[e.toLowerCase()]; return i && i.sent_at; });
-        if (dupes.length && !confirm('Already invited: ' + dupes.join(', ') + '\n\nSend again anyway?')) return;
-        btn.disabled = true; btn.textContent = 'Queueing…';
-        st.className = 'form-status'; st.textContent = '';
-        Z.inviteBrothers(emails, null).then(function (r) {
-          if (r.error) { st.className = 'form-status err'; st.textContent = r.error; }
-          else {
-            var failed = (r.results || []).filter(function (x) { return !x.ok; });
-            st.className = failed.length ? 'form-status err' : 'form-status ok';
-            st.textContent = '✓ Queued ' + r.queued + ' invitation' + (r.queued === 1 ? '' : 's') +
-              ' — they go out over the next day or so.' +
-              (failed.length ? ' · ' + failed.length + ' failed: ' + failed[0].error : '');
-            setTimeout(function () { renderList(); }, 1200);
-          }
-        }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
-          .finally(function () { btn.disabled = false; btn.textContent = 'Send invitations'; });
+        var doInvite = function () {
+          btn.disabled = true; btn.textContent = 'Queueing…';
+          st.className = 'form-status'; st.textContent = '';
+          Z.inviteBrothers(emails, null).then(function (r) {
+            if (r.error) { st.className = 'form-status err'; st.textContent = r.error; }
+            else {
+              var failed = (r.results || []).filter(function (x) { return !x.ok; });
+              st.className = failed.length ? 'form-status err' : 'form-status ok';
+              st.textContent = '✓ Queued ' + r.queued + ' invitation' + (r.queued === 1 ? '' : 's') +
+                ' — they go out over the next day or so.' +
+                (failed.length ? ' · ' + failed.length + ' failed: ' + failed[0].error : '');
+              setTimeout(function () { renderList(); }, 1200);
+            }
+          }).catch(function (e) { st.className = 'form-status err'; st.textContent = String(e); })
+            .finally(function () { btn.disabled = false; btn.textContent = 'Send invitations'; });
+        };
+        if (!dupes.length) { doInvite(); return; }
+        ZBXIAsk.confirm({ title: 'Send again anyway?',
+          body: 'Already invited: ' + dupes.join(', '), ok: 'Send again' }, doInvite);
       };
 
     }).catch(function (e) { q.innerHTML = '<p class="form-status err">' + esc(String(e)) + '</p>'; });
@@ -1822,18 +1844,22 @@
     q.querySelectorAll('[data-retire]').forEach(function (b) {
       b.onclick = function () {
         var h = state.verifiedById[b.dataset.retire];
-        if (!h || !confirm('Retire ' + h.full_name + ' to Previous officers?')) return;
-        Z.updateBrother(h.id, { role_scope: 'previous' })
-          .then(function () { return syncOfficer(h, false); })
-          .then(loadAll);
+        if (!h) return;
+        ZBXIAsk.confirm({ title: 'Retire ' + h.full_name + ' to Previous officers?', ok: 'Retire', danger: true }, function () {
+          Z.updateBrother(h.id, { role_scope: 'previous' })
+            .then(function () { return syncOfficer(h, false); })
+            .then(loadAll);
+        });
       };
     });
     q.querySelectorAll('[data-cleartitle]').forEach(function (a) {
       a.onclick = function (e) {
         e.preventDefault();
         var h = state.verifiedById[a.dataset.cleartitle];
-        if (!h || !confirm('Remove the title from ' + h.full_name + ' entirely?')) return;
-        Z.updateBrother(h.id, { role: null, role_term: null, role_scope: null }).then(loadAll);
+        if (!h) return;
+        ZBXIAsk.confirm({ title: 'Remove the title from ' + h.full_name + ' entirely?', ok: 'Remove title', danger: true }, function () {
+          Z.updateBrother(h.id, { role: null, role_term: null, role_scope: null }).then(loadAll);
+        });
       };
     });
     var ro = document.getElementById('rolloverBtn');
@@ -2086,11 +2112,12 @@
             if (!name || name === c.name) return;
             Z.committeeRename(c.id, name)
               .then(function () { renderList(); })
-              ['catch'](function (e) { alert((e && e.message) || 'Could not rename that committee.'); });
+              ['catch'](function (e) { ZBXIAsk.alert({ title: 'Could not rename', body: (e && e.message) || 'Could not rename that committee.' }); });
           });
         });
         each(el, '[data-del]', function () {
-          if (confirm('Delete "' + c.name + '"? Its private threads are deleted too.')) Z.committeeDelete(c.id).then(function () { renderList(); });
+          ZBXIAsk.confirm({ title: 'Delete “' + c.name + '”?', body: 'Its private threads are deleted too. This cannot be undone.', ok: 'Delete', danger: true },
+            function () { Z.committeeDelete(c.id).then(function () { renderList(); }); });
         });
       });
     });
@@ -2906,12 +2933,15 @@
       var dest = merge.value; merge.value = '';
       if (!dest) return;
       var go = function (name) {
-        if (!confirm('Move all ' + g.n + ' brother' + (g.n === 1 ? '' : 's') + ' from “' + (g.name || '— blank —') +
-                     '” into “' + name + '”?\n\nThis updates them on the roster, the family tree and their profiles.')) return;
-        Z.renamePledgeClass(g.name, name).then(function (r) {
-          if (r && r.error) { alert(r.error.message || 'Could not merge.'); return; }
-          state.classDrill = null;
-          loadAll();
+        ZBXIAsk.confirm({
+          title: 'Move all ' + g.n + ' brother' + (g.n === 1 ? '' : 's') + ' from “' + (g.name || '— blank —') + '” into “' + name + '”?',
+          body: 'This updates them on the roster, the family tree and their profiles.',
+          ok: 'Move them', danger: true }, function () {
+          Z.renamePledgeClass(g.name, name).then(function (r) {
+            if (r && r.error) { ZBXIAsk.alert({ title: 'Could not merge', body: r.error.message || 'Could not merge.' }); return; }
+            state.classDrill = null;
+            loadAll();
+          });
         });
       };
       if (dest === '__new__') askNewClass(go); else go(dest);
@@ -2923,7 +2953,7 @@
         if (!dest) return;
         var go = function (name) {
           Z.setPledgeClass(sel.dataset.move, name).then(function (r) {
-            if (r && r.error) { alert(r.error.message || 'Could not move him.'); return; }
+            if (r && r.error) { ZBXIAsk.alert({ title: 'Could not move him', body: r.error.message || 'Could not move him.' }); return; }
             loadAll();
           });
         };
@@ -3015,12 +3045,12 @@
             .then(function (list) { return Z.brotherTitleAdd({ brother_id: r.brother_id, title: r.title, term: r.term, scope: scope, sort: list.length }); })
             .then(function () { return Z.titleRequestDecide(id, 'approved'); })
             .then(loadAll)
-            .catch(function (e) { ok.disabled = false; ok.textContent = 'Approve'; alert(e.message || 'Could not approve.'); });
+            .catch(function (e) { ok.disabled = false; ok.textContent = 'Approve'; ZBXIAsk.alert({ title: 'Could not approve', body: e.message || 'Could not approve.' }); });
         };
         if (no) no.onclick = function () {
           no.disabled = true;
           Z.titleRequestDecide(id, 'rejected').then(loadAll)
-            .catch(function (e) { no.disabled = false; alert(e.message || 'Could not reject.'); });
+            .catch(function (e) { no.disabled = false; ZBXIAsk.alert({ title: 'Could not reject', body: e.message || 'Could not reject.' }); });
         };
       });
     }).catch(function (e) {
@@ -3140,7 +3170,7 @@
             }).then(function () { renderList(); })
               ['catch'](function (err) {
                 bt.disabled = false; bt.textContent = 'Save to his profile';
-                alert((err && err.message) || 'Could not save that.');
+                ZBXIAsk.alert({ title: 'Could not save that', body: (err && err.message) || 'Could not save that.' });
               });
           };
         });
@@ -3149,10 +3179,12 @@
         // everyday action — this is for a suggestion that should not be kept at all.
         var del = el.querySelector('[data-del]');
         if (del) del.onclick = function () {
-          if (!confirm('Delete this suggestion permanently?\n\nArchiving hides it and keeps the record; deleting cannot be undone.')) return;
-          Z.suggestionDelete(id).then(function (r) {
-            if (r && r.error) { alert(r.error.message || 'Could not delete that.'); return; }
-            renderList();
+          ZBXIAsk.confirm({ title: 'Delete this suggestion permanently?',
+            body: 'Archiving hides it and keeps the record; deleting cannot be undone.', ok: 'Delete', danger: true }, function () {
+            Z.suggestionDelete(id).then(function (r) {
+              if (r && r.error) { ZBXIAsk.alert({ title: 'Could not delete', body: r.error.message || 'Could not delete that.' }); return; }
+              renderList();
+            });
           });
         };
       });
@@ -3250,7 +3282,7 @@
             if (saved) { saved.style.display = ''; setTimeout(function () { saved.style.display = 'none'; }, 1400); }
           }).catch(function (e) {
             cb.checked = !cb.checked; cb.disabled = false;
-            alert(e.message || 'Could not save that change.');
+            ZBXIAsk.alert({ title: 'Could not save that change', body: e.message || 'Could not save that change.' });
           });
         };
       });
@@ -3634,7 +3666,7 @@
         ZBXIAsk.text({ title: 'New section', placeholder: 'e.g. Formal 2026', ok: 'Create' }, function (name) {
           name = (name || '').trim(); if (!name) return;
           Z.albumCreate(name).then(function (r) {
-            if (r && r.error) alert(r.error.message || 'Could not create that section (is the name already taken?).');
+            if (r && r.error) ZBXIAsk.alert({ title: 'Section not created', body: r.error.message || 'Could not create that section (is the name already taken?).' });
             reGallery();
           });
         });
@@ -3651,8 +3683,13 @@
       q.querySelectorAll('[data-alb-del]').forEach(function (a) {
         a.onclick = function (e) {
           e.preventDefault();
-          if (!confirm('Delete the section “' + a.getAttribute('data-alb-nm') + '”?\nIts photos are NOT deleted — they move to Miscellaneous.')) return;
-          Z.albumDelete(a.getAttribute('data-alb-del')).then(reGallery);
+          ZBXIAsk.confirm({
+            title: 'Delete the section “' + a.getAttribute('data-alb-nm') + '”?',
+            body: 'Its photos are NOT deleted — they move to Miscellaneous.',
+            ok: 'Delete section', danger: true
+          }, function () {
+            Z.albumDelete(a.getAttribute('data-alb-del')).then(reGallery);
+          });
         };
       });
     })['catch'](function (e) {
