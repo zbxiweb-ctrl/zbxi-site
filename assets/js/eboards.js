@@ -213,7 +213,7 @@
     curId = null;
     var boards = scopeF ? BOARDS.filter(function (b) { return b.scope === scopeF; }) : BOARDS;
     var chips = [['', 'All boards'], ['active', 'Active'], ['alumni', 'Alumni']].map(function (p) {
-      return '<button class="fam-chip' + (scopeF === p[0] ? ' on' : '') +
+      return '<button class="fam-chip' + (scopeF === p[0] ? ' on' : '') + '" aria-pressed="' + (scopeF === p[0]) +
         '" data-scope="' + p[0] + '">' + esc(p[1]) + '</button>';
     }).join('');
 
@@ -286,7 +286,7 @@
     root.querySelectorAll('[data-bro]').forEach(function (c) {
       c.onclick = function () {
         var bro = BY_ID[c.dataset.bro];
-        if (bro && window.BrotherCard) window.BrotherCard.open(bro, { portal: 'index.html#brothers-portal' });
+        if (bro && window.BrotherCard) window.BrotherCard.open(bro, { portal: ZBXIUtil.signInHref() });
       };
     });
     if (canEdit) { if (live) wireLiveTools(scope, seats); else wireTools(b); }
@@ -606,7 +606,7 @@
   function lockedOut() {
     root.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
       '<span>The chapter\'s executive boards are private. Brothers sign in to see them.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
   }
 
   if (!Z || !Z.configured) {

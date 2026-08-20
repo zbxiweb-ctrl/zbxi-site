@@ -19,7 +19,8 @@
   Z.mfaAAL().then(function (r) {
     var d = r && r.data;
     if (d && d.currentLevel === 'aal1' && d.nextLevel === 'aal2') {
-      location.replace('index.html#brothers-portal');
+      // Carry the page he was on, so finishing the code returns him there.
+      location.replace(window.ZBXIUtil ? ZBXIUtil.signInHref() : 'index.html#brothers-portal');
     }
   }).catch(function () { /* AAL glitch -> fail open, don't strand anyone */ });
 })();

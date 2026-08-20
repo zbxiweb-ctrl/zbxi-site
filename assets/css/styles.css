@@ -30,7 +30,6 @@
   --danger:    #b4342b;
   --danger-bg: #b4342b;
   --radius: 14px;
-  --radius-sm: 10px;
   /* Tell the browser which way the page leans, so date pickers, checkboxes,
      select popups and UA scrollbars stop rendering light on the dark theme. */
   color-scheme: light;

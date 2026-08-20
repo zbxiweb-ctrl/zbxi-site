@@ -42,7 +42,7 @@
     grid.querySelectorAll('[data-id]').forEach(function (el) {
       el.addEventListener('click', function () {
         var b = LIST.filter(function (x) { return x.id === el.dataset.id; })[0];
-        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
       });
     });
   }
@@ -51,7 +51,7 @@
     if (!rows || !rows.length) { // anon: names are members-only
       grid.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
         '<span>Pledge-class pages are private to the brotherhood.</span>' +
-        '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+        '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
       return;
     }
     LIST = rows.filter(function (b) { return (b.pledge_class || '') === cls; })

@@ -147,7 +147,7 @@
 
     var nav = state.tools.length
       ? state.tools.map(function (t) {
-          return '<button data-tab="' + t.id + '" class="admin-navbtn ' + (state.tab === t.id ? 'on' : '') + '">' +
+          return '<button data-tab="' + t.id + '" class="admin-navbtn ' + (state.tab === t.id ? 'on' : '') + '"' + (state.tab === t.id ? ' aria-current="page"' : '') + '>' +
             '<i>' + t.ic + '</i><span>' + esc(t.label) + '</span></button>';
         }).join('')
       : '';
@@ -170,7 +170,7 @@
           (state.tools.length ? '<button class="admin-side__burger" id="sideBurger" aria-label="Show tools">☰ Tools</button>' : '') +
           '<nav id="tabs" class="admin-side__nav">' +
             (state.tools.length ? '<div class="admin-navgroup">' +
-              '<button data-tab="home" class="admin-navbtn ' + (state.tab === 'home' ? 'on' : '') + '"><i>⌂</i><span>Overview</span></button>' +
+              '<button data-tab="home" class="admin-navbtn ' + (state.tab === 'home' ? 'on' : '') + '"' + (state.tab === 'home' ? ' aria-current="page"' : '') + '><i>⌂</i><span>Overview</span></button>' +
               '<span class="admin-navgroup__label" style="margin-top:.7rem">Chapter Tools</span>' + nav +
               '</div>' : '') +
           '</nav>' +

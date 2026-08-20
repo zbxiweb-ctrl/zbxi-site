@@ -53,7 +53,7 @@
     scope.querySelectorAll('[data-id]').forEach(function (el) {
       el.addEventListener('click', function () {
         var b = ALL.filter(function (x) { return x.id === el.dataset.id; })[0];
-        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
       });
     });
   }
@@ -119,7 +119,7 @@
       zeroCount: 'nobody yet',
       zeroPlaceholder: 'No mentors to search yet',
       emptyHtml: 'No brother has offered to mentor yet. Tick <b>Being a Mentor</b> on your ' +
-                 'profile to be the first — <a href="index.html#brothers-portal">open your profile</a>.',
+                 'profile to be the first — <a href="' + ZBXIUtil.signInHref() + '">open your profile</a>.',
       onType: function () { if (filterSel && filterSel.value) filterSel.value = ''; }
     });
 
@@ -154,7 +154,7 @@
 
     var foot = document.getElementById('menteeFoot');
     if (foot) {
-      foot.innerHTML = '<a class="btn btn--ghost" href="index.html#brothers-portal">Add me to a list →</a>' +
+      foot.innerHTML = '<a class="btn btn--ghost" href="' + ZBXIUtil.signInHref() + '">Add me to a list →</a>' +
         '<p class="mtg-card__foothint">Both lists come straight from the “I\'m open to…” boxes on ' +
         'your profile. Tick one, tick both, or untick at any time.</p>';
     }
@@ -249,7 +249,7 @@
     gate.innerHTML =
       '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Brothers only</b>' +
       '<span>Sign in as a verified brother to see who is offering to help and who is asking.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
   }
 
   gate.innerHTML = '<p class="page-empty">Loading…</p>';

@@ -34,7 +34,7 @@
   function lockedOut() {
     root.innerHTML = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
       '<span>The alumni fund is private to the brotherhood. Sign in to contribute.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
   }
 
   function notReady() {
@@ -141,7 +141,7 @@
     var link = root.querySelector('[data-bro]');
     if (link) link.onclick = function () {
       var b = (roster || []).filter(function (x) { return x.id === link.dataset.bro; })[0];
-      if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+      if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
     };
   }
 

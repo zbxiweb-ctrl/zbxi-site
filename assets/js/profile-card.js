@@ -262,8 +262,14 @@
     }
 
     body.innerHTML = lineage + '<p class="bm__loading">…</p>';
-    window.ZBXI.amApprovedBrother().then(function (ok) {
-      if (!ok) {
+    window.ZBXI.approvalState().then(function (state) {
+      if (state === 'error') {
+        body.innerHTML = lineage +
+          '<div class="bm__locked">⚠️ <b>Couldn’t load</b>' +
+          '<span>We couldn’t load this profile. Check your connection and try again — you are still signed in.</span></div>';
+        return;
+      }
+      if (state !== 'approved') {
         body.innerHTML = lineage +
           '<div class="bm__locked">🔒 <b>Members only</b><span>Sign in as a verified brother to view the full profile.</span>' +
           '<a class="btn btn--gold" href="' + portal + '" data-close>Log In / Sign Up</a></div>';

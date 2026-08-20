@@ -44,7 +44,7 @@
   function lockedCal() {
     calWrap.innerHTML = '<div class="bm__locked" style="max-width:560px;margin:0 auto">🔒 <b>The chapter calendar is members-only</b>' +
       '<span>Meetings, reunions, rush and philanthropy — with RSVPs — open when you sign in as a verified brother.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
   }
 
   /* -- RSVPs -- */
@@ -97,7 +97,7 @@
     var noteRow = mine && mine.note
       ? '<small class="ev-rsvp__note">“' + esc(mine.note) + '”</small>' : '';
     return '<div class="ev-rsvp" data-rsvp="' + e.id + '">' +
-      '<button class="ev-rsvp__btn' + (mine ? ' on' : '') + '">' + (mine ? '✓ I\'m going' : '✋ I\'m going') + '</button>' +
+      '<button class="ev-rsvp__btn' + (mine ? ' on' : '') + '" aria-pressed="' + (!!mine) + '">' + (mine ? '✓ I\'m going' : '✋ I\'m going') + '</button>' +
       extra +
       '<span class="ev-rsvp__n">' + headcount(rs) + '</span>' +
       (CAN_MANAGE && rs.length ? '<button type="button" class="ev-rsvp__door">📋 Door list</button>' : '') +

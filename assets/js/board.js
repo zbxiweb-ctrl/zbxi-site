@@ -53,7 +53,7 @@
       '<span>' + (needSignin
         ? 'The board is private to verified brothers. Sign in (or create your profile) to join the conversation.'
         : 'Your profile is awaiting verification by chapter leadership. The board unlocks once you\'re approved.') + '</span>' +
-      (needSignin ? '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a>' : '') +
+      (needSignin ? '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a>' : '') +
       '</div>';
   }
 
@@ -436,7 +436,8 @@
         var n = votes.filter(function (v) { return v.choice === i; }).length;
         var pct = total ? Math.round(100 * n / total) : 0;
         var mine = myVote && myVote.choice === i;
-        return '<button class="poll-opt' + (mine ? ' on' : '') + (closed ? ' closed' : '') + '" data-vote="' + i + '">' +
+        return '<button class="poll-opt' + (mine ? ' on' : '') + (closed ? ' closed' : '') + '" data-vote="' + i + '"' +
+          ' aria-pressed="' + (!!mine) + '">' +
           '<span class="poll-opt__bar" style="width:' + pct + '%"></span>' +
           '<span class="poll-opt__label">' + (mine ? '✓ ' : '') + esc(o) + '</span>' +
           '<span class="poll-opt__n">' + n + ' · ' + pct + '%</span></button>';
@@ -840,7 +841,8 @@
           return '<span class="react-bar">' + RKINDS.map(function (k) {
             var these = reacts.filter(function (x) { return x.reply_id === r.id && x.kind === k[0]; });
             var mine = me && these.some(function (x) { return x.user_id === me.id; });
-            return '<button class="react' + (mine ? ' on' : '') + '" data-react="' + r.id + '|' + k[0] + '">' +
+            return '<button class="react' + (mine ? ' on' : '') + '" data-react="' + r.id + '|' + k[0] + '"' +
+              ' aria-pressed="' + (!!mine) + '">' +
               k[1] + (these.length ? ' ' + these.length : '') + '</button>';
           }).join('') + '</span>';
         }

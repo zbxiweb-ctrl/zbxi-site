@@ -135,7 +135,7 @@
     scope.querySelectorAll('[data-id]').forEach(function (el) {
       el.addEventListener('click', function () {
         var b = ALL_ROWS.filter(function (x) { return x.id === el.dataset.id; })[0];
-        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
       });
     });
   }
@@ -221,7 +221,7 @@
   function lockedRoster() {
     var lock = '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Members only</b>' +
       '<span>The brotherhood roster is private. Brothers sign in to browse names, classes and profiles.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
     gridEl.innerHTML = lock;
     if (eboardEl) eboardEl.innerHTML = '<p class="page-empty">Members only.</p>';
     if (searchEl) searchEl.style.display = 'none';

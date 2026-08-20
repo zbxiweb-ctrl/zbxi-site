@@ -113,6 +113,9 @@
       homeTeasersLocked();
     } else {
       window.ZBXI.approvalState().then(function (state) {
+        // An outage is not the same as being signed out; don't show the teasers
+        // as locked to a brother whose connection simply dropped.
+        if (state === 'error') return;
         if (state !== 'approved') { homeTeasersLocked(); return; }
         window.ZBXI.listVerifiedDetail().then(function (rows) {
           rows = rows || [];

@@ -1599,7 +1599,7 @@
 
     var chips = roots.map(function (r) {
       var last = r.full_name.trim().split(/\s+/).pop();
-      return '<button class="fam-chip' + (state.treeLine === r.id ? ' on' : '') + '" data-line="' + r.id + '">' +
+      return '<button class="fam-chip' + (state.treeLine === r.id ? ' on' : '') + '" data-line="' + r.id + '" aria-pressed="' + (state.treeLine === r.id) + '">' +
         esc(last) + ' line <i>' + (1 + r._desc) + '</i></button>';
     }).join('');
 

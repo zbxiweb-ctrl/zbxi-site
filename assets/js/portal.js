@@ -790,7 +790,7 @@
     h('<div class="pf-masthead"><img class="pf-masthead__crest" src="assets/img/crest-sm.png" alt="" />' +
         '<span class="pf-masthead__eyebrow">Zeta Beta Xi · Brother Registry</span></div>' +
       '<div class="portal-tabs">' +
-        '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile">Brother Profile</button>' +
+        '<button class="' + (!onAccount ? 'on' : '') + '" data-ptab="profile" aria-pressed="' + (!onAccount) + '">Brother Profile</button>' +
         '<button class="' + (onAccount ? 'on' : '') + '" data-ptab="account">Account</button>' +
       '</div><div id="portalTabBody"></div>');
     mbody.querySelectorAll('[data-ptab]').forEach(function (b) {

@@ -21,7 +21,7 @@
       '<span>' + (needSignin
         ? 'The gallery is private to verified brothers. Sign in (or create your profile) to get access.'
         : 'Your profile is awaiting verification by chapter leadership. The gallery unlocks once you\'re approved.') + '</span>' +
-      (needSignin ? '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a>' : '') +
+      (needSignin ? '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a>' : '') +
       '</div>';
   }
 
@@ -725,7 +725,7 @@
   function openBrother(brotherId) {
     var b = roster.filter(function (x) { return x.id === brotherId; })[0];
     if (!b || !window.BrotherCard) return;
-    window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+    window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
   }
 
   /* Inline edit — caption and section, nothing else. That limit is not a UI

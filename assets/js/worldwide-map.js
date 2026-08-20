@@ -135,7 +135,7 @@
         if (!a) return;
         e.preventDefault();
         var b = withCity.filter(function (x) { return x.id === a.dataset.mapbro; })[0];
-        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: 'index.html#brothers-portal' });
+        if (b && window.BrotherCard) window.BrotherCard.open(b, { portal: ZBXIUtil.signInHref() });
       });
     }).catch(function () {
       mapEl.innerHTML = '<p class="page-empty">The map couldn\'t load right now.</p>';

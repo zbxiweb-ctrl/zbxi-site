@@ -14,7 +14,7 @@
     gate.innerHTML =
       '<div class="bm__locked" style="max-width:520px;margin:0 auto">🔒 <b>Brothers only</b>' +
       '<span>Sign in as a verified brother to see where the brotherhood lives today.</span>' +
-      '<a class="btn btn--gold" href="index.html#brothers-portal">Log In / Sign Up</a></div>';
+      '<a class="btn btn--gold" href="' + ZBXIUtil.signInHref() + '">Log In / Sign Up</a></div>';
   }
 
   gate.innerHTML = '<p class="page-empty">Loading…</p>';
