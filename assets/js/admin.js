@@ -193,6 +193,10 @@
               '</div>';
             }).join('') +
           '</nav>' +
+          // The webmaster holds every officer tool (officer.js grants them all), but
+          // this console had no way to reach that one, so it was only findable by
+          // typing the URL. Same shortcut the officers get in their account menu.
+          '<a class="btn btn--ghost admin-side__out admin-side__officer" href="officer.html">🛡 Officer Console →</a>' +
           '<button class="btn btn--ghost admin-side__out" id="so">Sign out</button>' +
         '</aside>' +
         // ---- right: the actual work area ----

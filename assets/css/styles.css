@@ -1046,6 +1046,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .admin-navbtn.on { background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--navy-deep); font-weight: 700; }
 .admin-navbtn.on .tab-count { background: rgba(7,22,52,.22); color: var(--navy-deep); }
 .admin-side__out { width: 100%; margin-top: .4rem; }
+.admin-side__officer { display: block; text-align: center; margin-top: auto; }
 .admin-side__burger { display: none; }
 
 /* The main column carries a faint high-res crest watermark (same art as the hero)
@@ -1080,8 +1081,10 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
     background: rgba(200,162,75,.12); color: var(--gold-bright); font-weight: 700; font-family: var(--sans);
   }
   .admin-side__nav, .admin-side__out { display: none; }        /* drawer, closed by default */
+  .admin-side__officer { display: none; }
   .admin-side.open .admin-side__nav { display: block; margin-top: .8rem; }
   .admin-side.open .admin-side__out { display: block; }
+  .admin-side.open .admin-side__officer { display: block; }
 }
 /* Login / message card: navy to match the console (box-shadow is invisible on
    navy, so it needs a gold hairline to have an edge). */

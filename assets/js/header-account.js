@@ -200,31 +200,38 @@
       }).catch(function () {});
     }
 
-    // Officers: a current President whose seat has >=1 enabled grant gets an
-    // Officer Console link (mirrors the Admin link). The server-side RLS is the
-    // real gate; this just surfaces the shortcut.
-    if (!isAdmin && Z.myOfficerSeat && Z.officerGrantsList) {
+    /* Officer Console shortcut. Two people see it: an officer whose seat has at
+       least one enabled grant, and the webmaster — officer.js grants him every
+       officer tool, so having no link to the console he can open was just a
+       dead end. The server-side RLS is the real gate; this is only the shortcut. */
+    function addOfficerLink() {
+      var signout = document.getElementById('navSignOut');
+      if (!signout || !signout.parentNode) return;
+      // Idempotent: the chrome re-renders on auth events, so two async inserts
+      // can race into the same menu. Bail if the link is already there.
+      if (signout.parentNode.querySelector('a[href="officer.html"]')) return;
+      var a = document.createElement('a');
+      a.href = 'officer.html'; a.className = 'nav__menu-admin';
+      a.innerHTML = '<i>🛡</i> Officer Console <span class="nav__menu-badge" id="navOfficerBadge" style="display:none"></span><em>→</em>';
+      var div = document.createElement('div');
+      div.className = 'nav__menu-divider';
+      signout.parentNode.insertBefore(a, signout);
+      signout.parentNode.insertBefore(div, signout);
+      // Same "N pending" nudge the admin gets. pendingQueue() returns nothing
+      // unless this viewer actually holds members.approve, so no extra check.
+      if (Z.pendingQueue) Z.pendingQueue().then(function (rows) {
+        var b = document.getElementById('navOfficerBadge');
+        if (b && rows.length) { b.style.display = ''; b.textContent = rows.length + ' pending'; }
+      }).catch(function () {});
+    }
+
+    if (isAdmin) {
+      addOfficerLink();
+    } else if (Z.myOfficerSeat && Z.officerGrantsList) {
       Promise.all([Z.myOfficerSeat(), Z.officerGrantsList()]).then(function (res) {
         var seat = res[0], grants = res[1] || [];
         if (!seat || !grants.some(function (g) { return g.seat === seat && g.enabled; })) return;
-        var signout = document.getElementById('navSignOut');
-        if (!signout || !signout.parentNode) return;
-        // Idempotent: the chrome re-renders on auth events, so two async inserts
-        // can race into the same menu. Bail if the link is already there.
-        if (signout.parentNode.querySelector('a[href="officer.html"]')) return;
-        var a = document.createElement('a');
-        a.href = 'officer.html'; a.setAttribute('role', 'menuitem'); a.className = 'nav__menu-admin';
-        a.innerHTML = '<i>🛡</i> Officer Console <span class="nav__menu-badge" id="navOfficerBadge" style="display:none"></span><em>→</em>';
-        var div = document.createElement('div');
-        div.className = 'nav__menu-divider';
-        signout.parentNode.insertBefore(a, signout);
-        signout.parentNode.insertBefore(div, signout);
-        // Same "N pending" nudge the admin gets. pendingQueue() returns nothing
-        // unless this officer actually holds members.approve, so no extra check.
-        if (Z.pendingQueue) Z.pendingQueue().then(function (rows) {
-          var b = document.getElementById('navOfficerBadge');
-          if (b && rows.length) { b.style.display = ''; b.textContent = rows.length + ' pending'; }
-        }).catch(function () {});
+        addOfficerLink();
       }).catch(function () {});
     }
 
