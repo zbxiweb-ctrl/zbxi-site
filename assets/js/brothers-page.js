@@ -32,15 +32,7 @@
   var CUTOFF = now.getFullYear() + (now.getMonth() >= 5 ? 1 : 0);
 
   // Parse a year out of a pledge class like "Gamma Rho · Fall '25" or "… Spring 1993".
-  function pledgeYear(cls) {
-    if (!cls) return null;
-    var m4 = cls.match(/(19|20)\d{2}/);
-    if (m4) return parseInt(m4[0], 10);
-    var m2 = cls.match(/'(\d{2})/);
-    if (!m2) return null;
-    var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
-  }
+  var pledgeYear = ZBXIUtil.pledgeYear;
 
   function isActive(b) {
     if (b.standing) return b.standing === 'active';  // the brother's own say wins

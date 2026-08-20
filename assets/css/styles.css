@@ -301,14 +301,15 @@ button:disabled, select:disabled, input:disabled, textarea:disabled {
 .nav__group-btn .nav__caret { font-style: normal; font-size: .7rem; }
 .nav__group-menu {
   position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%);
-  min-width: 190px; padding: .4rem 0; border-radius: 14px;
+  min-width: 190px; padding: .4rem 0; border-radius: var(--radius);
   background: var(--surface); box-shadow: 0 18px 50px rgba(var(--chrome),.35);
   display: none; z-index: 120;
 }
 /* Invisible bridge across the 10px gap. Without it the pointer leaves the group
    on the way down and the panel shuts before you reach it. */
 .nav__group-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -12px; height: 12px; }
-.nav__group:hover .nav__group-menu, .nav__group:focus-within .nav__group-menu { display: block; }
+.nav__group:hover .nav__group-menu, .nav__group:focus-within .nav__group-menu,
+.nav__group-btn[aria-expanded="true"] + .nav__group-menu { display: block; }
 .nav__group-menu a { display: block; padding: .55rem 1.1rem; font-size: .86rem; color: var(--text); }
 .nav__group-menu a:hover { background: var(--bg); color: var(--gold-deep); }
 .nav__group-menu a.on { color: var(--gold-deep); font-weight: 700; }
@@ -804,7 +805,7 @@ html:not(.fx) .nav__menu, html:not(.fx) .acct__menu { animation: none !important
 /* ---------- Real crest badge (white-background art framed on navy) ---------- */
 .crest-badge { background: #fff; border-radius: 10px; padding: 3px; border: 1.5px solid var(--gold); box-shadow: 0 5px 16px rgba(0,0,0,.3); object-fit: contain; }
 .brand .crest-badge { border-radius: 8px; padding: 2px; }
-.footer .crest-badge { border-radius: 14px; padding: 6px; }
+.footer .crest-badge { border-radius: var(--radius); padding: 6px; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 960px) {
@@ -1303,7 +1304,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    box sitting in the middle of the composer. */
 .gupload__prev[hidden], .gedit-form[hidden] { display: none; }
 
-.gupload { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem; margin-bottom: 2rem; }
+.gupload { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: var(--radius); padding: 1rem; margin-bottom: 2rem; }
 .gupload__drop { display: block; text-align: center; padding: 1.6rem 1.2rem; cursor: pointer; color: var(--heading); border-radius: 11px; transition: background .15s; }
 .gupload__drop:hover { background: var(--bg-2); }
 .gupload__drop b { display: block; font-family: var(--display); font-size: 1.12rem; letter-spacing: .01em; }
@@ -1384,7 +1385,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
    the only ornament. */
 .gsecs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; margin: 0 0 1.6rem; }
 .gsec { display: block; padding: 0; text-align: left; cursor: pointer; overflow: hidden;
-  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 14px;
+  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); transition: transform .2s, border-color .2s, box-shadow .2s; }
 .gsec:hover, .gsec:focus-visible { border-color: var(--gold-bright); transform: translateY(-2px); box-shadow: var(--shadow-md, var(--shadow-sm)); }
 .gsec__cover { aspect-ratio: 4 / 3; background: var(--navy); display: grid; place-items: center; overflow: hidden; }
@@ -1678,7 +1679,7 @@ body.modal-locked { position: fixed; left: 0; right: 0; width: 100%; overflow: h
 .bell__btn { position: relative; border: 0; background: rgba(255,255,255,.08); border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.05rem; display: grid; place-items: center; }
 .bell__btn:hover { background: rgba(255,255,255,.16); }
 .bell__badge { position: absolute; top: -3px; right: -3px; background: #c0392b; color: #fff; font-size: .66rem; font-weight: 700; border-radius: 999px; min-width: 17px; height: 17px; display: grid; place-items: center; padding: 0 4px; }
-.bell__menu { position: absolute; right: 0; top: calc(100% + 10px); width: min(340px, 88vw); background: var(--surface); border-radius: 14px; box-shadow: 0 18px 50px rgba(var(--chrome),.35); display: none; overflow: hidden; z-index: 120; }
+.bell__menu { position: absolute; right: 0; top: calc(100% + 10px); width: min(340px, 88vw); background: var(--surface); border-radius: var(--radius); box-shadow: 0 18px 50px rgba(var(--chrome),.35); display: none; overflow: hidden; z-index: 120; }
 .bell__menu.open { display: block; }
 .bell__head { padding: .8rem 1rem; font-family: var(--display); color: var(--heading); border-bottom: 1px solid var(--hairline); font-weight: 700; }
 .bell__list { max-height: 340px; overflow-y: auto; }
@@ -1955,7 +1956,7 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 /* Officer Console "Overview" landing — a card per enabled tool (officer.js renderHome). */
 .oc-home { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem; margin: .2rem 0 0; }
 .oc-card { display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; text-align: left;
-  padding: 1.15rem 1.2rem; border-radius: 14px; cursor: pointer; font: inherit;
+  padding: 1.15rem 1.2rem; border-radius: var(--radius); cursor: pointer; font: inherit;
   background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo)); color: var(--on-navy);
   border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold);
   box-shadow: 0 8px 22px rgba(0,0,0,.24); transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
@@ -2175,7 +2176,7 @@ a.ntf__txt:hover { color: var(--gold-deep); }
    which is far less rude on a phone than something covering the content. */
 .nudge { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap;
   max-width: 1100px; margin: 1rem auto 0; padding: .8rem 1.1rem;
-  background: var(--tint); border: 1.5px solid var(--gold-bright); border-radius: 14px; }
+  background: var(--tint); border: 1.5px solid var(--gold-bright); border-radius: var(--radius); }
 .nudge__ic { font-size: 1.3rem; line-height: 1; flex: none; }
 .nudge__body { flex: 1 1 240px; min-width: 0; }
 .nudge__ask { display: block; color: var(--heading); font-size: .96rem; }
@@ -2315,7 +2316,7 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .poll-mine { color: var(--gold-deep); font-weight: 700; }
 
 /* ---------- Board: committee tabs + suggestion box ---------- */
-.sug-box { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 1.4rem; }
+.sug-box { background: var(--surface); border: 1.5px dashed var(--hairline); border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.4rem; }
 .sug-box__head b { color: var(--heading); font-family: var(--display); }
 .sug-box__head span { color: var(--muted); font-size: .85rem; margin-left: .5rem; }
 .sug-box .gcompose { border-top: 0; padding-top: .7rem; }
@@ -2393,7 +2394,7 @@ input, select, textarea { background: var(--surface-2); }
   font-size: .72rem; font-weight: 700; letter-spacing: .16em; }
 .bsecs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .bsec { position: relative; display: block; padding: 1.4rem 1rem 1.2rem; cursor: pointer; text-align: center;
-  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 14px;
+  background: var(--surface); border: 1.5px solid var(--hairline); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); transition: transform .2s, border-color .2s; }
 .bsec:hover, .bsec:focus-visible { border-color: var(--gold-bright); transform: translateY(-2px); }
 .bsec__ic { display: block; font-size: 1.75rem; line-height: 1; margin-bottom: .55rem; }
@@ -2473,7 +2474,7 @@ input, select, textarea { background: var(--surface-2); }
 /* The card carries the gold top rule the E-Board cards use, so "this is the
    chapter asking" reads before a word is parsed. */
 .give-card { background: var(--surface); border: 1.5px solid var(--hairline);
-  border-top: 4px solid var(--gold); border-radius: 14px; padding: 1.7rem 1.6rem 1.5rem;
+  border-top: 4px solid var(--gold); border-radius: var(--radius); padding: 1.7rem 1.6rem 1.5rem;
   box-shadow: var(--shadow-sm); text-align: center; }
 .give-card--solo { grid-column: 1 / -1; max-width: 420px; margin: 0 auto; }
 
@@ -3135,7 +3136,7 @@ body.tree-lock { overflow: hidden; }
 .mtg-intro { margin-bottom: 1.4rem; }
 .mtg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem;
   align-items: start; margin-bottom: 3rem; }
-.mtg-card { background: var(--surface); border: 1.5px solid var(--hairline); border-radius: 14px;
+.mtg-card { background: var(--surface); border: 1.5px solid var(--hairline); border-radius: var(--radius);
   padding: 1.2rem 1.25rem; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
 .mtg-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
   flex-wrap: wrap; }

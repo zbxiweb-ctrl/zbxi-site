@@ -56,6 +56,10 @@
   </header>
 
   <main class="page-main" id="main" tabindex="-1">
+      <noscript>
+        <p class="page-empty">This part of the site needs JavaScript switched on. With it off, the members’ area can’t load — turn it on and refresh, or ask the webmaster via the contact form on the homepage.</p>
+      </noscript>
+
     <section class="page-hero">
       <div class="wrap center">
         <p class="eyebrow">Brothers Only</p>
@@ -87,7 +91,7 @@
               <p class="mtg-card__blurb">Brothers who said they'll help — career advice, industry
                 questions, a look at a résumé, or an introduction.</p>
               <div class="mtg-card__tools">
-                <input class="admin-search" id="mentorSearch" type="search"
+                <input class="admin-search" id="mentorSearch" aria-label="Search mentors" type="search"
                        aria-label="Search mentors"
                        placeholder="Search mentors — “finance”, “law school”, “engineer”…" />
                 <select class="page-filter" id="mentorFilter" aria-label="Filter mentors by profession"></select>
@@ -108,7 +112,7 @@
               <p class="mtg-card__blurb">Brothers who are asking — for hiring help, a referral, or
                 advice from someone who has done it already.</p>
               <div class="mtg-card__tools">
-                <input class="admin-search" id="menteeSearch" type="search"
+                <input class="admin-search" id="menteeSearch" aria-label="Search mentees" type="search"
                        aria-label="Search mentees"
                        placeholder="Search mentees — a name, a field, a city…" />
               </div>

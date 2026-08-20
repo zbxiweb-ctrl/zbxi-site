@@ -63,7 +63,9 @@
 
     // members get photos + the class thread button
     Z.amApprovedBrother().then(function (ok) {
-      if (!ok) return;
+      // No brothers means the ?c= did not match a real class — offering to start
+      // its thread would compose a post for a class nobody crossed in.
+      if (!ok || !LIST.length) return;
       threadBtn.style.display = '';
       threadBtn.href = 'board.html#compose=' + encodeURIComponent('[' + cls + '] Class thread');
       // Photos of this class — every photo any of these men is tagged in. Members only,

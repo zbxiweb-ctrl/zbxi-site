@@ -3320,7 +3320,7 @@
         '<p><b>You only approve a brother once.</b> After that he can edit his own profile — photo, city, job, bio — and it publishes immediately without coming back to you. Brothers cannot approve themselves; the database enforces that, not the website.</p>' +
         '<p>Not a real brother? Click <b>Reject</b> — they never appear publicly.</p>') +
       sec('🔒 Who can see what (site privacy)', '<ul>' +
-        '<li><b>The public</b> sees the homepage, events, and a demo family tree with fake names — no real brother names anywhere.</li>' +
+        '<li><b>The public</b> sees the homepage and a demo family tree with fake names — no real brother names anywhere.</li>' +
         '<li><b>Anyone with an account</b> (even before you approve them) can see names and the real tree — they need that to claim their own name.</li>' +
         '<li><b>Approved brothers</b> see everything: full profiles, photos, gallery, board, directory.</li></ul>') +
       sec('🗂️ What the tabs mean', '<ul>' +

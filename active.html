@@ -56,6 +56,10 @@
   </header>
 
   <main class="page-main" id="main" tabindex="-1">
+      <noscript>
+        <p class="page-empty">This part of the site needs JavaScript switched on. With it off, the members’ area can’t load — turn it on and refresh, or ask the webmaster via the contact form on the homepage.</p>
+      </noscript>
+
     <section class="page-hero">
       <div class="wrap center">
         <p class="eyebrow">The Undergraduate Chapter</p>
@@ -73,7 +77,7 @@
         <p class="eb-seealso"><a href="eboards.html">👑 Every executive board, term by term →</a></p>
 
         <p class="eyebrow" style="margin-top:3rem">All Active Brothers</p>
-        <input class="admin-search" id="pageSearch" type="search" placeholder="Search by name or pledge class…" />
+        <input class="admin-search" id="pageSearch" aria-label="Search active brothers" type="search" placeholder="Search by name or pledge class…" />
         <div class="page-filters" id="pageFilters"></div>
         <div class="bro-grid" id="pageGrid"><p class="page-empty">Loading…</p></div>
       </div>

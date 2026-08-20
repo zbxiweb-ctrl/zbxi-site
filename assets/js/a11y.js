@@ -144,6 +144,35 @@
     obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-hidden'] });
   }
 
+  /* The "Brothers ▾" nav button said aria-haspopup and had no handler at all:
+     the menu opened purely on :hover / :focus-within. A sighted mouse user never
+     noticed, but a screen-reader user was told to expect a popup, pressed Enter,
+     and nothing happened — with no way to dismiss it either. Give the button the
+     toggle it always claimed to have; hover and focus-within still work. */
+  function wireNavGroup() {
+    var btn = document.querySelector('.nav__group-btn');
+    if (!btn || btn._zbxiWired) return;
+    var group = btn.parentNode;
+    btn._zbxiWired = true;
+    btn.setAttribute('aria-expanded', 'false');
+    function setOpen(on) { btn.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    document.addEventListener('click', function (e) { if (!group.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || btn.getAttribute('aria-expanded') !== 'true') return;
+      setOpen(false);
+      btn.focus();
+    });
+    // Following a link should not leave the menu latched open behind you.
+    group.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { setOpen(false); }); });
+  }
+
+  var _init = init;
+  init = function () { _init(); wireNavGroup(); };
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();

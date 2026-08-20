@@ -20,15 +20,7 @@
      if the rule ever changes, it changes in both. */
   var _now = new Date();
   var CUTOFF = _now.getFullYear() + (_now.getMonth() >= 5 ? 1 : 0);
-  function pledgeYear(cls) {
-    if (!cls) return null;
-    var m4 = String(cls).match(/(19|20)\d{2}/);
-    if (m4) return parseInt(m4[0], 10);
-    var m2 = String(cls).match(/'(\d{2})/);
-    if (!m2) return null;
-    var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
-  }
+  var pledgeYear = ZBXIUtil.pledgeYear;
   function isActive(b) {
     if (b.standing) return b.standing === 'active';
     var py = pledgeYear(b.pledge_class);

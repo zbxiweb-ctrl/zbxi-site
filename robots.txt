@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
-Disallow: /admin.html
+
+# The consoles carry <meta name="robots" content="noindex"> instead of a
+# Disallow here. A Disallow would stop the crawler from ever FETCHING those
+# pages, so it could never read the noindex — and the bare URL could still be
+# indexed from a link. Letting it fetch and see the noindex is what actually
+# keeps them out of results.
 
 Sitemap: https://zetabetaxi.com/sitemap.xml

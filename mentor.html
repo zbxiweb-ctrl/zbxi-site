@@ -15,6 +15,15 @@
   <meta name="robots" content="noindex, follow" />
   <meta http-equiv="refresh" content="0; url=mentoring.html" />
   <link rel="icon" href="assets/img/favicon.png" />
+  <!-- The redirect is usually instant, but on a slow connection this stub paints
+       for a moment. Without these it flashed white at a brother who had chosen
+       dark mode. Inline and script-light on purpose: this page must stay fast. -->
+  <script>try{var _t=localStorage.getItem("zbxi-theme")||"light";document.documentElement.dataset.theme=_t;}catch(e){}</script>
+  <style>
+    :root { --bg: #F7F5EF; --fg: #12151C; }
+    :root[data-theme="dark"] { --bg: #050505; --fg: #ecdcaa; }
+    body { background: var(--bg); color: var(--fg); margin: 0; }
+  </style>
   <script>try{location.replace('mentoring.html' + location.search + location.hash);}catch(e){location.href='mentoring.html';}</script>
 </head>
 <body>
