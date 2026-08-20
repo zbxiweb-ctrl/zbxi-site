@@ -584,8 +584,14 @@
       '</div></div>';
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
-    m.querySelector('[data-hc]').onclick = function () { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); };
-    m.addEventListener('click', function (x) { if (x.target === m) { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); } });
+    function closeHelp() {
+      m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+      document.removeEventListener('keydown', onEsc);
+    }
+    function onEsc(x) { if (x.key === 'Escape') closeHelp(); }
+    document.addEventListener('keydown', onEsc);
+    m.querySelector('[data-hc]').onclick = closeHelp;
+    m.addEventListener('click', function (x) { if (x.target === m) closeHelp(); });
   }
 
   /* -- boot -- */

@@ -344,5 +344,5 @@
     });
   }
 
-  window.BrotherCard = { open: open, initials: initials, titleOf: titleOf, esc: esc };
+  window.BrotherCard = { open: open, initials: initials };
 })();

@@ -335,8 +335,8 @@
         <div class="card-form">
           <h3 style="color:var(--heading);font-family:var(--display)">Send us a message</h3>
           <form id="contactForm" action="https://formspree.io/f/xqevoaqw" method="POST" novalidate>
-            <div class="field"><label for="c-name">Name *</label><input id="c-name" name="name" required /></div>
-            <div class="field"><label for="c-email">Email *</label><input id="c-email" type="email" name="email" required /></div>
+            <div class="field"><label for="c-name">Name *</label><input id="c-name" name="name" autocomplete="name" required /></div>
+            <div class="field"><label for="c-email">Email *</label><input id="c-email" type="email" name="email" autocomplete="email" required /></div>
             <div class="field"><label for="c-msg">Message *</label><textarea id="c-msg" name="message" required></textarea></div>
             <input type="hidden" name="_subject" value="ΖΒΞ Website Contact" />
             <!-- Honeypot: hidden from humans; bots fill it and Formspree silently drops the submission. -->
