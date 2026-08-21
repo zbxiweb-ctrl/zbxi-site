@@ -1,0 +1,30 @@
+# Cloudflare serves this repo as the web root (wrangler.jsonc -> assets.directory ".").
+# Everything not listed here is downloadable by anyone, so anything in the repo that
+# is not part of the website has to be named below.
+#
+# This file exists because it wasn't: /data/roster.txt was serving 343 brothers'
+# names and pledge classes to anyone who asked, while the site itself hides that
+# same roster behind sign-in and shows anonymous visitors a demo tree with fake
+# names. The database migrations were public too, RLS policies and all.
+#
+# Adding a folder to this repo? Assume it is PUBLIC until you add it here.
+
+# Brother data. Never public — this is the whole point of the members' area.
+data/
+
+# Database: schema, every migration, and the edge-function sources. Publishing
+# these hands out the table layout and every RLS policy as free reconnaissance.
+supabase/
+
+# Internal notes, planning docs and tooling — not part of the site.
+docs/
+tools/
+*.md
+
+# Repo plumbing.
+.gitignore
+.gitattributes
+wrangler.jsonc
+package.json
+package-lock.json
+node_modules/
