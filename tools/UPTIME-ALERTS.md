@@ -54,17 +54,21 @@ Claude and it can sort the exception out.
 
 A pinger only knows whether a page answered. It cannot tell that a page loaded
 but is broken, that a file leaked, or that a deploy shipped code that won't run.
-That is what `tools/check-site.bat` and the daily cloud check are for.
+That is what `tools/check-site.bat` is for.
 
-Between the three:
+Between the two:
 
 | Problem | Caught by |
 |---|---|
-| Site totally unreachable, 3am | UptimeRobot (5 min, phones you) |
-| Members' area down, homepage fine | UptimeRobot 2nd monitor, or the daily check |
-| Deploy shipped broken code | check-site.bat, or the daily check within 24h |
-| Something private became public | the daily check (or check-site.bat) |
-| Database asleep on the free plan | the daily check — it also prevents it |
+| Site totally unreachable, 3am | UptimeRobot — the only one that wakes you |
+| Members' area down, homepage fine | UptimeRobot 2nd monitor |
+| Database asleep on the free plan | UptimeRobot 2nd monitor — it also prevents it |
+| Deploy shipped broken code | check-site.bat (run it after Claude changes anything) |
+| Something private became public | check-site.bat |
+| A page loads but is quietly broken | check-site.bat |
+
+The split is: **UptimeRobot answers "is it reachable", around the clock, without
+you. check-site.bat answers "is it actually right", when you ask.**
 
 
 ## Why there isn't a scheduled Claude check
