@@ -28,6 +28,16 @@ const BASE = (arg('--base', 'https://zetabetaxi.com')).replace(/\/$/, '');
 const JSON_OUT = argv.includes('--json');
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TIMEOUT = 20000;
+/* Cloudflare bot protection 403s requests that don't look like a browser, which
+   from a datacenter (a scheduled runner) is indistinguishable from the site being
+   down. Identify honestly as a monitor, but with a real UA so we aren't refused. */
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' +
+           'Chrome/126.0 Safari/537.36 (+zbxi-healthcheck)';
+const HEADERS = { 'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,*/*' };
+/* Set when the site refuses US specifically. Everything downstream would fail
+   too, and reporting "all 21 pages down" when we simply cannot see them is the
+   kind of false alarm that trains someone to ignore the alert that matters. */
+let blockedHere = false;
 
 const results = [];
 const add = (level, name, detail) => results.push({ level, name, detail });
@@ -39,7 +49,7 @@ async function get(path, { head = false } = {}) {
   const url = path.startsWith('http') ? path : BASE + path;
   const ctl = AbortSignal.timeout(TIMEOUT);
   const t0 = Date.now();
-  const res = await fetch(url, { method: head ? 'HEAD' : 'GET', redirect: 'follow', signal: ctl });
+  const res = await fetch(url, { method: head ? 'HEAD' : 'GET', redirect: 'follow', signal: ctl, headers: HEADERS });
   const body = head ? '' : await res.text();
   return { status: res.status, body, ms: Date.now() - t0, headers: res.headers, url: res.url };
 }
@@ -61,6 +71,13 @@ function repoScripts() {
 async function checkEdge() {
   try {
     const r = await get('/');
+    if (r.status === 403 || r.status === 503) {
+      // A challenge page, not an outage. Verify from a browser or another network.
+      if (/cloudflare|cf-browser-verification|Just a moment|Attention Required/i.test(r.body) || r.status === 403) {
+        blockedHere = true;
+        return warn('edge', `this runner is being blocked by bot protection (${r.status}) — cannot verify the site from here, and this is NOT evidence the site is down`);
+      }
+    }
     if (r.status !== 200) return fail('edge', `homepage returned ${r.status}`);
     if (!/Zeta Beta Xi/i.test(r.body)) return fail('edge', 'homepage served but the content is not the site');
     if (r.ms > 4000) warn('edge', `homepage OK but slow (${r.ms}ms)`);
@@ -70,6 +87,7 @@ async function checkEdge() {
 
 // ------------------------------------------------------- 2. every page serves
 async function checkPages() {
+  if (blockedHere) return warn('pages', 'skipped — this runner is blocked by bot protection');
   const pages = repoPages();
   const bad = [];
   for (const p of pages) {
@@ -87,6 +105,7 @@ async function checkPages() {
 // ----------------------------------------- 3. the deployed JS actually parses
 // The highest-value check here: this is what a bad deploy looks like from outside.
 async function checkScripts() {
+  if (blockedHere) return warn('js-parse', 'skipped — this runner is blocked by bot protection');
   const files = repoScripts();
   const broken = [], missing = [];
   for (const f of files) {
@@ -106,6 +125,7 @@ async function checkScripts() {
 // Every module assumes window.ZBXIUtil exists and is loaded FIRST. A page that
 // lost that script tag dies on load, and nothing about the HTTP response says so.
 async function checkUtilOrder() {
+  if (blockedHere) return warn('shared-module', 'skipped — this runner is blocked by bot protection');
   const bad = [];
   for (const p of repoPages()) {
     try {
@@ -180,6 +200,7 @@ async function checkHeaders() {
 
 // --------------------------------- 8. no secret shipped into a public bundle
 async function checkNoSecrets() {
+  if (blockedHere) return warn('secrets', 'skipped — this runner is blocked by bot protection');
   // Deliberately narrow: patterns that are ALWAYS server-side. The anon/publishable
   // key is meant to be public and must not trip this.
   const patterns = [/service_role/i, /\bsb_secret_[A-Za-z0-9_-]{8,}/, /SUPABASE_SERVICE/i, /\bsbp_[a-f0-9]{40}\b/];
@@ -199,6 +220,7 @@ async function checkNoSecrets() {
 // Cloudflare serves the whole repo, so anything added to it is public by default.
 // This shipped for real: /data/roster.txt was handing out 343 brothers' names.
 async function checkPrivatePaths() {
+  if (blockedHere) return warn('private-paths', 'skipped — this runner is blocked by bot protection');
   const mustBe404 = [
     'data/roster.txt', 'data/roster-import.sql',
     'supabase/schema.sql', 'supabase/functions/zbxi-claim.ts',
