@@ -1974,6 +1974,23 @@ a.ntf__txt:hover { color: var(--gold-deep); }
 .admin-hint a { color: var(--gold-bright); text-decoration: underline; }
 .admin-hint--tip { background: rgba(200,162,75,.12); }
 
+/* Officer Console cross-tab "needs your attention" strip (officer.js fillAttn).
+   Lives OUTSIDE #q so tab renders don't wipe it; hidden entirely when nothing
+   is waiting — quiet is the default state. The [hidden] rule is required:
+   display:flex would otherwise beat the UA's [hidden]{display:none}. */
+.attn-strip { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem;
+  margin: 0 0 1rem; padding: .6rem .9rem; border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--console-card-hi), var(--console-card-lo));
+  border: 1px solid rgba(200,162,75,.24); border-left: 3px solid var(--gold-bright); }
+.attn-strip[hidden] { display: none; }
+.attn-strip__label { color: var(--on-navy); font-size: .85rem; font-weight: 600; letter-spacing: .02em; }
+.attn-strip__item { font: inherit; font-size: .85rem; cursor: pointer; border-radius: 999px;
+  padding: .28rem .8rem; background: var(--console-field); color: var(--on-navy);
+  border: 1px solid rgba(200,162,75,.32); transition: border-color .15s ease, color .15s ease; }
+.attn-strip__item:hover { border-color: var(--gold-bright); color: var(--gold-bright); }
+.attn-strip__item:focus-visible { outline: none; border-color: var(--gold-bright); box-shadow: 0 0 0 3px rgba(200,162,75,.28); }
+.attn-strip__item--urgent { color: var(--gold-bright); border-color: var(--gold-bright); font-weight: 600; }
+
 /* ---------- Admin: tree editor ---------- */
 .treeed-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .9rem; flex-wrap: wrap; }
 .treeed-list { background: var(--surface); border-radius: 12px; padding: .9rem 1rem; box-shadow: var(--shadow-sm); overflow-x: auto; }

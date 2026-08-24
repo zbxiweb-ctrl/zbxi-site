@@ -184,6 +184,10 @@
               ? 'you hold every tool here. An officer sees only the ones you have switched on for him.'
               : 'you can only see the tools the webmaster has enabled for you.') + '</span></div>' +
           '</div>' +
+          // The cross-tab "needs your attention" strip (fillAttn). It sits
+          // OUTSIDE #q on purpose: every tab render overwrites #q, and this must
+          // survive that. Hidden until something is actually waiting.
+          '<div id="attn" class="attn-strip" hidden></div>' +
           '<div id="q">Loading…</div>' +
         '</div>' +
       '</div>';
@@ -219,6 +223,7 @@
   function renderTab() {
     var q = document.getElementById('q');
     if (!q) return;
+    fillAttn();   // decisions land here too, so the strip stays truthful after one
     var tool = state.tools.filter(function (t) { return t.id === state.tab; })[0];
     if (!tool) { q.innerHTML = ''; return; }
     document.querySelectorAll('#tabs [data-tab]').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === state.tab); });
@@ -303,6 +308,7 @@
     })['catch'](function () { /* a nicety; never break the Overview over it */ });
 
     fillHomeCounts();
+    fillAttn();
   }
 
   function setMeta(id, txt) {
@@ -354,6 +360,45 @@
     if (have.albums) setMeta('albums', 'On the gallery page →');
     if (have.polls) setMeta('polls', 'On the Board →');
     if (have.eboards) setMeta('eboards', 'On the Executive Boards page →');
+  }
+
+  /* ---- the "needs your attention" strip -------------------------------------
+     Only the time-sensitive items an officer can ACT on: brothers waiting for
+     approval, suggestions nobody answered. Deliberately not a mirror of the
+     Overview counts — committees existing is not something waiting on him.
+     Silent when all clear: an always-on "all caught up" banner trains him to
+     stop reading it. Re-checked on every tab change and after every decision
+     (both paths land in renderTab/renderHome). */
+  function fillAttn() {
+    var box = document.getElementById('attn');
+    if (!box) return;
+    var checks = [];
+    if (state.grants['members.approve']) {
+      checks.push(Z.pendingQueue().then(function (rows) {
+        return rows.length ? { tab: 'members', urgent: true,
+          txt: rows.length === 1 ? '1 brother waiting for approval' : rows.length + ' brothers waiting for approval' } : null;
+      }).catch(function () { return null; }));      // a failed count never breaks the console
+    }
+    if (state.grants['suggestions.respond']) {
+      checks.push(Z.suggestionsMine().then(function (rows) {
+        var n = rows.filter(function (s) { return s.status === 'new'; }).length;
+        return n ? { tab: 'suggest', urgent: false,
+          txt: n === 1 ? '1 suggestion waiting for a reply' : n + ' suggestions waiting for a reply' } : null;
+      }).catch(function () { return null; }));
+    }
+    if (!checks.length) { box.hidden = true; return; }
+    Promise.all(checks).then(function (items) {
+      items = items.filter(Boolean);
+      if (!items.length) { box.hidden = true; box.innerHTML = ''; return; }
+      box.innerHTML = '<span class="attn-strip__label">Needs your attention:</span>' +
+        items.map(function (it) {
+          return '<button class="attn-strip__item' + (it.urgent ? ' attn-strip__item--urgent' : '') + '" data-attn="' + esc(it.tab) + '">' + esc(it.txt) + ' →</button>';
+        }).join('');
+      box.hidden = false;
+      box.querySelectorAll('[data-attn]').forEach(function (b) {
+        b.onclick = function () { enter(b.dataset.attn); };
+      });
+    });
   }
 
   /* ================= APPROVALS (upgrade44) =================================
