@@ -1230,6 +1230,23 @@
           { onConflict: 'seat,permission' });
       });
     },
+    /* ---- explicit console-access grants (upgrade69) --------------------------
+       officer_seat_overrides has ZERO table grants by design (upgrade58); these
+       three admin-only SECURITY DEFINER verbs are the only path to it. Each
+       raises 'not allowed' for anyone but the admin, so a refusal is an error
+       the console can show rather than a silent no-op. */
+    seatOverridesList: function () {
+      return client.rpc('admin_seat_overrides_list')
+        .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    },
+    seatOverrideSet: function (brotherId, note) {
+      return client.rpc('admin_seat_override_set', { p_brother_id: brotherId, p_note: note || null })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
+    seatOverrideDelete: function (brotherId) {
+      return client.rpc('admin_seat_override_delete', { p_brother_id: brotherId })
+        .then(function (r) { if (r.error) throw r.error; return r.data; });
+    },
     /* ---- Every section under the Brothers / Brothers Only menus -----------------
        Defined once, as data, and rendered by BOTH consoles — the same reason
        OPEN_TO lives here. The point is coverage you can check at a glance: if a

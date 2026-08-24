@@ -3238,11 +3238,17 @@
 
   // EVERY holder, not the first one. Grants are per SEAT, so if two brothers hold
   // the title, ticking a box hands the power to both — naming only one made the
-  // column read like a single person's permissions.
-  function officerSeatHolder(scope) {
+  // column read like a single person's permissions. Since upgrade69 a seat can
+  // also be held WITHOUT the title (officer_seat_overrides), so the override
+  // list is part of the answer — an override holder used to show as "seat
+  // currently empty", which was a lie.
+  function officerSeatHolder(scope, seatId, ovr) {
     var names = state.data.verified.filter(function (x) {
       return x.role === 'President' && x.role_scope === scope;
     }).map(function (x) { return x.full_name; });
+    // Matching o.seat keeps this truthful if a second seat ever exists — the
+    // grid's job is to say who a checkbox hands power to.
+    (ovr || []).forEach(function (o) { if (o.brother_name && o.seat === seatId) names.push(o.brother_name); });
     return names.length ? names.join(' & ') : null;   // caller esc()s this
   }
 
@@ -3252,14 +3258,109 @@
       '<b>Assigning titles, deleting brothers, and attaching a profile to an account always stay with you</b>, ' +
       'whatever is ticked below — an officer can never hand out a chapter title or an officer seat, ' +
       'including to himself.</p>' +
+      '<div id="ogSeats"><p class="admin-empty">Loading…</p></div>' +
       '<div id="ogGrid"><p class="admin-empty">Loading…</p></div>';
 
+    // Overrides load first (the grid's holder line needs them); if that list
+    // fails the grid still renders — the two blocks fail independently.
+    Z.seatOverridesList().then(function (ovr) {
+      renderSeatAccess(q.querySelector('#ogSeats'), ovr);
+      return ovr;
+    }).catch(function (e) {
+      var el = q.querySelector('#ogSeats');
+      if (el) el.innerHTML = '<p class="form-status err">Could not load console-access grants: ' + esc(e.message || '') + '</p>';
+      return [];
+    }).then(function (ovr) { renderGrantsGrid(q.querySelector('#ogGrid'), ovr); });
+  }
+
+  /* Who can open the officer console, both ways in: the President title (set in
+     the E-Board tab, public) or a plain access grant (upgrade69, console only).
+     This block exists so a granted holder is VISIBLE — an invisible privilege
+     is the one kind we never allow. */
+  function renderSeatAccess(box, ovr) {
+    if (!box) return;
+    var derived = state.data.verified.filter(function (x) {
+      return x.role === 'President' && x.role_scope === 'alumni';
+    });
+    var rows = derived.map(function (b) {
+      return '<div class="admin-row"><div class="admin-row__ph">👑</div>' +
+        '<div class="admin-row__info"><b>' + esc(b.full_name) + '</b>' +
+        '<span>Holds the President title — on the site publicly, and it opens this console. Change it in the 👑 E-Board tab.</span></div></div>';
+    }).join('') + ovr.map(function (o) {
+      return '<div class="admin-row" data-ovr="' + esc(o.brother_id || '') + '">' +
+        '<div class="admin-row__ph">🛡</div>' +
+        '<div class="admin-row__info"><b>' + esc(o.brother_name) + '</b>' +
+          '<span>Console access only — no title shown on the site.' + (o.note ? ' Note: ' + esc(o.note) : '') + '</span></div>' +
+        // A row with no brother_id can't be removed by this verb; surface it
+        // rather than hiding it, and route the fix through the webmaster.
+        (o.brother_id ? '<div class="admin-row__act"><button class="btn btn--danger" data-rm>Remove access</button></div>' : '') +
+      '</div>';
+    }).join('');
+    box.innerHTML = '<h3 class="stat-h">🛡 Who has this console</h3>' +
+      '<p class="admin-hint">Two ways in: the <b>President title</b> (public, set in the E-Board tab) or ' +
+      '<b>console access on its own</b>, granted right here — the tools, without putting a title next to his name on the site. ' +
+      'Use it for whoever actually runs things day-to-day. Removing access takes effect the next time he loads the console.</p>' +
+      (rows || '<p class="admin-empty">Nobody holds the console right now.</p>') +
+      '<div class="admin-addbar"><button class="btn btn--gold" id="ogGrant">+ Grant console access</button></div>';
+
+    box.querySelectorAll('[data-ovr]').forEach(function (el) {
+      var id = el.dataset.ovr;
+      if (!id) return;
+      var o = ovr.filter(function (x) { return x.brother_id === id; })[0];
+      each(el, '[data-rm]', function () {
+        ZBXIAsk.confirm({
+          title: 'Remove console access for ' + o.brother_name + '?',
+          body: 'He keeps his brother account and everything else — he just loses the officer tools. You can grant them again anytime.',
+          ok: 'Remove access', danger: true
+        }, function () {
+          Z.seatOverrideDelete(id).then(function () { renderList(); }).catch(function (e) {
+            ZBXIAsk.alert({ title: 'Could not remove that', body: (e && e.message) || 'Please try again.' });
+          });
+        });
+      });
+    });
+    var g = box.querySelector('#ogGrant');
+    if (g) g.onclick = openGrantSeat;
+  }
+
+  function openGrantSeat() {
+    var wrap = treeModal('Grant console access',
+      '<p class="form-note">Gives a brother every tool switched on below — <b>without</b> putting a title next to his name on the site. ' +
+      'Only brothers who have signed up appear here: access attaches to his sign-in, so there is nothing to attach it to before that.</p>' +
+      '<div class="field"><label>Search brothers</label><input data-search placeholder="Start typing a name…"></div>' +
+      '<div class="field"><label>Brother</label><select data-f="who" size="6" style="height:auto"></select></div>' +
+      fld('Note to self (optional — e.g. "incoming president")', 'note', '') +
+      '<button class="btn btn--navy" data-save style="width:100%">Grant access</button>');
+    var sel = wrap.querySelector('[data-f="who"]');
+    function fill(qs) {
+      var opts = state.data.verified
+        .filter(function (v) { return v.user_id && (!qs || v.full_name.toLowerCase().indexOf(qs) !== -1); })
+        .sort(function (x, y) { return x.full_name.localeCompare(y.full_name); }).slice(0, 200);
+      sel.innerHTML = opts.map(function (v) {
+        return '<option value="' + v.id + '">' + esc(v.full_name) + ' (' + esc(v.pledge_class || '') + ')</option>';
+      }).join('');
+    }
+    fill('');
+    wrap.querySelector('[data-search]').oninput = function (e) { fill(e.target.value.trim().toLowerCase()); };
+    wrap.querySelector('[data-save]').onclick = function () {
+      var pick = state.verifiedById[sel.value];
+      var st = wrap.querySelector('[data-status]');
+      if (!pick) { st.className = 'form-status err'; st.textContent = 'Pick a brother first.'; return; }
+      var note = wrap.querySelector('[data-f="note"]').value.trim() || null;
+      st.className = 'form-status'; st.textContent = 'Granting…';
+      Z.seatOverrideSet(pick.id, note).then(function () { wrap.close(); renderList(); })
+        .catch(function (e) { st.className = 'form-status err'; st.textContent = (e && e.message) || 'Could not grant access.'; });
+    };
+  }
+
+  function renderGrantsGrid(grid, ovr) {
+    if (!grid) return;
     Z.officerGrantsList().then(function (grants) {
       var on = {};
       grants.forEach(function (g) { if (g.enabled) on[g.seat + '|' + g.permission] = true; });
 
       var head = '<tr><th>Permission</th>' + OFFICER_SEATS.map(function (s) {
-        var who = officerSeatHolder(s.scope);
+        var who = officerSeatHolder(s.scope, s.id, ovr);
         return '<th>' + esc(s.label) + '<br><small>' + (who ? esc(who) : 'seat currently empty') + '</small></th>';
       }).join('') + '</tr>';
 
@@ -3273,7 +3374,6 @@
           }).join('') + '</tr>';
       }).join('');
 
-      var grid = q.querySelector('#ogGrid');
       grid.innerHTML = '<table class="og-table">' + head + body + '</table>';
 
       grid.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
@@ -3291,7 +3391,7 @@
         };
       });
     }).catch(function (e) {
-      q.innerHTML = '<p class="form-status err">Could not load officer permissions: ' + esc(e.message || '') + '</p>';
+      grid.innerHTML = '<p class="form-status err">Could not load officer permissions: ' + esc(e.message || '') + '</p>';
     });
   }
 
