@@ -15,15 +15,17 @@ Both are silent. Nobody emails you "your site is gone." A pinger does.
 
 ## Set it up (UptimeRobot)
 
-1. Go to **uptimerobot.com** and make a free account.
-2. **+ New monitor**
-   - Monitor type: **HTTPS**
-   - Friendly name: `ZBXi site`
-   - URL: `https://zetabetaxi.com`
-   - Monitoring interval: **5 minutes** (the free maximum frequency)
-3. Under **Alert contacts**, tick your email. To get a phone alert, install the
-   UptimeRobot app and enable push — free, unlike their SMS.
-4. Save.
+Signup and your first monitor are the same form — you do not create an account
+and then go hunting for an "add monitor" button.
+
+1. Go to **https://uptimerobot.com/signUp**
+2. **Website to monitor** — type `zetabetaxi.com`
+3. **Create your account** — your email address.
+   Or press **Google** instead and skip having another password to remember.
+4. Press **Register**, then confirm from the email they send.
+
+That is the first monitor done. It now loads your homepage every 5 minutes from
+outside your house and tells you if it stops answering.
 
 That's it. It now loads your homepage every 5 minutes from outside your house
 and tells you if it stops answering.
