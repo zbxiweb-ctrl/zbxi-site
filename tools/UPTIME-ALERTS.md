@@ -35,9 +35,20 @@ Add a second monitor exactly like the first but with:
 - Friendly name: `ZBXi members area (database)`
 - URL: `https://wqhhomzbeeveuaskirfl.supabase.co/auth/v1/health`
 
-This one watches the database the members' area depends on. It can fail while
-the homepage looks perfectly fine — that's the situation where brothers say
-"I can't log in" and the site looks OK to you.
+This one earns its place twice over:
+
+1. It watches the database the members' area depends on. That can fail while the
+   homepage looks perfectly fine — the situation where brothers say "I can't log
+   in" and the site looks OK to you.
+2. **It keeps the database awake.** Supabase's free plan puts a project to sleep
+   after about a week with no activity, which would take down sign-in, the
+   roster, the gallery and the board while the homepage carried on looking fine.
+   A monitor touching it every 5 minutes means it is never idle.
+
+After you save it, check that UptimeRobot shows it **Up** within a few minutes.
+If it shows Down while the site plainly works in your browser, the monitor is
+being turned away by bot protection rather than finding a real outage — tell
+Claude and it can sort the exception out.
 
 ## What this does NOT cover
 
@@ -54,3 +65,28 @@ Between the three:
 | Deploy shipped broken code | check-site.bat, or the daily check within 24h |
 | Something private became public | the daily check (or check-site.bat) |
 | Database asleep on the free plan | the daily check — it also prevents it |
+
+
+## Why there isn't a scheduled Claude check
+
+There was going to be one — a cloud agent running this health check once a day.
+It was built, scheduled, and then removed, because it could not do the job:
+Cloudflare's bot protection refuses requests from datacenter addresses, so from
+Anthropic's cloud the site and the database both answer "403 forbidden". The
+agent read that as a total outage and, on its first two runs, opened alarming
+GitHub issues and pushed a "SITE IS DOWN" alert to a phone — while the site was
+perfectly healthy the whole time.
+
+A monitor that cries wolf every morning is worse than no monitor, because it
+teaches you to ignore the one alert that is real. So that layer is switched off
+(the routine still exists, disabled, if it is ever worth revisiting with a
+Cloudflare exception for the runner).
+
+What covers the same ground instead:
+
+- **UptimeRobot** watches from ordinary monitoring addresses, which Cloudflare
+  is far happier with, and it phones you — which the daily agent never could.
+- **The second monitor above** keeps the database awake, which was the other
+  reason the daily job existed.
+- **`check-site.bat`** runs from your own machine, where nothing blocks it, and
+  gives the deep answers a pinger cannot.

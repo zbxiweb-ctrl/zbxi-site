@@ -153,11 +153,16 @@ async function checkSupabase() {
   } catch { return warn('supabase', 'config.js unreadable — skipped'); }
   if (!url || !key) return warn('supabase', 'could not read URL/key from config.js');
   try {
-    const h = await fetch(url + '/auth/v1/health', { headers: { apikey: key }, signal: AbortSignal.timeout(TIMEOUT) });
+    const h = await fetch(url + '/auth/v1/health', { headers: { apikey: key, 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+    // Supabase sits behind Cloudflare too, so a datacenter runner gets 403 here
+    // exactly as it does on the site. Reporting that as "nobody can sign in" is
+    // a false alarm, and a scary one — say we cannot see it instead.
+    if (h.status === 403) { blockedHere = true; return warn('supabase', 'blocked from this runner (403) — cannot verify sign-in from here; NOT evidence it is down'); }
     if (h.status !== 200) return fail('supabase-auth', `auth health ${h.status} — nobody can sign in`);
     // A public-safe read: anon should get 200 with an empty set, because RLS hides
     // the rows rather than refusing the request. A 5xx means the database is hurting.
-    const q = await fetch(url + '/rest/v1/events?select=id&limit=1', { headers: { apikey: key }, signal: AbortSignal.timeout(TIMEOUT) });
+    const q = await fetch(url + '/rest/v1/events?select=id&limit=1', { headers: { apikey: key, 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT) });
+    if (q.status === 403) return warn('supabase', 'blocked from this runner (403) — cannot verify the database from here');
     if (q.status >= 500) return fail('supabase-rest', `REST ${q.status} — members' area will be down`);
     if (q.status !== 200) warn('supabase-rest', `REST returned ${q.status} (expected 200 + empty set for anon)`);
     else ok('supabase', 'auth 200, REST 200');
@@ -183,6 +188,7 @@ function checkCert() {
 
 // ------------------------------------------ 7. security headers (regression net)
 async function checkHeaders() {
+  if (blockedHere) return warn('headers', 'skipped — this runner is blocked by bot protection');
   try {
     const r = await get('/');
     const csp = r.headers.get('content-security-policy') || '';
@@ -239,6 +245,7 @@ async function checkPrivatePaths() {
 
 // ------------------------------- 10. is the deployed build the committed build?
 async function checkDeployFresh() {
+  if (blockedHere) return warn('deploy-fresh', 'skipped — this runner is blocked by bot protection');
   let head;
   try { head = execFileSync('git', ['-C', REPO, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); }
   catch { return; }                       // no git (or not a checkout) — skip quietly
