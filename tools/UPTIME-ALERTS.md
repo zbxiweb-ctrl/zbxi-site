@@ -35,7 +35,20 @@ and tells you if it stops answering.
 Add a second monitor exactly like the first but with:
 
 - Friendly name: `ZBXi members area (database)`
-- URL: `https://wqhhomzbeeveuaskirfl.supabase.co/auth/v1/health`
+- URL:
+  `https://wqhhomzbeeveuaskirfl.supabase.co/rest/v1/events?select=id&limit=1&apikey=sb_publishable_BWpWxARZc4e4zATsDfMrMQ_w88RcFbJ`
+
+Two things about that URL, both learned the hard way:
+
+- **The key has to be in it.** Without one, Supabase answers "no API key found"
+  and the monitor sits at Down forever. It is safe here — that is the
+  *publishable* key, already in the site's code and sent to every visitor.
+- **It has to answer a HEAD request.** UptimeRobot sends HEAD, not GET. The
+  obvious-looking `/auth/v1/health` answers GET fine but returns **405** to
+  HEAD, which is a permanently-red monitor. The `/rest/v1/events` query above
+  answers 200 to both, and is a better check anyway: it proves the database
+  itself is answering queries, not just that the login service is running.
+  A stranger calling it gets `[]` — row-level security hides the rows.
 
 This one earns its place twice over:
 
