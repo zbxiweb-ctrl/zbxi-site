@@ -499,8 +499,34 @@
       }
 
       // Normal (non-invited) signup or login.
-      var p = signup ? Z.signUp(email, pw, capAuth && capAuth.token()) : Z.signIn(email, pw, capAuth && capAuth.token());
-      p.then(function (r) {
+      //
+      // The captcha token is fetched with two fallbacks because the visible
+      // widget can be SOLVED ON SCREEN yet hold no usable token: iOS Safari's
+      // back-forward cache restores the page with the widget still painted
+      // "Success!" while its single-use token is already consumed or expired,
+      // and a failed first attempt burns the token the same way. Reading only
+      // capAuth.token() then submits WITHOUT a token and the server answers
+      // "captcha protection: request disallowed" — a lockout that looks like a
+      // site bug to the brother (seen live on mobile, 2026-08-30). So:
+      //   1) widget token if it has one;
+      //   2) else mint a fresh offscreen token (getToken);
+      //   3) if the server STILL rejects the captcha, retry ONCE with another
+      //      fresh token before surfacing anything.
+      function freshToken() {
+        var t = capAuth && capAuth.token();
+        if (t) return Promise.resolve(t);
+        return (window.ZBXITurnstile && ZBXITurnstile.getToken) ? ZBXITurnstile.getToken() : Promise.resolve('');
+      }
+      var attempt = function (tok) { return signup ? Z.signUp(email, pw, tok) : Z.signIn(email, pw, tok); };
+      var retried = false;
+      var p = freshToken().then(attempt).then(function (r) {
+        if (r.error && /captcha/i.test(r.error.message || '') && !retried && window.ZBXITurnstile && ZBXITurnstile.getToken) {
+          retried = true;
+          if (capAuth) capAuth.reset();   // the on-screen widget's token is spent either way
+          return ZBXITurnstile.getToken().then(attempt);
+        }
+        return r;
+      }).then(function (r) {
         if (r.error) throw r.error;
         if (signup && r.data && !r.data.session) {
           st.className = 'form-status ok';
@@ -521,6 +547,8 @@
           st2.textContent = 'You already have an account for that email — log in below.';
           return;
         }
+        // Both token sources failed the captcha: say what actually helps.
+        if (/captcha/i.test(msg)) msg = 'The security check needs a refresh — pull down to reload the page and try again.';
         st.className = 'form-status err'; st.textContent = msg;
         if (capAuth) capAuth.reset();
         btn.disabled = false;
@@ -578,7 +606,14 @@
       var f = e.target, st = card.querySelector('#resetStatus');
       if (!f.checkValidity()) { f.reportValidity(); return; }
       sendBtn.disabled = true;
-      Z.resetPassword(f.email.value.trim(), capReset && capReset.token()).then(function (r) {
+      // Same stale-token guard as the login form: a bfcache-restored widget can
+      // paint "Success!" while holding no token — fall back to a fresh offscreen
+      // one rather than submitting empty (which Supabase rejects with a raw
+      // captcha error and sends nothing).
+      var resetTok = (capReset && capReset.token())
+        ? Promise.resolve(capReset.token())
+        : ((window.ZBXITurnstile && ZBXITurnstile.getToken) ? ZBXITurnstile.getToken() : Promise.resolve(''));
+      resetTok.then(function (tok) { return Z.resetPassword(f.email.value.trim(), tok); }).then(function (r) {
         if (r.error) throw r.error;
         st.className = 'form-status ok';
         // Deliberately conditional: Supabase returns success for an address with
