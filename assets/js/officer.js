@@ -141,8 +141,8 @@
   /* ---------------- console shell ---------------- */
   function renderConsole() {
     if (!state.seat) {
-      root.innerHTML = msg('For the Alumni Presidents',
-        'This console is available to the <b>Alumni Presidents</b>. If that’s you and you’re seeing this, ask the webmaster to confirm your title is set. <a href="index.html">Back to the site</a>.');
+      root.innerHTML = msg('For the chapter’s officers',
+        'This console is for <b>officers</b>. If you’re expecting access, ask the webmaster to add you — for them it’s one tap in Admin → Officers. <a href="index.html">Back to the site</a>.');
       return;
     }
 

@@ -3289,8 +3289,9 @@
   }
 
   function renderOfficersTab(q) {
-    q.innerHTML = '<p class="admin-hint">Switch on only the tools you want the Alumni President to run day-to-day. ' +
-      'You can change it anytime — flipping a switch off removes that power immediately. ' +
+    q.innerHTML = '<p class="admin-hint"><b>Your officers are whoever you appoint here</b> — grant any brother the console below, ' +
+      'remove them any time, and switch on only the tools officers should run day-to-day. ' +
+      'Flipping a switch off removes that power immediately, and every grant and removal lands in the History log. ' +
       '<b>Assigning titles, deleting brothers, and attaching a profile to an account always stay with you</b>, ' +
       'whatever is ticked below — an officer can never hand out a chapter title or an officer seat, ' +
       'including to himself.</p>' +
@@ -3368,6 +3369,19 @@
       fld('Note to self (optional — e.g. "incoming president")', 'note', '') +
       '<button class="btn btn--navy" data-save style="width:100%">Grant access</button>');
     var sel = wrap.querySelector('[data-f="who"]');
+    // The zero-switches dead end: granting access while every tool is off hands
+    // him an empty console and no menu link — it looks like the grant failed.
+    // Say so up front (grant still allowed; which tools to enable is the
+    // webmaster's call, made in the grid right below this dialog).
+    Z.officerGrantsList().then(function (gs) {
+      if ((gs || []).some(function (g) { return g.enabled; })) return;
+      var w = document.createElement('p');
+      w.className = 'form-note';
+      w.innerHTML = '<b>Heads up:</b> no tools are switched on yet, so he’d get an empty console — ' +
+        'grant access, then switch on what officers should see in the grid below.';
+      var saveBtn = wrap.querySelector('[data-save]');
+      saveBtn.parentNode.insertBefore(w, saveBtn);
+    })['catch'](function () {});
     function fill(qs) {
       var opts = state.data.verified
         .filter(function (v) { return v.user_id && (!qs || v.full_name.toLowerCase().indexOf(qs) !== -1); })
@@ -3635,6 +3649,8 @@
     // profile_updated, indistinguishable from a brother editing his own bio.
     record_edited: 'corrected a roster record',
     grant_enabled: 'GAVE an officer a permission', grant_disabled: 'REMOVED an officer permission',
+    // upgrade72: the bigger act — who holds the console at all — now logs too.
+    officer_added: 'MADE a brother an officer', officer_removed: 'REMOVED an officer',
     title_granted: 'granted a title', title_removed: 'removed a title',
     // upgrade68: who decided a chapter-wide award. An overturn is the serious one —
     // it replaced a winner who had already been announced.
@@ -3647,6 +3663,7 @@
   var ACT_SERIOUS = {
     event_deleted: 1, poll_deleted: 1, album_deleted: 1, member_deleted: 1,
     gallery_post_deleted: 1, grant_enabled: 1, grant_disabled: 1,
+    officer_added: 1, officer_removed: 1,
     member_approved: 1, member_rejected: 1, status_changed: 1, record_edited: 1,
     title_granted: 1, title_removed: 1,
     // Only the OVERTURN is flagged serious: an ordinary crowning is the job being done,
