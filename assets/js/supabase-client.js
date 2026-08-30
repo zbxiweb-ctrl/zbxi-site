@@ -789,6 +789,27 @@
           return r.data || null;
         });
     },
+    /* ---- Social links (public footer, officer-editable) -------------------
+       Read is a plain site_settings key, so it rides the same short-TTL cache as
+       the announcement banner and costs a signed-out visitor nothing on repeat
+       page views. null means "no chapter has ever saved a list" — the caller
+       leaves the link built in at launch alone. An empty array is different and
+       deliberate: the chapter removed every link.
+       The WRITE goes through a security-definer verb, not a table update: the
+       officer may write this one key and nothing else in site_settings (the
+       announcement banner lives there too). The database re-validates every URL,
+       so a rejection here is a real error worth showing, never a silent no-op. */
+    socialLinks: function () {
+      if (!configured) return Promise.resolve(null);
+      return this.getSetting('social_links');
+    },
+    setSocialLinks: function (links) {
+      return this._bust(client.rpc('set_social_links', { p_links: links })
+        .then(function (r) {
+          if (r.error) throw r.error;
+          return r.data;
+        }));
+    },
     donationsSet: function (row) {
       row.updated_at = new Date().toISOString();
       return client.from('donations').update(row).eq('id', 1).select()

@@ -36,7 +36,7 @@ Add a second monitor exactly like the first but with:
 
 - Friendly name: `ZBXi members area (database)`
 - URL:
-  `https://wqhhomzbeeveuaskirfl.supabase.co/rest/v1/events?select=id&limit=1&apikey=sb_publishable_BWpWxARZc4e4zATsDfMrMQ_w88RcFbJ`
+  `https://wqhhomzbeeveuaskirfl.supabase.co/rest/v1/events?select=id&limit=1&apikey=YOUR_PUBLISHABLE_ANON_KEY`
 
 Two things about that URL, both learned the hard way:
 

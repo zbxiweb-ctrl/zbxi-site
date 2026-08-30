@@ -6,6 +6,39 @@
   var y = document.getElementById('year');
   if (y) y.textContent = new Date().getFullYear();
 
+  /* ---- Social links (officers edit these in the console) ------------------
+     The markup in index.html is the launch-day link, stamped at build time. It
+     stays exactly as-is until a chapter saves its own list; from then on the
+     saved list is the truth, INCLUDING an empty one (a chapter that removes
+     every link means it). That "absent vs empty" distinction is why this reads
+     null rather than defaulting to [].
+     Both the href scheme check and esc() are repeated from the database here on
+     purpose: the DB is the boundary, but a bad row reaching the DOM would be
+     stored XSS on the public homepage, so the renderer refuses one too. */
+  var GLYPH = {
+    facebook: 'f', instagram: 'ig', x: 'X', twitter: 'X', linkedin: 'in',
+    tiktok: '♪', youtube: '▶', discord: '💬', snapchat: '👻', other: '🔗'
+  };
+  var socialBox = document.querySelector('.socials');
+  if (socialBox && window.ZBXI && ZBXI.socialLinks) {
+    ZBXI.socialLinks().then(function (links) {
+      if (!links || !links.length) {
+        if (links) socialBox.innerHTML = '';   // saved-and-empty: honour it
+        return;                                 // never saved: leave the stamped link
+      }
+      var esc = ZBXIUtil.esc;
+      var html = '';
+      links.forEach(function (l) {
+        if (!l || !/^https?:\/\//i.test(l.url || '')) return;
+        var g = GLYPH[(l.net || 'other').toLowerCase()] || GLYPH.other;
+        html += '<a class="social" href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+          '<span class="ic' + (g.length > 1 ? ' ic--sm' : '') + '">' + esc(g) + '</span>' +
+          '<span><b>' + esc(l.label) + '</b></span></a>';
+      });
+      if (html) socialBox.innerHTML = html;
+    })['catch'](function () { /* offline or demo mode: the stamped link stands */ });
+  }
+
   /* ---- Mobile nav ---- */
   var toggle = document.getElementById('navToggle');
   var links = document.getElementById('navLinks');
@@ -76,7 +109,7 @@
      across the brothers who've filled one in means most cities hold exactly ONE
      person, so "2 brothers in Denver" on a public page is a re-identification
      vector against a semi-public alumni list. The locked copy leans on the
-     already-public "320+ brothers" figure instead.
+     already-public member-count figure instead.
 
      Both counts come out of listVerifiedDetail(), which the roster already
      caches for 30 minutes, so these two sections add ZERO network requests.

@@ -38,8 +38,8 @@
   }
   function each(el, sel, fn) { var n = el.querySelector(sel); if (n) n.onclick = fn; }
 
-  /* A missing big is only a PROBLEM if the brother should have one. The 1993
-     founding class ARE the roots of the tree, legitimately — every one of them
+  /* A missing big is only a PROBLEM if the brother should have one. The founding
+     class members ARE the roots of the tree, legitimately — every one of them
      has no big by definition. Counting them as work to do turns the founding
      class into a permanent 12-item false alarm, which is exactly what the first
      version of this card did.
@@ -47,7 +47,7 @@
      needsBig follows the rule admin.js has had right since it was written,
      over the shared pledge-year reader, so the two consoles can never disagree
      about what "needs a big" means. */
-  function needsBig(b) { return !b.big_id && (ZBXIUtil.pledgeYear(b.pledge_class) || 9999) > 1993; }
+  function needsBig(b) { return !b.big_id && (ZBXIUtil.pledgeYear(b.pledge_class) || 9999) > ZBXIUtil.foundingYear(); }
   function msg(title, body) { return '<div class="admin-msg"><h1>' + esc(title) + '</h1><p>' + body + '</p></div>'; }
 
   // The Core tools, in the order they appear in the rail. `perm` is the grant
@@ -63,6 +63,7 @@
     // that is the grant officer_set_open_to itself checks — one permission, not two.
     { perm: 'members.edit',        id: 'mentoring',  ic: '🧭', label: 'Mentoring',   render: function (q) { window.ZBXIMentoringTab.render(q); } },
     { perm: 'events.manage',       id: 'events',     ic: '📅', label: 'Events',      render: renderEventsTab },
+    { perm: 'site.links',         id: 'links',      ic: '🔗', label: 'Social links', render: function (q) { return window.ZBXISocialLinksTab.render(q); } },
     { perm: 'committees.manage',   id: 'committees', ic: '👥', label: 'Committees',  render: renderCommitteesTab },
     { perm: 'awards.manage',       id: 'awards',     ic: '🏅', label: 'Awards',      render: renderAwardsTab },
     { perm: 'suggestions.respond', id: 'suggest',    ic: '💡', label: 'Suggestions', render: renderSuggestTab },

@@ -17,8 +17,16 @@
     return (s == null ? '' : String(s)).replace(/[&<>"']/g, function (c) { return MAP[c]; });
   }
 
+  // The chapter founding year, from config. Drives tree root detection, year
+  // pickers and two-digit pledge-class parsing. 1900 = safe unconfigured default.
+  function foundingYear() {
+    var c = window.ZBXI_CONFIG || {};
+    return c.FOUNDING_YEAR || 1900;
+  }
+
   // "Gamma Rho · Fall '25" → 2025 · "… Spring 1993" → 1993 · unknown → null.
-  // The chapter started in 1993, so a two-digit year of 93+ is 19xx.
+  // Two-digit years resolve against the founding year: for a 19xx founding,
+  // years at/after (founding % 100) are 19xx, the rest 20xx.
   function pledgeYear(cls) {
     if (!cls) return null;
     var m4 = String(cls).match(/(19|20)\d{2}/);
@@ -26,7 +34,9 @@
     var m2 = String(cls).match(/'(\d{2})/);
     if (!m2) return null;
     var yy = parseInt(m2[1], 10);
-    return yy >= 93 ? 1900 + yy : 2000 + yy;
+    var fy = foundingYear();
+    if (fy >= 2000) return 2000 + yy;
+    return yy >= fy % 100 ? 1900 + yy : 2000 + yy;
   }
 
   // Render "couldn't load" into el. `what` names the thing in lower case,
@@ -51,5 +61,5 @@
     return 'index.html' + q + '#brothers-portal';
   }
 
-  window.ZBXIUtil = { esc: esc, pledgeYear: pledgeYear, loadError: loadError, signInHref: signInHref };
+  window.ZBXIUtil = { esc: esc, pledgeYear: pledgeYear, loadError: loadError, signInHref: signInHref, foundingYear: foundingYear };
 })();

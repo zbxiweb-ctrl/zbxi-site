@@ -832,7 +832,7 @@
     });
 
     // claimNorm (module scope) is apostrophe-, punctuation- and space-blind, so an
-    // iPhone typing "O’Sullivan" (curly) still finds the roster's "O'Sullivan"
+    // iPhone typing "O’Brien" (curly) still finds the roster's "O'Brien"
     // (straight). The old raw indexOf missed it, and the "no match" copy then
     // pushed the brother to create a duplicate profile.
     input.oninput = function () {
@@ -1144,7 +1144,7 @@
       // Duplicate guard — only on CREATE (no pr.id), the "I'm not in the tree yet"
       // path. If the typed name matches an unclaimed roster brother, he is almost
       // certainly already in the tree and about to make a second row (this is how
-      // Matthew O'Sullivan got two). Send him to claim instead. registered=false
+      // one brother got two). Send him to claim instead. registered=false
       // is the unclaimed set; state.verified is already loaded, so no extra call.
       // OK -> go claim the existing name (stop); Cancel/dismiss -> continue as new.
       if (!pr.id) {
@@ -1200,7 +1200,7 @@
       }
 
       var y = new Date().getFullYear(), years = '';
-      for (var i = y + 1; i >= 1993; i--) years += '<option>' + i + '</option>';
+      for (var i = y + 1; i >= ZBXIUtil.foundingYear(); i--) years += '<option>' + i + '</option>';
 
       box.innerHTML = banner +
         '<details class="title-req-open"><summary>🏅 Request a chapter title</summary>' +

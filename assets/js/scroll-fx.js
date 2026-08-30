@@ -40,7 +40,7 @@
   }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
   document.querySelectorAll('.reveal, .stagger, .sect-watermark').forEach(function (t) { io.observe(t); });
 
-  // --- count-up numbers (e.g. Founded 1993, 320+ brothers) ---
+  // --- count-up numbers (e.g. the founding year, member counts) ---
   function countUp(el) {
     var m = el.textContent.trim().match(/^(\d[\d,]*)(.*)$/);
     if (!m) return;                                  // "Local" etc. left as-is

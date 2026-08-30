@@ -73,7 +73,7 @@
      A YEAR, not a date. Nobody knows the day a 1997 formal was shot, and "3d ago"
      already answers it for anything recent. The list starts blank and runs newest
      first, because most photos posted are recent ones. */
-  var YEAR_MIN = 1993;   // the chapter's founding
+  var YEAR_MIN = ZBXIUtil.foundingYear();   // the chapter's founding
   function yearPicker(id, sel) {
     var now = new Date().getFullYear(), out = '';
     for (var y = now; y >= YEAR_MIN; y--) {

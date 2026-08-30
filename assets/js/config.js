@@ -25,4 +25,17 @@ window.ZBXI_CONFIG = {
   // a config key that no longer feeds anything is worse than none, because the next
   // person pastes a link into it and wonders why nothing happens.
   // The Venmo handle brothers actually give to is set in Admin → 🎁 Alumni Fund.
+
+  // The chapter's founding year — drives tree roots, year pickers, and two-digit
+  // pledge-class parsing. (Added at core conversion; ZBXi hardcoded 1993 before.)
+  FOUNDING_YEAR: 1993,
+
+  // The chapter's social links, as they were at launch. This is ONLY a starting
+  // point: officers edit the real list in the console (Admin/Officer → Social
+  // links), and once they save, the saved list is what the footer shows. A URL of
+  // '#' means "none set up yet" and is ignored.
+  SOCIAL_SEED: [{ net: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/groups/ZetaBetaXi/' }],
+
+  // Per-chapter feature switches (see chapters/README.md).
+  FEATURES: {},
 };

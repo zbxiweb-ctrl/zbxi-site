@@ -28,3 +28,23 @@ wrangler.jsonc
 package.json
 package-lock.json
 node_modules/
+.assetsignore
+
+# Wrangler's local cache. wrangler-account.json inside it holds the Cloudflare
+# account id and the account owner's email — it WAS served publicly on two live
+# sites (2026-08-25) before this entry existed.
+.wrangler/
+
+# Agent/tooling config and notes. A security reviewer's notes are a map of the
+# site's weak points; they must never ship with the site.
+.claude/
+.git/
+
+# QA screenshots. Playwright writes to the working directory, which IS the web
+# root on this stack — three shots were published from a sibling site on
+# 2026-08-27 before this entry existed.
+build-screenshots/
+
+# The stamper's build record (file hashes + core commit). Not secret, not a
+# site asset either.
+.stamp-manifest.json

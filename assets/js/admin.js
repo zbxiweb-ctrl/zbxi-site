@@ -115,6 +115,7 @@
       { id: 'guide',      ic: '📖', label: 'Guide'      },
       { id: 'history',    ic: '📜', label: 'History'    },
       { id: 'invite',     ic: '✉️', label: 'Invite'     },
+      { id: 'links',      ic: '🔗', label: 'Social links' },
       { id: 'mentoring',  ic: '🧭', label: 'Mentoring'  },
       { id: 'officers',   ic: '🛡', label: 'Officers'   },
       { id: 'stats',      ic: '📊', label: 'Stats'      },
@@ -327,10 +328,10 @@
 
   // A brother with no big is his own root, and the family tree draws every root as
   // a family card — so a missing big isn't a blank field, it's a fake family line
-  // on a page brothers actually read. The 1993 founders ARE roots, legitimately;
+  // on a page brothers actually read. The founding-class brothers ARE roots, legitimately;
   // flagging them would be 13 permanent false alarms in the worklist.
   // classYear and pledgeYear are the same shared parse; either name reads fine here.
-  function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > 1993; }
+  function needsBig(b) { return !b.big_id && (classYear(b.pledge_class) || 9999) > ZBXIUtil.foundingYear(); }
 
   // Instant scroll. html{scroll-behavior:smooth} is site-wide and animates every
   // programmatic scroll — and after a re-render the inline override is invisible
@@ -356,6 +357,7 @@
     if (state.tab === 'titles') return renderTitlesTab(q);
     if (state.tab === 'committees') return renderCommitteesTab(q);
     if (state.tab === 'events') return renderEventsTab(q);
+    if (state.tab === 'links') return window.ZBXISocialLinksTab.render(q);
     if (state.tab === 'digest') return renderDigestTab(q);
     if (state.tab === 'botm') return renderBotmTab(q);
     if (state.tab === 'fund') return renderFundTab(q);
@@ -868,7 +870,7 @@
             '<div class="field"><label>Venmo handle <small>(without the @)</small></label>' +
               '<input id="fundHandle" maxlength="60" value="' + esc(d.handle || '') + '" placeholder="ZBXi-Alumni"></div>' +
             '<div class="field"><label>Whose account it is</label>' +
-              '<input id="fundName" maxlength="80" value="' + esc(d.display_name || '') + '" placeholder="Joseph Occhino"></div>' +
+              '<input id="fundName" maxlength="80" value="' + esc(d.display_name || '') + '" placeholder="Jordan Sample"></div>' +
           '</div>' +
           '<div class="field"><label>Link that name to a brother <small>(so a brother can check who he is paying)</small></label>' +
             '<select id="fundBro"><option value="">— nobody —</option>' +
@@ -920,7 +922,7 @@
                 return '<option value="' + esc(b.id) + '">' + esc(b.full_name) + '</option>';
               }).join('') + '</select></div>' +
           '<div class="field"><label>Name on the honour roll <small>(fills in from the brother above)</small></label>' +
-            '<input id="giftName" maxlength="80" placeholder="Joe Occhino"></div>' +
+            '<input id="giftName" maxlength="80" placeholder="Jordan Sample"></div>' +
           '<div class="field"><label class="pref-box"><input type="checkbox" id="giftShow"> ' +
             'He is happy to be <b>named on the page</b></label>' +
             '<p class="form-note" style="margin:.3rem 0 0">Off unless he said yes. No amount is ever shown beside a name.</p></div>' +
@@ -1937,10 +1939,10 @@
       scopeList('alumni', '🌍 Alumni Board') +
       '<div class="field"><label>Term starts</label><div class="eb-termrow">' +
         semSel('start_sem', start.sem) +
-        '<input type="number" data-f="start_year" min="1993" max="2100" value="' + start.year + '"></div></div>' +
+        '<input type="number" data-f="start_year" min="' + ZBXIUtil.foundingYear() + '" max="2100" value="' + start.year + '"></div></div>' +
       '<div class="field"><label>Term ends <small>(leave the year blank for a single semester)</small></label>' +
         '<div class="eb-termrow">' + semSel('end_sem', end.sem) +
-        '<input type="number" data-f="end_year" min="1993" max="2100" value="' + end.year + '"></div></div>' +
+        '<input type="number" data-f="end_year" min="' + ZBXIUtil.foundingYear() + '" max="2100" value="' + end.year + '"></div></div>' +
       '<div class="field"><label>Note <small>(optional — what this board is remembered for)</small></label>' +
         '<textarea data-f="note" rows="2" maxlength="300"></textarea></div>' +
       '<button class="btn btn--ghost-danger" data-go style="width:100%">Record the term &amp; roll over</button>');
@@ -2175,7 +2177,7 @@
      brother onto the wrong page.
 
      Moves use a picker, never a text box, so the cleanup can't add new typos.
-     Canonical: `Greek · Season 'YY` (plus `· Season YYYY` for the 1993 founders). */
+     Canonical: `Greek · Season 'YY` (plus `· Season YYYY` for the founding class). */
   var SEASON_ORD = { Spring: 1, Summer: 2, Fall: 3, Winter: 4 };
   var CLASS_CANON = /^[A-Z][A-Za-z]*( [A-Za-z]+)* · (Spring|Summer|Fall|Winter) ('\d{2}|(?:19|20)\d{2})$/;
 
@@ -2528,7 +2530,7 @@
 
   // Turn parsed rows into a verdict per row. Pure — call it as often as you like.
   // Verdicts: create | update | same | conflict (needs a human) | skip.
-  function buildImportPlan(rows) {
+  function buildImportPlan(rows, bootstrap) {
     var hdr = csvHeaderMap(rows[0] || []);
     if (hdr.name === -1) {
       return { fatal: 'No “Name” column. Found: ' + (rows[0] || []).join(', '), items: [] };
@@ -2537,7 +2539,7 @@
     var live = state.data.all || [];
 
     // Index on BOTH names: a claimed brother may have renamed himself to "Mike
-    // Roach" while roster_name stays "Michael Roach". Matching full_name alone
+    // Sample" while roster_name stays "Michael Sample". Matching full_name alone
     // misses him and creates the duplicate this whole screen exists to prevent.
     var byName = {}, bySurname = {};
     live.forEach(function (b) {
@@ -2591,13 +2593,17 @@
         });
       }
       var mm = hdr.cls === -1 ? { ok: false, why: 'no class column' } : mapClass(r[hdr.cls], canon);
+      // Day zero there is no canon to protect: a well-formed class the site has
+      // never seen is simply the file naming the chapter's history.
+      if (!mm.ok && mm.propose && bootstrap) mm = { ok: true, cls: mm.propose, how: 'new class', isNew: true };
       it.cls = mm.ok ? mm.cls : null;
+      it.clsNew = !!mm.isNew;
       it.clsErr = mm.ok ? null : mm;
       if (near.length) { it.verdict = 'conflict'; it.near = near; it.why = 'might already be on the site'; }
       else if (!mm.ok) { it.verdict = 'conflict'; it.why = mm.why; }
       items.push(it);
     });
-    return { fatal: null, items: items, hdr: hdr };
+    return { fatal: null, items: items, hdr: hdr, bootstrap: !!bootstrap };
   }
 
   function planCounts(items) {
@@ -2624,7 +2630,7 @@
     var bigByName = {};
     (state.data.verified || []).forEach(function (b) { bigByName[nameKey(b.full_name)] = b.id; });
 
-    var inserts = [], missBig = [];
+    var inserts = [], missBig = [], fileBig = {};
     plan.items.forEach(function (i) {
       var eff = i.verdict === 'conflict' ? (i.pick === 'new' ? 'create' : 'skip') : i.verdict;
       if (eff !== 'create') return;
@@ -2633,7 +2639,9 @@
       // a "this name appears twice in the file" conflict only offers New/Skip, so picking New on
       // both copies used to insert both (liveKeys was built from live rows and never updated).
       var bid = i.bigName ? bigByName[nameKey(i.bigName)] : null;
-      if (i.bigName && !bid) missBig.push(i.name + ' (big “' + i.bigName + '” not found)');
+      // A big not on the site yet may be a row of this same file (day-zero
+      // imports the whole tree at once) — remember him for the second pass.
+      if (i.bigName && !bid) fileBig[nameKey(i.name)] = { name: i.name, big: i.bigName };
       inserts.push({ full_name: i.name, roster_name: i.name, pledge_class: i.cls || null,
                      big_id: bid || null, status: 'verified', user_id: null });
     });
@@ -2649,7 +2657,25 @@
     if (inserts.length) {
       jobs.push(Promise.resolve(Z.addBrothers(inserts)).then(function (r) {
         if (r.error) throw r.error;
-        (r.data || []).forEach(function (b) { undo.ids.push(b.id); });
+        var newByName = {};
+        (r.data || []).forEach(function (b) {
+          undo.ids.push(b.id);
+          if (b.full_name) newByName[nameKey(b.full_name)] = b.id;
+        });
+        // Second pass: bigs that were themselves rows of this file. Only rows
+        // this import just created are touched — the "never touched" promise
+        // about existing brothers holds. Littles sharing a big update as one.
+        var byBig = {};
+        Object.keys(fileBig).forEach(function (k) {
+          var bid = newByName[nameKey(fileBig[k].big)], lid = newByName[k];
+          if (bid && lid && bid !== lid) (byBig[bid] = byBig[bid] || []).push(lid);
+          else missBig.push(fileBig[k].name + ' (big “' + fileBig[k].big + '” not found)');
+        });
+        return Promise.all(Object.keys(byBig).map(function (bid) {
+          return Promise.resolve(Z.updateBrothersIn(byBig[bid], { big_id: bid })).then(function (rr) {
+            if (rr && rr.error) throw rr.error;
+          });
+        }));
       }));
     }
     Object.keys(updates).forEach(function (cls) {
@@ -2680,11 +2706,18 @@
 
   /* ---- the preview. Reads only; nothing here writes. ---- */
   function openImportCsv() {
+    // Day zero: an empty roster means this file IS the chapter. New pledge
+    // classes are accepted as written (there is nothing to match them against),
+    // and the row cap relaxes to whole-history size.
+    var bootstrap = !((state.data.all || []).length);
     var wrap = treeModal('Import brothers from a CSV',
       '<p class="admin-hint">Pick your spreadsheet. <b>Nothing is written until you press Apply</b> — ' +
       'the next screen shows exactly what would change, and you decide every unclear row yourself.<br>' +
       'Needs a <b>Name</b> column. <b>Pledge Class</b> and <b>Big</b> are used if present. ' +
       'Anyone missing from the file is left alone — this never deletes.</p>' +
+      (bootstrap ? '<p class="admin-hint"><b>Day-zero import:</b> your roster is empty, so every ' +
+        'well-formed pledge class in the file is accepted as written (like <b>Alpha Class · Fall 1993</b>), ' +
+        'and bigs are linked between rows of this same file — the whole tree can arrive in one go.</p>' : '') +
       '<p><input type="file" id="impFile" accept=".csv,text/csv"></p>' +
       '<p class="admin-hint">Back up first: <b>📊 Stats → ⬇ Export roster (CSV)</b>. Keep it as your record — ' +
       'note it’s a snapshot of the main fields, not a full restore file (it leaves out photos, bios and links).</p>');
@@ -2696,8 +2729,9 @@
       st.className = 'form-status'; st.textContent = 'Reading ' + f.name + '…';
       f.text().then(function (txt) {
         var rows = csvParse(txt);
-        if (rows.length > 501) { st.className = 'form-status err'; st.textContent = 'That file has ' + rows.length + ' rows. Over 500 looks like the wrong file — import refused.'; return; }
-        var plan = buildImportPlan(rows);
+        var cap = bootstrap ? 2000 : 500;
+        if (rows.length > cap + 1) { st.className = 'form-status err'; st.textContent = 'That file has ' + rows.length + ' rows. Over ' + cap + ' looks like the wrong file — import refused.'; return; }
+        var plan = buildImportPlan(rows, bootstrap);
         if (plan.fatal) { st.className = 'form-status err'; st.textContent = plan.fatal; return; }
         wrap.close();
         renderImportPreview(plan, f.name);
@@ -2828,6 +2862,7 @@
       return '<div class="admin-row"><div class="admin-row__ph">' + esc(initials(i.name)) + '</div>' +
         '<div class="admin-row__info"><b>' + esc(i.name) + '</b><span>' +
           esc(i.cls || '⚠️ no class — ' + ((i.clsErr && i.clsErr.why) || 'unmapped')) +
+          (i.clsNew ? ' <b class="cls-warn">(new class)</b>' : '') +
           (i.bigName ? ' · Big: ' + esc(i.bigName) : ' · <b class="cls-warn">no big — he’ll show as his own family line</b>') +
         '</span></div></div>';
     }
@@ -3223,6 +3258,7 @@
     { key: 'members.edit',        label: 'Fix roster records',     desc: 'Correct a misspelled name, a wrong pledge class or graduation year, and record who a brother\'s big is — the last one is what draws the family tree. FOUR fields, nothing else: he cannot change anyone\'s status, title, or which account a profile belongs to. This is the widest power on this page; every change is logged.', seats: ['alumni_president'] },
     { key: 'history.view',        label: 'See the history log',    desc: 'Read-only view of anything that DELETED something or changed who can do what — including your own actions. Everyday activity (photos, comments, profile edits) is not shown. He cannot undo anything from it; it is a record, not a control panel.', seats: ['alumni_president'] },
     { key: 'events.manage',       label: 'Manage events',          desc: 'Create, edit, and delete calendar events.',              seats: ['alumni_president'] },
+    { key: 'site.links',          label: 'Edit the social links',  desc: 'Change the social media links in the footer of the public homepage — add the chapter Instagram, fix a dead Facebook URL, drop an account nobody runs any more. Up to 8 links, and every one must be a real web address (the site refuses anything else). This is the footer only: it cannot touch the announcement banner, any page text, or anything members-only.', seats: ['alumni_president'] },
     { key: 'committees.manage',   label: 'Manage committees',      desc: 'Create or rename committees and add / remove members.',  seats: ['alumni_president'] },
     { key: 'awards.manage',       label: 'Manage awards',          desc: 'Update the Greek Excellence awards showcase.',           seats: ['alumni_president'] },
     { key: 'suggestions.respond', label: 'Respond to suggestions', desc: 'Read and reply to member suggestions (cannot delete).',  seats: ['alumni_president'] },

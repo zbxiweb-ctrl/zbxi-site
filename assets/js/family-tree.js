@@ -8,19 +8,23 @@
 
   /* ---------- PLACEHOLDER lineage (used only when Supabase is unconfigured) ---------- */
   var PLACEHOLDER = [
-    { id: 'f1', full_name: 'Founding Father — A. Reyes', pledge_class: 'Fall 1993', grad_year: 1996, major: 'History',        big_id: null, role: 'Founder', quote: 'We chose our own path.', hometown: 'Buffalo, NY' },
-    { id: 'f2', full_name: 'Founding Father — M. Cohen',  pledge_class: 'Fall 1993', grad_year: 1997, major: 'Economics',      big_id: null, role: 'Founder', quote: 'Brotherhood before all.', hometown: 'Albany, NY' },
-    { id: 'a1', full_name: 'James Whitfield', pledge_class: 'Spring 1996', grad_year: 1999, major: 'Biology',      big_id: 'f1' },
-    { id: 'a2', full_name: 'Daniel Ortiz',    pledge_class: 'Fall 1997',   grad_year: 2000, major: 'Chemistry',    big_id: 'f1' },
-    { id: 'a3', full_name: 'Robert Klein',    pledge_class: 'Fall 1996',   grad_year: 1999, major: 'Finance',      big_id: 'f2' },
-    { id: 'b1', full_name: 'Kevin Nakamura',  pledge_class: 'Fall 2001',   grad_year: 2004, major: 'Engineering', big_id: 'a1' },
-    { id: 'b2', full_name: 'Andre Wallace',   pledge_class: 'Spring 2002', grad_year: 2005, major: 'Marketing',   big_id: 'a1' },
-    { id: 'b3', full_name: 'Paul Genovese',   pledge_class: 'Fall 2003',   grad_year: 2006, major: 'Political Sci', big_id: 'a3' },
-    { id: 'c1', full_name: 'Marcus Cole',     pledge_class: 'Fall 2019',   grad_year: 2023, major: 'Biology',     big_id: 'b1', quote: 'Proud to carry the line forward.' },
-    { id: 'c2', full_name: 'Devin Park',      pledge_class: 'Spring 2020', grad_year: 2024, major: 'Computer Sci', big_id: 'b1' },
-    { id: 'c3', full_name: 'Tyler Brooks',    pledge_class: 'Fall 2021',   grad_year: 2025, major: 'History',     big_id: 'b2' },
-    { id: 'c4', full_name: 'Noah Fitzgerald', pledge_class: 'Fall 2022',   grad_year: 2026, major: 'Psychology',  big_id: 'b3' },
-    { id: 'c5', full_name: 'Ethan Ramos',     pledge_class: 'Spring 2023', grad_year: 2026, major: 'Physics',     big_id: 'b3' }
+    { id: 'p01', full_name: 'Avery Stone',  pledge_class: "Founding Class · Fall 2001", grad_year: 2004, major: 'History',        big_id: null,  role: 'Founder', quote: 'Two lines, one brotherhood.', hometown: 'Rochester, NY' },
+    { id: 'p02', full_name: 'Jordan Wells', pledge_class: "Alpha · Spring '02",   grad_year: 2005, major: 'Biology',        big_id: 'p01' },
+    { id: 'p03', full_name: 'Casey Brooks', pledge_class: "Beta · Fall '02",      grad_year: 2005, major: 'Finance',        big_id: 'p02' },
+    { id: 'p04', full_name: 'Riley Hayes',  pledge_class: "Gamma · Spring '03",   grad_year: 2006, major: 'Engineering',    big_id: 'p03' },
+    { id: 'p05', full_name: 'Morgan Blake', pledge_class: "Delta · Fall '03",     grad_year: 2006, major: 'Chemistry',      big_id: 'p04' },
+    { id: 'p06', full_name: 'Quinn Foster', pledge_class: "Epsilon · Spring '04", grad_year: 2007, major: 'Political Sci',  big_id: 'p04' },
+    { id: 'p07', full_name: 'Reese Carter', pledge_class: "Zeta · Fall '04",      grad_year: 2007, major: 'Economics',      big_id: 'p06' },
+    { id: 'p08', full_name: 'Hollis Grant', pledge_class: "Eta · Spring '05",     grad_year: 2008, major: 'Psychology',     big_id: 'p05' },
+    { id: 'p09', full_name: 'Devon Price',  pledge_class: "Founding Class · Fall 2001", grad_year: 2004, major: 'Marketing',     big_id: null,  role: 'Founder', quote: 'Roots first, then branches.', hometown: 'Syracuse, NY' },
+    { id: 'p10', full_name: 'Skyler Nash',  pledge_class: "Alpha · Spring '02",   grad_year: 2005, major: 'Computer Sci',   big_id: 'p09' },
+    { id: 'p11', full_name: 'Rowan Ellis',  pledge_class: "Beta · Fall '02",      grad_year: 2005, major: 'Physics',        big_id: 'p10' },
+    { id: 'p12', full_name: 'Emerson Cole', pledge_class: "Gamma · Spring '03",   grad_year: 2006, major: 'Communications', big_id: 'p11' },
+    { id: 'p13', full_name: 'Finley Ward',  pledge_class: "Delta · Fall '03",     grad_year: 2006, major: 'Education',      big_id: 'p12' },
+    { id: 'p14', full_name: 'Sawyer Kane',  pledge_class: "Epsilon · Spring '04", grad_year: 2007, major: 'Biology',        big_id: 'p12', quote: 'Proud to carry the line forward.' },
+    { id: 'p15', full_name: 'Dakota Reed',  pledge_class: "Zeta · Fall '04",      grad_year: 2007, major: 'History',        big_id: 'p14' },
+    { id: 'p16', full_name: 'Cameron Voss', pledge_class: "Eta · Spring '05",     grad_year: 2008, major: 'Nursing',        big_id: 'p11' },
+    { id: 'p17', full_name: 'Parker Lane',  pledge_class: "Theta · Fall '05",     grad_year: 2008, major: 'Architecture',   big_id: 'p16' }
   ];
 
   var NODE_W = 190, NODE_H = 106, GAP_X = 28, GAP_Y = 74;

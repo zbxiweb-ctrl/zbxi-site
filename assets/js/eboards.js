@@ -402,11 +402,11 @@
         }).join('') + '</select></div>' +
       '<div class="field"><label>Term starts</label><div class="eb-termrow">' +
         semSel('start_sem', b ? b.start_sem : 'Fall') +
-        '<input type="number" data-f="start_year" min="1993" max="2100" value="' +
+        '<input type="number" data-f="start_year" min="' + ZBXIUtil.foundingYear() + '" max="2100" value="' +
           esc(b ? b.start_year : yNow) + '"></div></div>' +
       '<div class="field"><label>Term ends <small>(leave blank for a single semester)</small></label>' +
         '<div class="eb-termrow">' + semSel('end_sem', b ? b.end_sem : '') +
-        '<input type="number" data-f="end_year" min="1993" max="2100" value="' +
+        '<input type="number" data-f="end_year" min="' + ZBXIUtil.foundingYear() + '" max="2100" value="' +
           esc(b && b.end_year ? b.end_year : '') + '"></div></div>' +
       '<div class="field"><label>Note <small>(optional — what this board is remembered for)</small></label>' +
         '<textarea data-f="note" rows="2" maxlength="300">' + esc(b && b.note ? b.note : '') + '</textarea></div>' +
