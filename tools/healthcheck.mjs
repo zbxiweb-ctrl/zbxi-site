@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* {{ORG_SHORT}} health check — what a plain uptime ping cannot tell you.
+/* ZBXi health check — what a plain uptime ping cannot tell you.
  *
  *   node tools/healthcheck.mjs                     # check production
  *   node tools/healthcheck.mjs --base http://localhost:8899
@@ -24,7 +24,7 @@ import vm from 'node:vm';
 
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
-const BASE = (arg('--base', 'https://{{SITE_DOMAIN}}')).replace(/\/$/, '');
+const BASE = (arg('--base', 'https://zetabetaxi.com')).replace(/\/$/, '');
 const JSON_OUT = argv.includes('--json');
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TIMEOUT = 20000;
@@ -79,7 +79,7 @@ async function checkEdge() {
       }
     }
     if (r.status !== 200) return fail('edge', `homepage returned ${r.status}`);
-    if (!/{{ORG_NAME}}/i.test(r.body)) return fail('edge', 'homepage served but the content is not the site');
+    if (!/Zeta Beta Xi/i.test(r.body)) return fail('edge', 'homepage served but the content is not the site');
     if (r.ms > 4000) warn('edge', `homepage OK but slow (${r.ms}ms)`);
     else ok('edge', `homepage 200 in ${r.ms}ms`);
   } catch (e) { fail('edge', `homepage unreachable: ${e.message}`); }
@@ -280,7 +280,7 @@ if (JSON_OUT) {
   console.log(JSON.stringify({ verdict, code, base: BASE, ms: Date.now() - t0, checks: results }, null, 2));
 } else {
   const mark = { ok: '  ok  ', warn: ' WARN ', fail: ' FAIL ' };
-  console.log(`\n{{ORG_SHORT}} health — ${BASE}`);
+  console.log(`\nZBXi health — ${BASE}`);
   for (const r of results) console.log(`${mark[r.level]} ${r.name.padEnd(15)} ${r.detail}`);
   console.log(`\n${verdict}  (${results.length} checks, ${fails.length} failing, ${warns.length} warning, ${Date.now() - t0}ms)\n`);
 }

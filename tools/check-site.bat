@@ -1,9 +1,9 @@
 @echo off
-REM Double-click this to check whether {{SITE_DOMAIN}} is actually OK.
+REM Double-click this to check whether zetabetaxi.com is actually OK.
 REM Takes about 10 seconds. The window stays open so you can read it.
 cd /d "%~dp0.."
 echo.
-echo Checking {{SITE_DOMAIN}} ...
+echo Checking zetabetaxi.com ...
 echo.
 node tools\healthcheck.mjs
 echo.
