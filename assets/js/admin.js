@@ -44,6 +44,7 @@
         document.getElementById('so').onclick = function () { Z.signOut().then(function () { renderLogin(''); }); };
         return;
       }
+      adminUid = u.id;   // so History can name the admin's own actions (see actorName)
       // 2FA: if the admin account has a verified authenticator and this session is
       // still at aal1 (password only), require the 6-digit code before the console.
       Z.mfaAAL().then(function (aal) {
@@ -3467,6 +3468,20 @@
     q.innerHTML =
       '<div class="guide-intro"><h3>Webmaster guide</h3><p>Everything you need to run this site lives in this console — no coding, ever. Click a task:</p></div>' +
       sectionMap() +
+      /* First because it has to BE first: the whole-tree import only runs on an empty roster.
+         The day a brother signs up before the roster is in, the import is gone. */
+      sec('🚀 Day one — load your roster, before you invite anyone', '<p><b>Do this before anything else.</b> ' +
+        'The whole-roster import that builds your family tree in one go only works while the roster is <b>empty</b> — ' +
+        'the moment one brother signs up, it switches to adding one class at a time.</p><ol>' +
+        '<li>Download the <a href="https://chapterroots-site.chapterroots.workers.dev/kit/roster-worksheet.csv" target="_blank" rel="noopener">roster worksheet</a> (three columns: Name · Pledge Class · Big; <a href="https://chapterroots-site.chapterroots.workers.dev/kit/roster-worksheet-README.md" target="_blank" rel="noopener">one page of instructions</a>) and fill it in. ' +
+        'Founders have no big — leave that cell blank. Spell every name and class the same way each time.</li>' +
+        '<li>Open the <b>🎓 Pledge Classes</b> tab → <b>⬆ Import a class from CSV</b> → pick your file.</li>' +
+        '<li>Read the preview: it lists every brother, his class and his big, and flags anything it can\'t match. Nothing is written until you press <b>Apply</b>.</li>' +
+        '<li>Press <b>Apply</b>. The tree, the rosters and the Active/Alumni pages fill in immediately.</li></ol>' +
+        '<p><b>There is no undo.</b> If the preview looks wrong, fix the spreadsheet and pick the file again — that is free. ' +
+        'Only press Apply on a preview you\'d put your name to. (Fixing one man afterwards is easy in the 🌳 Tree tab; ' +
+        'fixing three hundred is not.)</p>' +
+        '<p>Then go to <b>✉️ Invite</b> and start inviting brothers to claim their names.</p>') +
       sec('✅ A new brother made an account — approve him', '<ol>' +
         '<li>Open the <b>Pending</b> tab (the number shows how many are waiting — the 🔔 bell also alerts you).</li>' +
         '<li>Check the name/pledge class look right (edit if needed).</li>' +
@@ -3566,9 +3581,9 @@
         'either one would let whoever held the file act as a brother.</li></ul>' +
         '<p>A few times a year is plenty, and keep one copy somewhere that is not this laptop.</p>') +
       sec('🔑 Account & handoff basics', '<ul>' +
-        '<li>This console only works for the admin email (currently zbxi.web@gmail.com). Handing off = handing over that Google account (see OWNERSHIP.md in the project).</li>' +
+        '<li>This console only works for the admin email (currently zbxi.web@gmail.com). When the webmaster changes, tell ChapterRoots the new person\'s email — moving the console to them is one change on our side, and nothing in the chapter\'s data moves.</li>' +
         '<li>Brothers who forget passwords use “Forgot your password?” on the site — you never manage their passwords.</li>' +
-        '<li>The site itself (hosting, domain) runs itself — nothing to renew except the domain (~$12/yr at Namecheap).</li></ul>');
+        '<li>Hosting, security updates and backups are handled for you; there is nothing to renew. If the chapter owns its own domain, that is the one thing to keep paid each year (~$12/yr at any registrar).</li></ul>');
 
     // "open its tab →" on the section map jumps to the owning tab. Reuses the real
     // rail button so the highlight, the URL hash and the search reset all stay honest
@@ -3674,11 +3689,15 @@
   /* auth.uid() is null when a write came from the server (the gallery edge
      function, or a maintenance script), so say "(server)" rather than leaving
      the actor blank and looking like a bug. */
+  // The admin account need not have a roster row (a hosted chapter's minted admin never does),
+  // so its actions — the whole Legacy Build setup — would read as "A brother". Name them.
+  var adminUid = null;
   function actorName(uid) {
     if (!uid) return '(server)';
     var all = state.data.pending.concat(state.data.verified, state.data.rejected);
     var b = all.filter(function (x) { return x.user_id === uid; })[0];
-    return b ? b.full_name : null;
+    if (b) return b.full_name;
+    return uid === adminUid ? 'The chapter (admin)' : null;
   }
 
   /* ---- ⌂ Overview -------------------------------------------------------------

@@ -60,7 +60,13 @@
 
   function likeCount(pid) { return likes.filter(function (l) { return l.post_id === pid; }).length; }
   function iLike(pid) { return me && likes.some(function (l) { return l.post_id === pid && l.user_id === me.id; }); }
-  function author(uid) { return dir[uid] || { full_name: 'A brother', photo_url: null }; }
+  // The admin account may post without a roster row (it seeds a Legacy Build's archive), so a
+  // post of its own is attributed to the chapter rather than to "A brother" nobody can find.
+  function author(uid) {
+    if (dir[uid]) return dir[uid];
+    if (me && uid === me.id && isAdmin) return { full_name: 'The chapter', photo_url: null };
+    return { full_name: 'A brother', photo_url: null };
+  }
 
   function chip(uid) {
     var a = author(uid);
